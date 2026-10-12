@@ -4,8 +4,8 @@ Windows 설치형 앱과 웹 교재는 같은 교육 화면을 사용한다. 설
 
 ## 설치와 도구 등록
 
-- Windows 10 이상 x64 현재 사용자용 NSIS 설치 파일. 관리자 권한·시스템 PATH 변경·자동 JDK/Maven 다운로드·자동 업데이트는 사용하지 않는다.
-- 앱 설정에서 JDK 8·11·17·21의 설치 디렉터리와 Apache Maven 3.9 이상(Maven 3)의 디렉터리를 선택한다. java/javac 버전을 함께 검사한다.
+- Windows 10 이상 x64 현재 사용자용 NSIS 설치 EXE 및 전체 ZIP. v0.3은 Temurin JDK21·Maven3.10.0·Electron/Node를 포함한다. 학습자의 별도 설치·시스템 PATH 변경·자동 업데이트는 필요하지 않다. [번들 계약](bundled-runtime.md)을 따른다.
+- 포함 JDK21·Maven은 전체604파일 해시 검사 후 자동 등록한다. 고급 설정에서 다른 실제 JDK8·11·17·21과 Maven3.9 이상을 선택할 수 있고 기존 외부 설정을 보존한다. 실제 실행 때 java/javac 버전을 함께 검사한다.
 - 학습자 코드 실행에 대한 명시적인 동의가 필요하다. 앱을 여는 것만으로 학습 코드를 실행하지 않는다. 동의 문구는 파일·네트워크 접근 권한을 설명한다. 동의를 철회하면 진행 중인 실행도 취소한다.
 - 기본 실제 JVM은 등록한 JDK 중 수업의 최소 버전을 만족하는 가장 높은 버전이다. 실행 요청의 runtimeVersion으로 다른 등록 JDK를 선택할 수 있다. 교재의 Java 버전·컴파일 대상·실제 JVM을 구분한다.
 - 실무 프로젝트 환경 준비는 명시적인 버튼으로 고정 기준 답안의 Maven 테스트를 실행한다. Maven Central에서 고정 버전 의존성을 내려받는다. 이후 학습자 Maven 실행은 오프라인 모드다. 앱 재시작 또는 JDK 변경 뒤에는 환경 준비를 다시 확인한다.
@@ -34,7 +34,7 @@ Electron은 contextIsolation=true, nodeIntegration=false, sandbox=true, webSecur
 
 일반 fetch를 사용한다. Electron main이 인증 쿠키와 CSRF 헤더를 관리한다.
 
-- GET `/api/runtime`: 기존 provider/available/runtime/supportedTargets/notice 외에 `mode:'local'`, `runtimes:[{javaVersion,available,path}]`, `maven:{available,version,path}`, `consent:{accepted,notice}`, `dependencyNotice`, `reason`, `limits`, `preparedProjects:[{exerciseId,runtimeVersion,jdkPath,mavenPath,mavenVersion}]`. 도구 미등록/동의 전에도 200이며 available=false다. 실제 실행에서 도구 버전을 다시 확인한다. 준비 상태는 현재 등록한 JDK 경로와 Maven 경로·버전에 일치하는 항목만 반환한다.
+- GET `/api/runtime`: 기존 provider/available/runtime/supportedTargets/notice 외에 `mode:'local'`, `runtimes:[{javaVersion,available,path,source}]`, `maven:{available,version,path,source}`, `bundledRuntime:{id,javaVersions,mavenVersion}|null`, `consent:{accepted,notice}`, `dependencyNotice`, `reason`, `limits`, `preparedProjects:[{exerciseId,runtimeVersion,jdkPath,mavenPath,mavenVersion}]`. 도구 미등록/동의 전에도 200이며 available=false다. 실제 실행에서 도구 버전을 다시 확인한다. 준비 상태는 현재 등록한 JDK 경로와 Maven 경로·버전에 일치하는 항목만 반환한다.
 - GET `/api/local/projects/<exerciseId>`: `{exerciseId,lessonId,title,profileId,runtimeRequirements,files:[{path,source,editable}],notice}`. 파일은 교재의 고정 allowlist에 해당한다.
 - POST `/api/execute`: 코어는 `{exerciseId,source,action:'run'|'submit',requestId,runtimeVersion?}`. 실무는 source 대신 `files:{고정상대경로:소스}`. 편집 가능 파일 전부를 제출하며 pom.xml·grader·명령·URL은 변경할 수 없다.
 - POST `/api/local/prepare`: `{exerciseId,requestId,runtimeVersion?}`. 기준 답안으로 환경 준비. 결과에 `prepared:boolean`이 추가된다.

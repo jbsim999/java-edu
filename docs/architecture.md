@@ -6,7 +6,7 @@
 
 브라우저→같은 origin의 실행 API→외부 Wandbox 컴파일/실행 API로 연결한다. 제공자 endpoint·compiler·옵션은 서버가 고정한다. 교육 콘텐츠가 가진 과제 ID·버전·trusted checks를 서버가 결정하며 클라이언트의 기대값·컴파일 옵션을 신뢰하지 않는다.
 
-웹 실행의 실제 JVM은21(`openjdk-jdk-21+35`). `--release`로8/11/17/21의 언어/API 대상 컴파일을 검사해도 실행 JVM은21이다. 설치형은 등록한 실제 JDK8/11/17/21을 사용하며 CI에서도 네 런타임을 분리한다. 2026-10-12 웹 확인용 코드는 `--release\n8`과 package-private `class Main`으로 컴파일하고 `JAVA_EDU_OK`·`21-internal`을 출력했다. Java8 obsolete 경고와 종료0을 함께 확인했다. 이 결과는 전체 과제 검증을 대신하지 않는다.
+웹 실행의 실제 JVM은21(`openjdk-jdk-21+35`). `--release`로8/11/17/21의 언어/API 대상 컴파일을 검사해도 실행 JVM은21이다. 설치형 v0.3은 포함된 실제 JDK21을 자동 등록하며, 다른 실제 JDK8/11/17/21 등록은 선택 기능이다. CI에서는 네 실제 런타임을 분리한다. [번들 계약](bundled-runtime.md)을 따른다. 2026-10-12 웹 확인용 코드는 `--release\n8`과 package-private `class Main`으로 컴파일하고 `JAVA_EDU_OK`·`21-internal`을 출력했다. Java8 obsolete 경고와 종료0을 함께 확인했다. 이 결과는 전체 과제 검증을 대신하지 않는다.
 
 주 파일은prog.java이므로 template의 Solution과 Main은 package-private다. 사용자 Solution과 trusted Main harness를 합쳐 실행한다. 호출·반환 타입·컴파일 대상·샘플/제출 검사는 배포 소스에서 고정한다. 결과는 실행ID·작성 코드 snapshot에 연결한다. 단순 stdout 문구만으로 정답을 판정하지 않는다. 교육용 행동 검증은 악의적 제출에 대한 완전한 부정행위 방지 시스템을 뜻하지 않는다.
 

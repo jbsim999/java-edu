@@ -22,7 +22,7 @@ node scripts/bundle-runtime.mjs --check
 npm run build:desktop
 ```
 
-빌드는 설치 EXE와 Windows x64 ZIP을 함께 만든다. 앱의 설치·ZIP 위치가 바뀌면 번들 항목은 현재 resources 기준으로 다시 해석한다. 외부 선택 경로를 임의로 번들 경로로 변경하지 않는다. 버전별 검사와 실제 설치·ZIP 실행 결과는 별도 QA 보고서에 기록한다.
+빌드는 설치 EXE와 Windows x64 ZIP을 함께 만든다. NSIS는 differentialPackage:false·useZip:true로 내부 ZIP을 사용한다. 첫 빌드의7z ARM64 필터 두 파일을 NSIS의19.00 해제기가 누락한 실제 무결성 실패를 확인해, 원본 파일을 모두 유지하는 ZIP 경로로 수정했다. [electron-builder 공식 옵션](https://www.electron.build/v26/docs/nsis/)을 따른다. 자동 업데이트는 제공하지 않으며 차등 업데이트용 패키지를 생성하지 않는다. 앱의 설치·ZIP 위치가 바뀌면 번들 항목은 현재 resources 기준으로 다시 해석한다. 외부 선택 경로를 임의로 번들 경로로 변경하지 않는다. 버전별 검사와 실제 설치·ZIP 실행 결과는 별도 QA 보고서에 기록한다.
 
 ## 배포 출처·라이선스·대응 소스
 

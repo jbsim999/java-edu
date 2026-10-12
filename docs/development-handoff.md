@@ -1,3 +1,15 @@
+# Java Edu 개발 인계 — v0.3 통합 패키지
+
+최신 앱 소스는 `0e1ff5eb38484d1594d4fd1c231d4dbe229b44e8`, 원격은 jbsim999/java-edu, 구현 브랜치는 feat/java-learning-mvp이며 PR1은 미병합이다. [v0.3 통합 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.3.0)는 Windows x64 EXE·전체 ZIP에 Temurin21.0.12.1+1·Maven3.10.0·Electron/Node를 포함한다. 학습자의 별도 도구 설치·폴더 등록은 필요 없다. 기본 실제 JVM은21이며 컴파일 대상8·11·17·21과 구분한다. 다른 실제 JDK 등록은 고급 설정의 선택 기능이고 기존 외부 설정을 보존한다. 기본20실무 첫 준비에는 인터넷이 필요하며 Redis/Kafka 서버는 포함하지 않는다.
+
+CI38223955175의12작업, 최종 실제 ZIP10/10·NSIS10/10, 도구604개 전체 무결성·원본197+생성2파일 대조, 코드·기능·시각 독립 검수 PASS. package.json은 builder가 제거한 개발 필드를 제외한 런타임 필드를 비교한다. 첫7z NSIS의2파일 누락은 내부 ZIP으로 수정해 한글 설치 경로에서 재검증했다. 설치 제거·학습 데이터 보존·원래 AppData 부재 복원 PASS. 검사 자료는 work/bundled-desktop-qa에 보존하며 Git에 넣지 않는다. [통합 QA](bundled-desktop-qa-report.md)·[번들 계약](bundled-runtime.md)·[설치 안내](installation.md)·[배포 기록](deployment.md)을 먼저 읽는다.
+
+웹은 기존 소유자 전용 URL에서 통합 설치 안내를 배포했다. 웹 관련 GitHub 소스ffb77751, Sites199443b5e185acdcd83bb3d4ca0a4ca43eefc3d8, 배포appgdep_6acc996c9de48191a896c90d291afd9f, 2026-10-12 08:25:24UTC succeeded. 후속0e1ff5는 desktop 압축 설정만 수정했으며 웹 UI·Worker는 동일하다. 공개 접근 전환·PR 병합·강제 푸시·유료 자원 구매·자체 라이선스 지정은 승인되지 않았다.
+
+개발자는 공식 ZIP 체크섬과 대응 소스를 검증한 뒤 scripts/bundle-runtime.mjs로 work/desktop-bundle을 생성한다. 빌드 전후604개 전체 SHA를 확인한다. NSIS differentialPackage:false/useZip:true를 유지한다. 새 빌드는 기존 릴리스와 별도로 검증한다. 학습자 코드의 명시적 동의·개인 IDE 권한·로컬 프로세스 계약을 유지한다. 기존v0.2 검증도 최신 통합 패키지 검증과 구분한다.
+
+아래는 v0.2 당시 개발 인계의 역사 기록이다. 도구 외부 등록과 이전 배포 표시는 현재v0.3 기본 설정을 대신하지 않는다.
+
 # Java Edu 개발 인계 — 2026-10-12
 
 프로젝트 루트는 이 문서의 상위 저장소 java-learning-lab이다. 원격은 https://github.com/jbsim999/java-edu, 구현 브랜치는 `feat/java-learning-mvp`, PR은 https://github.com/jbsim999/java-edu/pull/1 이다. main에는 README와 소개 이미지가 반영돼 있고, 구현 PR은 병합하지 않았다. 새 대화는 AGENTS.md·CONTRIBUTING.md·이 문서를 먼저 읽는다.
