@@ -2,7 +2,7 @@
 
 공식 Java 문서 기반으로 다른 언어 경험자의 Java 전환 학습과 현직자의 심화를 연결하는 한국어 교육 서비스입니다. OOP·타입·동시성을 깊게 다루고, 수업 끝에서 Java 코드를 직접 작성·실행·검증합니다.
 
-현재 상태: **프로토타입 검증 중**. Java 코어 12수업·24문항·12코딩 과제와 5단계 학습실을 구현했습니다. Spring·Lombok·MyBatis·OAuth2/OIDC·JPA·Redis·Kafka 및 운영 과정은 교육 로드맵에 포함하며 후속 실습 기반에서 확장합니다. 전체 교육 과정 완료를 뜻하지 않습니다.
+현재 상태: **프로토타입 배포 완료**. [Java Learning Lab](https://java-edu-lab-jbsim999.junbo1218.chatgpt.site)은 소유자 계정만 접근할 수 있습니다. Java 코어 12수업·24문항·12코딩 과제와 5단계 학습실을 구현했습니다. Spring·Lombok·MyBatis·OAuth2/OIDC·JPA·Redis·Kafka 및 운영 과정은 교육 로드맵에 포함하며 후속 실습 기반에서 확장합니다. 전체 교육 과정 완료를 뜻하지 않습니다.
 
 - [기획안](docs/product-plan.md)
 - [교육 로드맵](docs/education-roadmap.md)
@@ -14,6 +14,7 @@
 - [구현된 코어 과정](docs/curriculum.md)
 - [협업 규칙](CONTRIBUTING.md)
 - [실제 검증과 미확인 범위](docs/verification.md)
+- [배포 소스·버전 기록](docs/deployment.md)
 - [독립 브라우저 QA](docs/qa-report.md)
 
 수업은 이론 → 예시 → 문제풀이 → 실무 심화 → 웹 IDE 직접 코딩의 5단계입니다. 객관식 성취·코드 행동 검증·설계 평가를 구분합니다.
