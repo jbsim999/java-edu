@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, realpath, readFile, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LocalError } from './errors.mjs';
@@ -41,12 +42,20 @@ export async function runProcess(executable, args, {
   const resultPath = path.join(cwd, `.command-${invocationId}.result.json`);
   let command = executable;
   let commandArgs = args;
-  if (process.platform === 'win32') {
-    await writeFile(specPath, JSON.stringify({ executable, args, cwd, timeoutMs, memoryMiB, maxProcesses, parentPid: process.pid, resultPath }), { flag: 'wx' });
-    command = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
-    commandArgs = ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', windowsRunner, '-SpecPath', specPath];
-  }
+  let commandEnvironment = env;
+  let supervisorDirectory;
+  let supervisorParent;
   try {
+    if (process.platform === 'win32') {
+      // CodeDom's elevated temp-directory path uses ANSI Win32 interop. Keep its
+      // private compilation temp separate from Unicode learner workspace paths.
+      supervisorParent = await realpath(tmpdir());
+      supervisorDirectory = await mkdtemp(path.join(supervisorParent, `java-edu-supervisor-${invocationId}-`));
+      commandEnvironment = { ...env, TEMP: supervisorDirectory, TMP: supervisorDirectory };
+      await writeFile(specPath, JSON.stringify({ executable, args, cwd, timeoutMs, memoryMiB, maxProcesses, parentPid: process.pid, resultPath, childTemp: env.TEMP ?? cwd, childTmp: env.TMP ?? cwd }), { flag: 'wx' });
+      command = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+      commandArgs = ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', windowsRunner, '-SpecPath', specPath];
+    }
     return await new Promise((resolve, reject) => {
       let child;
       let stdout = '';
@@ -83,7 +92,7 @@ export async function runProcess(executable, args, {
       const timer = setTimeout(() => stop('timeout'), timeoutMs + (process.platform === 'win32' ? 15_000 : 0));
       signal?.addEventListener('abort', onAbort, { once: true });
       try {
-        child = spawnImpl(command, commandArgs, { cwd, env, shell: false, windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
+        child = spawnImpl(command, commandArgs, { cwd, env: commandEnvironment, shell: false, windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
       } catch (error) { void finish(-1, error); return; }
       for (const [stream, key] of [[child.stdout, 'stdout'], [child.stderr, 'stderr']]) {
         stream.setEncoding('utf8');
@@ -101,6 +110,13 @@ export async function runProcess(executable, args, {
       if (signal?.aborted) stop('cancelled');
     });
   } finally {
-    if (process.platform === 'win32') await Promise.all([rm(specPath, { force: true }), rm(resultPath, { force: true })]);
+    if (process.platform === 'win32') {
+      await Promise.all([rm(specPath, { force: true }), rm(resultPath, { force: true })]);
+      if (supervisorDirectory) {
+        const verified = await realpath(supervisorDirectory);
+        if (path.dirname(verified) !== supervisorParent || !path.basename(verified).startsWith(`java-edu-supervisor-${invocationId}-`)) throw new LocalError('invalid_cleanup_path', '감독 프로세스의 임시 경로를 확인할 수 없습니다.', 500);
+        await rm(verified, { recursive: true, force: true });
+      }
+    }
   }
 }

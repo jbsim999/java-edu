@@ -88,3 +88,11 @@ Electron은 contextIsolation=true, nodeIntegration=false, sandbox=true, webSecur
 실제 Java 11·17 PC 런타임은 이 환경에 설치되지 않아 로컬 엔진으로 실행하지 않았다. 다른 JDK의 CI 결과와 별개다. Redis·Kafka 실제 서비스 연결은 미검증이며 미준비 시 409 반환과 고정 loopback 주소 정책만 검증했다. Electron 전체 화면 흐름·설치 파일·패키지 실행 검증은 독립 QA 및 최종 릴리스 기록을 따른다.
 
 실행 중 발견한 실패는 숨기지 않았다. Java 8 도구 검사에서 자동 heap 크기가 Job 메모리 한도를 넘는 문제는 명시적 heap 한도로 수정했다. Maven의 첫 TLS 실패는 Windows-ROOT의 정상 인증서 검증으로 해결했다. Surefire 자식 JVM은 PATHEXT 누락과 `%JAVA_HOME%` 경로의 내부 셸 확장에서 실패했으며, 최종 구현은 forkCount=0으로 매 작업의 독립 Maven JVM에서 테스트하여 내부 셸 호출을 없앴다. JDK 21의 표준 오류 인코딩은 file.encoding만으로 고정되지 않아 stdout/stderr 인코딩도 명시했다. JWT 기준 테스트의 모호한 RSAKey import는 콘텐츠 담당자가 고친 후 5/5로 재검증했다.
+
+## Windows 감독 초기화와 임시 경로
+
+Windows Server CI에서 PowerShell 모듈 자동 탐색 지연과 관리자 .NET CodeDom의 임시 디렉터리 생성 오류를 발견했다. 감독 helper는 Windows 기본 Utility manifest만 명시적으로 로드한다. CodeDom 컴파일에는 OS 기본 TEMP 아래 호출별 고유 디렉터리를 사용하고, 실제 Java/Maven 시작 전 TEMP/TMP를 원래 작업별 폴더로 복원한다. 학습자 작업 폴더의 한글·공백·`&`·`%`를 제거하는 방식이 아니다. 기존 CodeDom ACL 보호와 Job·시간·출력 제한은 유지한다.
+
+[.NET TempFileCollection 원문](https://github.com/microsoft/referencesource/blob/main/System/compmod/system/codedom/compiler/TempFiles.cs)과 [NativeMethods 원문](https://github.com/microsoft/referencesource/blob/main/System/compmod/microsoft/win32/NativeMethods.cs)의 관리자 분기·ANSI 경로 호출이 오류 스택과 일치했다. 로컬 코드페이지 밖 문자의 직접 호출에서도 Win32 오류123을 재현했다. 비관리자 로컬 수정 검사는16/16, JDK8 56/56·JDK21 73/73 및 양쪽 한글 진단 PASS다. 관리자 Windows CI의 수정 결과는 이후 실제 결과로 확인한다.
+
+감독 초기화에는 ANSI로 표현 가능한 OS 기본 TEMP 경로가 필요하다(ASCII 경로 권장). 기본 TEMP 자체가 현재 코드페이지로 표현되지 않는 경로일 때는 이 .NET 경로 제약이 남는다. 정상 완료·취소·감독 중단 후에는 이번 호출의 디렉터리 실제 부모·고유 접두사를 확인해 정리한다. 앱 부모가 강제로 종료되어 finally가 실행되지 않은 경우에는 임시 디렉터리가 남을 수 있다. 자식 프로세스 종료 검증을 모든 임시 파일의 자동 정리 보장으로 확대하지 않는다.

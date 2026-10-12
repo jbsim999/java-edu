@@ -102,6 +102,9 @@ try {
   Import-Module -Name ([System.IO.Path]::Combine($PSHOME, 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1')) -ErrorAction Stop
   $spec = [System.IO.File]::ReadAllText($SpecPath, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
   Add-Type -TypeDefinition $source -Language CSharp
+  # Compilation uses a private OS-temp child; learner processes keep their original job-local temp.
+  $env:TEMP = if ($spec.childTemp) { [string]$spec.childTemp } else { [string]$spec.cwd }
+  $env:TMP = if ($spec.childTmp) { [string]$spec.childTmp } else { [string]$spec.cwd }
   $result = [JavaEduJob]::Run([string]$spec.executable, [string[]]$spec.args, [string]$spec.cwd, [int]$spec.timeoutMs, [int]$spec.memoryMiB, [int]$spec.maxProcesses, [uint32]$spec.parentPid)
   $report = @{ exitCode = [long]$result[0]; reason = $result[1] } | ConvertTo-Json -Compress
   [System.IO.File]::WriteAllText([string]$spec.resultPath, $report, (New-Object System.Text.UTF8Encoding($false)))
