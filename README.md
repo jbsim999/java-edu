@@ -8,7 +8,7 @@
 
 다른 언어 경험자의 Java 전환 학습부터 현직 개발자의 OOP·백엔드 심화까지.
 
-[![Java](https://img.shields.io/badge/Java-8%20%7C%2011%20%7C%2017%20%7C%2021-315b45?style=flat-square)](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/java-version-matrix.md) [![Windows](https://img.shields.io/badge/Desktop-Windows%20x64-315b45?style=flat-square)](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/installation.md) [![Lessons](https://img.shields.io/badge/Lessons-34-806223?style=flat-square)](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/education-roadmap.md) [![Status](https://img.shields.io/badge/Status-v0.2%20in%20development-806223?style=flat-square)](https://github.com/jbsim999/java-edu/issues) [![CI](https://github.com/jbsim999/java-edu/actions/workflows/verify.yml/badge.svg?branch=feat%2Fjava-learning-mvp)](https://github.com/jbsim999/java-edu/actions/workflows/verify.yml?query=branch%3Afeat%2Fjava-learning-mvp)
+[![Java](https://img.shields.io/badge/Java-8%20%7C%2011%20%7C%2017%20%7C%2021-315b45?style=flat-square)](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/java-version-matrix.md) [![Windows](https://img.shields.io/badge/Desktop-Windows%20x64-315b45?style=flat-square)](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/installation.md) [![Lessons](https://img.shields.io/badge/Lessons-34-806223?style=flat-square)](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/education-roadmap.md) [![Status](https://img.shields.io/badge/Status-v0.2.0%20preview-806223?style=flat-square)](https://github.com/jbsim999/java-edu/issues) [![CI](https://github.com/jbsim999/java-edu/actions/workflows/verify.yml/badge.svg?branch=feat%2Fjava-learning-mvp)](https://github.com/jbsim999/java-edu/actions/workflows/verify.yml?query=branch%3Afeat%2Fjava-learning-mvp)
 
 [교육 로드맵](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/education-roadmap.md) · [개발 소스](https://github.com/jbsim999/java-edu/tree/feat/java-learning-mvp) · [기여 안내](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/CONTRIBUTING.md) · [버그·제안](https://github.com/jbsim999/java-edu/issues)
 
@@ -20,7 +20,7 @@ Java Edu는 **Windows에서 코드를 직접 실행하는 학습 앱과 웹 교�
 
 수업은 **이론 → 예시 → 문제풀이 → 실무 심화 → 직접 코딩** 순서로 진행합니다. Java 언어·표준 API는 Oracle/OpenJDK 공식 문서를, 프레임워크·라이브러리는 각 프로젝트의 공식 문서를 기준으로 합니다. 실무 주제에는 출처를 기록한 채용 공고의 기술 요건도 연결합니다.
 
-> **개발 상태** — 전체 34수업과 Windows 앱 소스는 `feat/java-learning-mvp` 브랜치에 있습니다. `main`은 프로젝트 소개를 제공합니다. Windows v0.2 설치 파일은 최종 검증 전으로 아직 릴리스하지 않았습니다. [호스팅 웹](https://java-edu-lab-jbsim999.junbo1218.chatgpt.site)은 소유자 전용이며 34수업·이론 도식 12개·편집기 테마가 배포돼 있습니다.
+> **개발 상태** — 전체 34수업과 Windows 앱 소스는 `feat/java-learning-mvp` 브랜치에 있습니다. `main`은 프로젝트 소개를 제공합니다. [Windows v0.2.0 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.2.0)를 설치해 학습할 수 있습니다. [호스팅 웹](https://java-edu-lab-jbsim999.junbo1218.chatgpt.site)은 소유자 전용이며 34수업·이론 도식 12개·편집기 테마가 배포돼 있습니다.
 
 ## 학습실 미리보기
 
@@ -59,7 +59,9 @@ Java Edu는 **Windows에서 코드를 직접 실행하는 학습 앱과 웹 교�
 
 ## 빠르게 시작하기
 
-현재는 개발 소스에서 실행할 수 있습니다. **Node.js 22 이상**이 필요하며 Windows 앱의 Java 실습에는 **JDK**, Spring 실습에는 **Maven 3.9 이상**도 준비합니다.
+**Windows 학습자:** [v0.2.0 설치 파일](https://github.com/jbsim999/java-edu/releases/tag/v0.2.0)을 내려받아 설치하고 앱에서 JDK 폴더를 등록합니다. Spring 실습에는 Maven 3.9 이상도 등록합니다. JDK/Maven은 설치 파일에 포함하지 않습니다. [설치 안내](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/installation.md)
+
+**개발 소스 실행:** Node.js 22 이상이 필요합니다.
 
 ```sh
 git clone --branch feat/java-learning-mvp https://github.com/jbsim999/java-edu.git
@@ -90,7 +92,7 @@ npm run desktop
 npm run build:desktop
 ```
 
-`desktop-release/`에 Windows x64 NSIS 설치 파일을 생성합니다. 현재 빌드는 코드 서명되지 않았으며 설치·제거 및 설치된 앱의 최종 검증이 남아 있습니다. 공개 설치 파일은 검증 후 [Releases](https://github.com/jbsim999/java-edu/releases)에 게시할 예정입니다.
+`desktop-release/`에 Windows x64 NSIS 설치 파일을 생성합니다. 배포된 v0.2.0은 실제 설치·앱 실행·제거 검증을 통과한 코드 서명되지 않은 프리뷰입니다. 직접 재빌드한 파일은 배포 파일과 별도로 검증해야 합니다. [설치 파일과 SHA-256](https://github.com/jbsim999/java-edu/releases/tag/v0.2.0)
 
 </details>
 
@@ -119,7 +121,7 @@ npm run build:desktop
 
 실무 검사는 `JAVA_HOME`·`MAVEN_HOME` 설정이 필요합니다. 기본 검사는 Redis/Kafka를 제외합니다. 브라우저 검사는 실행 제공자의 실제 동작 검증과 구분합니다.
 
-2026-10-12 기준, 로컬에서 기본 20실무프로젝트의 기준 검사 **54개**와 개발 앱 **9개 흐름**을 확인했습니다. 최신 CI는 Windows 로컬 실행 작업의 실패가 남아 있으며 설치 패키지와 최종 시각 검수도 미완료입니다. CI 배지는 개발 브랜치의 실제 결과를 표시합니다. [검증 기록](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/verification.md) · [앱 QA](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/desktop-qa-report.md)
+2026-10-12 기준, 출시 소스 `6ba4b8a`의 [CI 12작업](https://github.com/jbsim999/java-edu/actions/runs/38213755330)이 모두 성공했습니다. 실제 설치 앱 **8/8**, 설치·제거, 독립 시각 검수 PASS. 이론 도식 **19/19**, 기존 브라우저 회귀 **49/49**, 기본 20실무프로젝트 **54개 JUnit 검사**도 통과했습니다. CI 배지는 개발 브랜치의 현재 결과를 표시하며, 검증 범위와 미확인은 기록을 따릅니다. [검증 기록](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/verification.md) · [앱 QA](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/desktop-qa-report.md)
 
 ## 문서와 로드맵
 
@@ -131,6 +133,7 @@ npm run build:desktop
 | 이론 도식의 선정과 검수 | [34수업 평가·12개 채택 근거](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/theory-visuals.md) · [독립 QA](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/theory-visual-qa-report.md) |
 | 채용 공고 조사 근거 | [출처·표본·조사 범위](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/job-evidence.md) |
 | 구조와 실행 경계 | [아키텍처](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/architecture.md) |
+| 설치된 앱의 실행·제거 검증 | [설치 QA](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/installed-desktop-qa-report.md) |
 | 현재 작업·출시 상태 | [마일스톤](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/milestones.md) · [개발 인계](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/development-handoff.md) |
 
 - [x] Java 코어 12수업과 직접 코딩 과제
@@ -138,9 +141,9 @@ npm run build:desktop
 - [x] Windows 로컬 JDK/Maven 실행과 진도 저장 구현
 - [x] 실무 22수업과 기본 20프로젝트의 기준 검증
 - [x] 이론 도식 12개와 공식 출처·텍스트 설명
-- [ ] Windows CI 실패 해결·설치/제거 검증·최종 시각 검수
+- [x] Windows CI·설치/제거 검증·최종 시각 검수
 - [x] 34수업·이론 도식 웹 교재 배포
-- [ ] Windows v0.2 릴리스
+- [x] [Windows v0.2.0 프리뷰 릴리스](https://github.com/jbsim999/java-edu/releases/tag/v0.2.0)
 - [ ] 선택 과정의 Redis/Kafka 실제 연동 검증
 
 ## 기여와 문의

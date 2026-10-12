@@ -1,6 +1,6 @@
 # Windows 설치와 학습 시작
 
-Windows 10/11 x64용 현재 사용자 설치 앱이다. 설치 파일과 SHA-256은 이 저장소의 GitHub Releases에 함께 제공한다. 앱은 Java와 Maven을 포함하지 않으며 시스템 PATH를 바꾸지 않는다.
+Windows 10/11 x64용 현재 사용자 설치 앱이다. [v0.2.0 설치 파일과 SHA-256](https://github.com/jbsim999/java-edu/releases/tag/v0.2.0)을 함께 제공한다. 앱은 Java와 Maven을 포함하지 않으며 시스템 PATH를 바꾸지 않는다.
 
 ## 준비
 
