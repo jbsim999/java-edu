@@ -11,3 +11,5 @@ dist/server/
 dist/.openai/
 dist/assets/editor.bundle.js
 desktop-release/
+dist/downloads/
+dist/data/professional.js

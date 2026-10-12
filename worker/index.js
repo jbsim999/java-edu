@@ -11,9 +11,11 @@ export default {
     const pathname = url.pathname === '/' ? '/index.html' : url.pathname;
     const asset = assets[pathname];
     if (!asset) return new Response('Not found', { status: 404 });
-    return new Response(request.method === 'HEAD' ? null : asset.body, {
+    const body = asset.encoding === 'base64' ? Uint8Array.from(atob(asset.body), (c) => c.charCodeAt(0)) : asset.body;
+    return new Response(request.method === 'HEAD' ? null : body, {
       headers: {
         'Content-Type': asset.type,
+        ...(asset.download ? { 'Content-Disposition': `attachment; filename="${asset.download}"` } : {}),
         'Cache-Control': 'no-cache',
         'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'strict-origin-when-cross-origin',

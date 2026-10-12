@@ -1,0 +1,177 @@
+{
+  "id": "json-validation",
+  "title": "Jackson·Validation의 입력 경계",
+  "description": "JSON 역직렬화 실패, Bean Validation 실패, 업무 불변식 위반을 구분하고 입력 정책을 고정합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "자료형에 들어온 값은 언제 업무에 사용할 수 있는가?",
+    "정상 생성 201",
+    "0 수량·공백 sku 400",
+    "깨진 JSON·미지 필드 400"
+  ],
+  "theory": [
+    {
+      "heading": "세 가지 입력 경계",
+      "text": "유효한 JSON이라고 해서 유효한 주문은 아닙니다. 파싱·자료형 변환·필드 제약·업무 규칙을 단계별로 구분하면 400 응답과 내부 오류를 혼동하지 않습니다. @Valid는 요청 객체 검증을 MVC 경계에 연결합니다."
+    },
+    {
+      "heading": "누락과 기본값",
+      "text": "원시 int의 누락이 0으로 변환되는 설정에서는 @Min(1)이 거절합니다. nullable Integer를 쓰면 @NotNull이 별도로 필요할 수 있습니다. 의도한 부재 의미를 타입과 검증 규칙에 함께 기록합니다."
+    },
+    {
+      "heading": "호환성과 엄격성",
+      "text": "알 수 없는 필드를 거절할지 무시할지는 API 정책입니다. 이 예제는 오타를 발견하도록 FAIL_ON_UNKNOWN_PROPERTIES를 명시적으로 켭니다. 이를 모든 API의 보편적 정답으로 적용하면 점진 배포 호환성을 해칠 수 있습니다."
+    }
+  ],
+  "example": {
+    "title": "CreateOrderController 기준 구현",
+    "code": "package edu.lab;\nimport jakarta.validation.Valid;\nimport jakarta.validation.constraints.Min;\nimport jakarta.validation.constraints.NotBlank;\nimport org.springframework.http.HttpStatus;\nimport org.springframework.web.bind.annotation.*;\n@RestController\n@RequestMapping(\"/orders\")\npublic class CreateOrderController {\n    // BEGIN MODEL\n    public record Request(@NotBlank String sku, @Min(1) int quantity) {}\n    // END MODEL\n    public record Created(String sku, int quantity) {}\n    @PostMapping\n    @ResponseStatus(HttpStatus.CREATED)\n    public Created create(@Valid @RequestBody Request request) {\n        // BEGIN EXERCISE\n        return new Created(request.sku(), request.quantity());\n        // END EXERCISE\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 3개 JUnit 테스트 통과.\n검증 항목: 정상 생성 201 · 0 수량·공백 sku 400 · 깨진 JSON·미지 필드 400.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/CreateOrderController.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport jakarta.validation.Valid;\nimport jakarta.validation.constraints.Min;\nimport jakarta.validation.constraints.NotBlank;\nimport org.springframework.http.HttpStatus;\nimport org.springframework.web.bind.annotation.*;\n@RestController\n@RequestMapping(\"/orders\")\npublic class CreateOrderController {\n    // BEGIN MODEL\n    public record Request(@NotBlank String sku, @Min(1) int quantity) {}\n    // END MODEL\n    public record Created(String sku, int quantity) {}\n    @PostMapping\n    @ResponseStatus(HttpStatus.CREATED)\n    public Created create(@Valid @RequestBody Request request) {\n        // BEGIN EXERCISE\n        return new Created(request.sku(), request.quantity());\n        // END EXERCISE\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>json-validation</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "json-validation-q1",
+      "question": "이 과제의 quantity가 누락되어 0이 되면 어떻게 처리되는가?",
+      "options": [
+        "@Min(1) 검증으로 400이 된다.",
+        "정상 수량 1로 자동 보정된다.",
+        "@Valid가 있으면 모든 값이 허용된다.",
+        "int는 항상 요청에 존재하므로 누락할 수 없다."
+      ],
+      "correctIndex": 0,
+      "explanation": "요청 객체 생성 후 @Valid가 제약을 검사합니다. int의 0 기본값이 양수 조건에 맞지 않으므로 MVC는 요청을 거절합니다."
+    },
+    {
+      "id": "json-validation-q2",
+      "question": "알 수 없는 JSON 필드를 거절하는 정책의 설명으로 맞는 것은?",
+      "options": [
+        "항상 API 호환성이 좋아진다.",
+        "ObjectMapper 설정과 API 호환성 요구를 함께 결정해야 한다.",
+        "Bean Validation이 자동으로 모든 미지 필드를 거절한다.",
+        "HTTP 상태 코드와 무관하므로 문서화할 필요가 없다."
+      ],
+      "correctIndex": 1,
+      "explanation": "JSON 변환 정책과 값 검증은 별개이며 엄격한 필드 정책은 오타 발견과 점진 배포 사이의 선택을 요구합니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "JSON 역직렬화 실패, Bean Validation 실패, 업무 불변식 위반을 구분하고 입력 정책을 고정합니다.",
+    "tasks": [
+      "sku는 공백이 아니고 quantity는 1 이상이어야 합니다.",
+      "POST /orders의 유효한 JSON은 201과 sku·quantity를 반환합니다.",
+      "잘못된 JSON, 잘못된 필드 값, 알 수 없는 필드는 400입니다.",
+      "메서드 안의 업무 규칙과 @Valid 요청 검증이 같은 검사라고 가정하지 마세요.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Spring MVC validation",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/web/webmvc/mvc-controller/ann-validation.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Jackson databind deserialization features",
+      "url": "https://github.com/FasterXML/jackson-databind/wiki/Deserialization-Features",
+      "edition": "Jackson 2",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Jakarta Validation specification",
+      "url": "https://jakarta.ee/specifications/bean-validation/3.0/",
+      "edition": "Jakarta Bean Validation 3.0",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Spring MVC",
+    "Jackson",
+    "Validation"
+  ],
+  "exerciseId": "json-validation-project",
+  "professionalExercise": {
+    "id": "json-validation-project",
+    "profileId": "professional-spring-web",
+    "mode": "project",
+    "instructions": [
+      "sku는 공백이 아니고 quantity는 1 이상이어야 합니다.",
+      "POST /orders의 유효한 JSON은 201과 sku·quantity를 반환합니다.",
+      "잘못된 JSON, 잘못된 필드 값, 알 수 없는 필드는 400입니다.",
+      "메서드 안의 업무 규칙과 @Valid 요청 검증이 같은 검사라고 가정하지 마세요."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/CreateOrderController.java"
+    ],
+    "template": "package edu.lab;\nimport jakarta.validation.Valid;\nimport jakarta.validation.constraints.Min;\nimport jakarta.validation.constraints.NotBlank;\nimport org.springframework.http.HttpStatus;\nimport org.springframework.web.bind.annotation.*;\n@RestController\n@RequestMapping(\"/orders\")\npublic class CreateOrderController {\n    // BEGIN MODEL\n    public record Request(@NotBlank String sku, @Min(1) int quantity) {}\n    // END MODEL\n    public record Created(String sku, int quantity) {}\n    @PostMapping\n    @ResponseStatus(HttpStatus.CREATED)\n    public Created create(@Valid @RequestBody Request request) {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/CreateOrderController.java",
+        "templatePath": "lessons/json-validation/starter/src/main/java/edu/lab/CreateOrderController.java",
+        "referencePath": "lessons/json-validation/reference/src/main/java/edu/lab/CreateOrderController.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/json-validation/starter/pom.xml",
+        "referencePath": "lessons/json-validation/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/json-validation/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "정상 생성 201",
+      "0 수량·공백 sku 400",
+      "깨진 JSON·미지 필드 400"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "mvc-rest"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 3,
+    "starterSatisfied": false,
+    "sourceFingerprint": "cb2dd529c781109c07cf6272989e94ab712c38e29484390922d7e38fb4f046b9",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

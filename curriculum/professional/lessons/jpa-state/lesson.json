@@ -1,0 +1,199 @@
+{
+  "id": "jpa-state",
+  "title": "JPA·Hibernate의 상태와 변경 감지",
+  "description": "영속 상태와 분리 상태를 구분하고 공개 setter 대신 업무 메서드로 주문 불변식을 지킵니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "객체의 필드를 바꾼 결과가 언제 DB에 반영되는가?",
+    "관리 엔티티 변경 감지",
+    "분리 객체 변경 비반영",
+    "실패 시 객체 수량 보존"
+  ],
+  "theory": [
+    {
+      "heading": "영속성 컨텍스트와 변경 감지",
+      "text": "EntityManager가 관리하는 엔티티의 변경은 트랜잭션 flush·commit 시 SQL로 동기화될 수 있습니다. 메서드를 호출한 순간과 SQL 실행 순간은 같지 않습니다. 관리 범위를 벗어난 detached 객체를 바꿔도 자동으로 DB에 반영되지 않습니다."
+    },
+    {
+      "heading": "엔티티와 값 객체의 차이",
+      "text": "엔티티는 식별자·수명·영속 상태를 갖습니다. 모든 필드를 포함하는 Lombok @Data를 기계적으로 붙이면 변경되는 hashCode, 연관관계 순환, 지연 로딩 접근을 유발할 수 있습니다. 이 예제는 동등성 전략을 무리하게 일반화하지 않고 업무 변경 메서드에 집중합니다."
+    },
+    {
+      "heading": "캡슐화와 ORM 제약",
+      "text": "보호된 무인자 생성자는 ORM의 생성 경로이며 일반 호출자의 올바른 생성 경로와 다릅니다. 임의 setter 대신 changeQuantity가 양수 불변식을 지킵니다. DB 제약과 다른 쓰기 경로까지 함께 설계해야 전체 시스템의 불변식을 보장할 수 있습니다."
+    }
+  ],
+  "example": {
+    "title": "JpaLab 기준 구현",
+    "code": "package edu.lab;\nimport jakarta.persistence.*;\nimport java.util.Map;\nimport java.util.UUID;\npublic final class JpaLab {\n    private JpaLab() {}\n    public static EntityManagerFactory open() {\n        return Persistence.createEntityManagerFactory(\"orders\", Map.of(\n            \"jakarta.persistence.jdbc.url\", \"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"));\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 3개 JUnit 테스트 통과.\n검증 항목: 관리 엔티티 변경 감지 · 분리 객체 변경 비반영 · 실패 시 객체 수량 보존.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/JpaLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport jakarta.persistence.*;\nimport java.util.Map;\nimport java.util.UUID;\npublic final class JpaLab {\n    private JpaLab() {}\n    public static EntityManagerFactory open() {\n        return Persistence.createEntityManagerFactory(\"orders\", Map.of(\n            \"jakarta.persistence.jdbc.url\", \"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"));\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>jpa-state</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.hibernate.orm</groupId><artifactId>hibernate-core</artifactId></dependency>\n<dependency><groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId></dependency>\n<dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId></dependency></dependencies></project>\n"
+      },
+      {
+        "path": "src/main/resources/META-INF/persistence.xml",
+        "language": "xml",
+        "code": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<persistence xmlns=\"https://jakarta.ee/xml/ns/persistence\" version=\"3.0\">\n  <persistence-unit name=\"orders\" transaction-type=\"RESOURCE_LOCAL\">\n    <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider><class>edu.lab.OrderEntity</class>\n    <exclude-unlisted-classes>true</exclude-unlisted-classes>\n    <properties>\n      <property name=\"jakarta.persistence.jdbc.driver\" value=\"org.h2.Driver\"/>\n      <property name=\"jakarta.persistence.jdbc.user\" value=\"sa\"/>\n      <property name=\"jakarta.persistence.jdbc.password\" value=\"\"/>\n      <property name=\"hibernate.hbm2ddl.auto\" value=\"create-drop\"/>\n      <property name=\"hibernate.show_sql\" value=\"false\"/>\n    </properties>\n  </persistence-unit>\n</persistence>\n"
+      },
+      {
+        "path": "src/main/java/edu/lab/OrderEntity.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport jakarta.persistence.*;\n@Entity\n@Table(name=\"purchase_orders\")\npublic class OrderEntity {\n    @Id private String id;\n    private int quantity;\n    protected OrderEntity() {}\n    public OrderEntity(String id, int quantity) {\n        if (id == null || id.isBlank()) throw new IllegalArgumentException(\"id\");\n        this.id = id; changeQuantity(quantity);\n    }\n    public String id() { return id; }\n    public int quantity() { return quantity; }\n    public void changeQuantity(int quantity) {\n        // BEGIN EXERCISE\n        if (quantity <= 0) throw new IllegalArgumentException(\"quantity\");\n        this.quantity = quantity;\n        // END EXERCISE\n    }\n}\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "jpa-state-q1",
+      "question": "EntityManager를 닫은 뒤 detached 주문의 수량을 바꾸면?",
+      "options": [
+        "setter 호출만으로 항상 UPDATE된다.",
+        "모든 엔티티는 JVM 종료까지 관리 상태다.",
+        "@Entity가 있으면 트랜잭션이 필요 없다.",
+        "다시 영속화하는 별도 과정 없이는 DB에 자동 반영되지 않는다."
+      ],
+      "correctIndex": 3,
+      "explanation": "변경 감지는 영속성 컨텍스트의 관리 상태에서 이루어집니다. 분리 객체에 대한 일반 자바 변경은 DB에 자동 전달되지 않습니다."
+    },
+    {
+      "id": "jpa-state-q2",
+      "question": "엔티티에 모든 필드 기반 equals/hashCode를 적용하기 전에 확인할 사항은?",
+      "options": [
+        "들여쓰기만 확인한다.",
+        "변경 가능한 필드·연관관계·프록시와 식별자 전략을 검토한다.",
+        "DB 컬럼 순서만 확인한다.",
+        "record로 바꾸면 모든 JPA 제약이 없어진다."
+      ],
+      "correctIndex": 1,
+      "explanation": "엔티티의 동등성과 해시 안정성은 저장 전후의 식별자와 객체 수명, 연관관계에 따라 달라집니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "영속 상태와 분리 상태를 구분하고 공개 setter 대신 업무 메서드로 주문 불변식을 지킵니다.",
+    "tasks": [
+      "OrderEntity.changeQuantity는 양수만 허용하고 실패하면 기존 수량을 유지합니다.",
+      "관리 상태에서 수량을 변경하고 commit한 뒤 새 EntityManager로 읽으면 변경이 보입니다.",
+      "EntityManager를 닫은 뒤 detached 엔티티를 변경해도 DB 값은 바뀌지 않습니다.",
+      "create-drop 설정은 폐기 가능한 학습 DB용이며 운영 마이그레이션 정책이 아닙니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Hibernate persistence context",
+      "url": "https://docs.hibernate.org/orm/6.6/userguide/html_single/#pc",
+      "edition": "Hibernate ORM 6.6",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Jakarta Persistence",
+      "url": "https://jakarta.ee/specifications/persistence/3.1/",
+      "edition": "Jakarta Persistence 3.1",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Lombok EqualsAndHashCode",
+      "url": "https://projectlombok.org/features/EqualsAndHashCode",
+      "edition": "Lombok",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "JPA",
+    "Hibernate"
+  ],
+  "exerciseId": "jpa-state-project",
+  "professionalExercise": {
+    "id": "jpa-state-project",
+    "profileId": "professional-jpa",
+    "mode": "project",
+    "instructions": [
+      "OrderEntity.changeQuantity는 양수만 허용하고 실패하면 기존 수량을 유지합니다.",
+      "관리 상태에서 수량을 변경하고 commit한 뒤 새 EntityManager로 읽으면 변경이 보입니다.",
+      "EntityManager를 닫은 뒤 detached 엔티티를 변경해도 DB 값은 바뀌지 않습니다.",
+      "create-drop 설정은 폐기 가능한 학습 DB용이며 운영 마이그레이션 정책이 아닙니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/OrderEntity.java"
+    ],
+    "template": "package edu.lab;\nimport jakarta.persistence.*;\nimport java.util.Map;\nimport java.util.UUID;\npublic final class JpaLab {\n    private JpaLab() {}\n    public static EntityManagerFactory open() {\n        return Persistence.createEntityManagerFactory(\"orders\", Map.of(\n            \"jakarta.persistence.jdbc.url\", \"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"));\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/JpaLab.java",
+        "templatePath": "lessons/jpa-state/starter/src/main/java/edu/lab/JpaLab.java",
+        "referencePath": "lessons/jpa-state/reference/src/main/java/edu/lab/JpaLab.java",
+        "editable": false
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/jpa-state/starter/pom.xml",
+        "referencePath": "lessons/jpa-state/reference/pom.xml",
+        "editable": false
+      },
+      {
+        "path": "src/main/resources/META-INF/persistence.xml",
+        "templatePath": "lessons/jpa-state/starter/src/main/resources/META-INF/persistence.xml",
+        "referencePath": "lessons/jpa-state/reference/src/main/resources/META-INF/persistence.xml",
+        "editable": false
+      },
+      {
+        "path": "src/main/java/edu/lab/OrderEntity.java",
+        "templatePath": "lessons/jpa-state/starter/src/main/java/edu/lab/OrderEntity.java",
+        "referencePath": "lessons/jpa-state/reference/src/main/java/edu/lab/OrderEntity.java",
+        "editable": true
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/jpa-state/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "관리 엔티티 변경 감지",
+      "분리 객체 변경 비반영",
+      "실패 시 객체 수량 보존"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "sql-jdbc",
+    "lombok-values"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 3,
+    "starterSatisfied": false,
+    "sourceFingerprint": "c721dc8a92215ad6b837e104656f0ba8defb5781844f845447f5194a1737332c",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

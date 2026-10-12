@@ -1,0 +1,173 @@
+{
+  "id": "oidc-identity",
+  "title": "OAuth2·OIDC의 역할과 계정 식별 경계",
+  "description": "OAuth2 권한 위임과 OIDC 로그인 신원을 구분하고 issuer·subject로 계정의 경계를 고정합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "외부 로그인 사용자를 어떤 식별자로 내부 계정에 연결하는가?",
+    "미인증 401",
+    "신뢰한 issuer·subject 전달",
+    "비신뢰 issuer 403",
+    "이메일로 신원 병합하지 않음"
+  ],
+  "theory": [
+    {
+      "heading": "OAuth2와 OIDC의 역할",
+      "text": "OAuth2는 클라이언트의 자원 접근 권한 위임을 다룹니다. OIDC는 그 위에 사용자 인증과 ID Token 의미를 정의합니다. access token을 사용자의 모든 신원을 증명하는 임의 증명서처럼 다루지 않습니다."
+    },
+    {
+      "heading": "계정 식별의 안정성",
+      "text": "이 과제의 내부 식별자는 신뢰한 issuer와 subject의 조합입니다. 이메일은 변경되거나 공급자 사이에서 충돌할 수 있으므로 자동 계정 병합 키로 사용하지 않습니다. issuer 신뢰 목록과 계정 연결 정책은 서비스가 명시합니다."
+    },
+    {
+      "heading": "테스트 프로필의 한계",
+      "text": "oidcLogin 테스트 도구는 이미 인증된 OIDC 주체를 요청에 제공합니다. 따라서 이 실습은 주체를 받아 계정을 구분하는 경계를 검증합니다. authorization redirect·state·nonce·PKCE·코드 교환·ID Token 서명 검증의 전체 프로토콜은 실행하지 않으며, 별도 로컬 IdP 통합 과제로 이어집니다."
+    }
+  ],
+  "example": {
+    "title": "IdentityLab 기준 구현",
+    "code": "package edu.lab;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.http.HttpStatus;\nimport org.springframework.security.config.Customizer;\nimport org.springframework.security.config.annotation.web.builders.HttpSecurity;\nimport org.springframework.security.core.annotation.AuthenticationPrincipal;\nimport org.springframework.security.oauth2.client.registration.*;\nimport org.springframework.security.oauth2.core.AuthorizationGrantType;\nimport org.springframework.security.oauth2.core.oidc.user.OidcUser;\nimport org.springframework.security.web.SecurityFilterChain;\nimport org.springframework.security.web.authentication.HttpStatusEntryPoint;\nimport org.springframework.web.bind.annotation.*;\nimport org.springframework.web.server.ResponseStatusException;\n@SpringBootApplication\npublic class IdentityLab {\n    public static final String TRUSTED_ISSUER = \"https://training-issuer.invalid\";\n    public record Identity(String issuer, String subject) {}\n    @Bean SecurityFilterChain security(HttpSecurity http) throws Exception {\n        http.authorizeHttpRequests(a -> a.anyRequest().authenticated()).oauth2Login(Customizer.withDefaults())\n            .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));\n        return http.build();\n    }\n    @Bean ClientRegistrationRepository clients() {\n        ClientRegistration fixture = ClientRegistration.withRegistrationId(\"training\")\n            .clientId(\"training-client\").clientSecret(\"training-only-not-real\")\n            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)\n            .redirectUri(\"{baseUrl}/login/oauth2/code/{registrationId}\").scope(\"openid\")\n            .authorizationUri(TRUSTED_ISSUER + \"/authorize\").tokenUri(TRUSTED_ISSUER + \"/token\")\n            .jwkSetUri(TRUSTED_ISSUER + \"/jwks\").userInfoUri(TRUSTED_ISSUER + \"/userinfo\")\n            .userNameAttributeName(\"sub\").issuerUri(TRUSTED_ISSUER).clientName(\"local fixture\").build();\n        return new InMemoryClientRegistrationRepository(fixture);\n    }\n    @RestController public static class Me {\n        @GetMapping(\"/me\") public Identity me(@AuthenticationPrincipal OidcUser principal) {\n            // BEGIN EXERCISE\n            if (principal.getIssuer() == null || !TRUSTED_ISSUER.equals(principal.getIssuer().toString()))\n                throw new ResponseStatusException(HttpStatus.FORBIDDEN, \"issuer not trusted\");\n            String subject = principal.getSubject();\n            if (subject == null || subject.isBlank()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, \"subject missing\");\n            return new Identity(TRUSTED_ISSUER, subject);\n            // END EXERCISE\n        }\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 4개 JUnit 테스트 통과.\n검증 항목: 미인증 401 · 신뢰한 issuer·subject 전달 · 비신뢰 issuer 403 · 이메일로 신원 병합하지 않음.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/IdentityLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.http.HttpStatus;\nimport org.springframework.security.config.Customizer;\nimport org.springframework.security.config.annotation.web.builders.HttpSecurity;\nimport org.springframework.security.core.annotation.AuthenticationPrincipal;\nimport org.springframework.security.oauth2.client.registration.*;\nimport org.springframework.security.oauth2.core.AuthorizationGrantType;\nimport org.springframework.security.oauth2.core.oidc.user.OidcUser;\nimport org.springframework.security.web.SecurityFilterChain;\nimport org.springframework.security.web.authentication.HttpStatusEntryPoint;\nimport org.springframework.web.bind.annotation.*;\nimport org.springframework.web.server.ResponseStatusException;\n@SpringBootApplication\npublic class IdentityLab {\n    public static final String TRUSTED_ISSUER = \"https://training-issuer.invalid\";\n    public record Identity(String issuer, String subject) {}\n    @Bean SecurityFilterChain security(HttpSecurity http) throws Exception {\n        http.authorizeHttpRequests(a -> a.anyRequest().authenticated()).oauth2Login(Customizer.withDefaults())\n            .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));\n        return http.build();\n    }\n    @Bean ClientRegistrationRepository clients() {\n        ClientRegistration fixture = ClientRegistration.withRegistrationId(\"training\")\n            .clientId(\"training-client\").clientSecret(\"training-only-not-real\")\n            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)\n            .redirectUri(\"{baseUrl}/login/oauth2/code/{registrationId}\").scope(\"openid\")\n            .authorizationUri(TRUSTED_ISSUER + \"/authorize\").tokenUri(TRUSTED_ISSUER + \"/token\")\n            .jwkSetUri(TRUSTED_ISSUER + \"/jwks\").userInfoUri(TRUSTED_ISSUER + \"/userinfo\")\n            .userNameAttributeName(\"sub\").issuerUri(TRUSTED_ISSUER).clientName(\"local fixture\").build();\n        return new InMemoryClientRegistrationRepository(fixture);\n    }\n    @RestController public static class Me {\n        @GetMapping(\"/me\") public Identity me(@AuthenticationPrincipal OidcUser principal) {\n            // BEGIN EXERCISE\n            if (principal.getIssuer() == null || !TRUSTED_ISSUER.equals(principal.getIssuer().toString()))\n                throw new ResponseStatusException(HttpStatus.FORBIDDEN, \"issuer not trusted\");\n            String subject = principal.getSubject();\n            if (subject == null || subject.isBlank()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, \"subject missing\");\n            return new Identity(TRUSTED_ISSUER, subject);\n            // END EXERCISE\n        }\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>oidc-identity</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-oauth2-client</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "oidc-identity-q1",
+      "question": "이 과제의 계정 식별자로 적절한 것은?",
+      "options": [
+        "신뢰한 issuer와 subject의 조합",
+        "표시 이름만",
+        "이메일만으로 공급자 구분 없이 병합",
+        "access token 문자열의 앞 5글자"
+      ],
+      "correctIndex": 0,
+      "explanation": "신뢰한 발급자의 subject가 주체 식별의 기준입니다. 표시 이름과 이메일은 변경·충돌 가능성이 있으므로 자동 계정 병합 근거로 부족합니다."
+    },
+    {
+      "id": "oidc-identity-q2",
+      "question": "oidcLogin()으로 작성한 이 테스트가 직접 검증하는 범위는?",
+      "options": [
+        "외부 IdP의 authorization code 교환 전체",
+        "실제 JWKS 키 교체",
+        "인증된 주체를 받은 애플리케이션의 신원 처리",
+        "브라우저 redirect와 state·nonce 전체"
+      ],
+      "correctIndex": 2,
+      "explanation": "테스트 주체 주입은 프로토콜 실행을 생략하므로 별도 IdP 통합 검증이 필요합니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "OAuth2 권한 위임과 OIDC 로그인 신원을 구분하고 issuer·subject로 계정의 경계를 고정합니다.",
+    "tasks": [
+      "GET /me는 인증된 OIDC 주체의 issuer와 subject를 반환합니다.",
+      "허용 issuer는 https://training-issuer.invalid 하나이며 다른 issuer는 403입니다.",
+      "같은 이메일이어도 다른 subject를 같은 계정으로 합치지 않습니다.",
+      ".invalid 공급자 URL과 training-only 값은 호출하지 않는 테스트 설정입니다. 실제 외부 계정이나 client secret을 입력하지 않습니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Spring Security OIDC testing",
+      "url": "https://docs.spring.io/spring-security/reference/6.5/servlet/test/mockmvc/oauth2.html",
+      "edition": "Spring Security 6.5",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "OpenID Connect Core",
+      "url": "https://openid.net/specs/openid-connect-core-1_0.html",
+      "edition": "OpenID Connect 1.0",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "OAuth2",
+    "OIDC",
+    "Spring Security"
+  ],
+  "exerciseId": "oidc-identity-project",
+  "professionalExercise": {
+    "id": "oidc-identity-project",
+    "profileId": "professional-oidc-fixture",
+    "mode": "project",
+    "instructions": [
+      "GET /me는 인증된 OIDC 주체의 issuer와 subject를 반환합니다.",
+      "허용 issuer는 https://training-issuer.invalid 하나이며 다른 issuer는 403입니다.",
+      "같은 이메일이어도 다른 subject를 같은 계정으로 합치지 않습니다.",
+      ".invalid 공급자 URL과 training-only 값은 호출하지 않는 테스트 설정입니다. 실제 외부 계정이나 client secret을 입력하지 않습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/IdentityLab.java"
+    ],
+    "template": "package edu.lab;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.http.HttpStatus;\nimport org.springframework.security.config.Customizer;\nimport org.springframework.security.config.annotation.web.builders.HttpSecurity;\nimport org.springframework.security.core.annotation.AuthenticationPrincipal;\nimport org.springframework.security.oauth2.client.registration.*;\nimport org.springframework.security.oauth2.core.AuthorizationGrantType;\nimport org.springframework.security.oauth2.core.oidc.user.OidcUser;\nimport org.springframework.security.web.SecurityFilterChain;\nimport org.springframework.security.web.authentication.HttpStatusEntryPoint;\nimport org.springframework.web.bind.annotation.*;\nimport org.springframework.web.server.ResponseStatusException;\n@SpringBootApplication\npublic class IdentityLab {\n    public static final String TRUSTED_ISSUER = \"https://training-issuer.invalid\";\n    public record Identity(String issuer, String subject) {}\n    @Bean SecurityFilterChain security(HttpSecurity http) throws Exception {\n        http.authorizeHttpRequests(a -> a.anyRequest().authenticated()).oauth2Login(Customizer.withDefaults())\n            .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));\n        return http.build();\n    }\n    @Bean ClientRegistrationRepository clients() {\n        ClientRegistration fixture = ClientRegistration.withRegistrationId(\"training\")\n            .clientId(\"training-client\").clientSecret(\"training-only-not-real\")\n            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)\n            .redirectUri(\"{baseUrl}/login/oauth2/code/{registrationId}\").scope(\"openid\")\n            .authorizationUri(TRUSTED_ISSUER + \"/authorize\").tokenUri(TRUSTED_ISSUER + \"/token\")\n            .jwkSetUri(TRUSTED_ISSUER + \"/jwks\").userInfoUri(TRUSTED_ISSUER + \"/userinfo\")\n            .userNameAttributeName(\"sub\").issuerUri(TRUSTED_ISSUER).clientName(\"local fixture\").build();\n        return new InMemoryClientRegistrationRepository(fixture);\n    }\n    @RestController public static class Me {\n        @GetMapping(\"/me\") public Identity me(@AuthenticationPrincipal OidcUser principal) {\n            throw new UnsupportedOperationException(\"실습 구현 필요\");\n        }\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/IdentityLab.java",
+        "templatePath": "lessons/oidc-identity/starter/src/main/java/edu/lab/IdentityLab.java",
+        "referencePath": "lessons/oidc-identity/reference/src/main/java/edu/lab/IdentityLab.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/oidc-identity/starter/pom.xml",
+        "referencePath": "lessons/oidc-identity/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/oidc-identity/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "미인증 401",
+      "신뢰한 issuer·subject 전달",
+      "비신뢰 issuer 403",
+      "이메일로 신원 병합하지 않음"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "security-csrf"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 4,
+    "starterSatisfied": false,
+    "sourceFingerprint": "efb7ff61b59c5dc1f7d5aa5c28fb1d966c164b72dc6c9af2dda2b586d2335cd0",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

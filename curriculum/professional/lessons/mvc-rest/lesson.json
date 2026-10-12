@@ -1,0 +1,168 @@
+{
+  "id": "mvc-rest",
+  "title": "MVC·REST의 상태 코드와 자원 계약",
+  "description": "주문 조회를 HTTP 자원으로 표현하고 성공·부재·읽기 요청의 상태 불변성을 분리합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "컨트롤러의 반환값과 HTTP 계약은 어디에서 만나는가?",
+    "기존 주문 조회 200",
+    "부재 주문 404",
+    "반복 조회 상태 보존"
+  ],
+  "theory": [
+    {
+      "heading": "전송 계약과 업무 계약",
+      "text": "HTTP 메서드·상태 코드·표현 형식은 클라이언트가 관찰하는 계약입니다. 조회 성공은 200과 JSON, 주문 부재는 404로 표현합니다. GET은 업무 상태를 변경하지 않도록 설계합니다."
+    },
+    {
+      "heading": "컨트롤러의 책임",
+      "text": "라우팅과 응답 변환은 어댑터의 책임입니다. 가격 계산·재고 예약 같은 업무 규칙까지 컨트롤러에 쌓으면 HTTP 없이 검증하기 어렵습니다. 이 예제의 고정 Map은 조회 계약을 좁혀 보여 주는 학습용 저장소입니다."
+    },
+    {
+      "heading": "MockMvc의 경계",
+      "text": "MockMvc는 실제 서버 소켓 없이 Spring MVC 요청 처리를 검증합니다. JSON 직렬화와 매핑 테스트를 작성할 수 있지만 실제 네트워크·TLS·프록시·서블릿 컨테이너 설정의 종단 검증을 대신하지 않습니다."
+    }
+  ],
+  "example": {
+    "title": "OrdersController 기준 구현",
+    "code": "package edu.lab;\nimport java.util.Map;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.web.bind.annotation.*;\n@RestController\n@RequestMapping(\"/orders\")\npublic class OrdersController {\n    public record Summary(String id, int quantity) {}\n    private final Map<String, Summary> orders = Map.of(\"A-1\", new Summary(\"A-1\", 2));\n    @GetMapping(\"/{id}\")\n    public ResponseEntity<Summary> find(@PathVariable(\"id\") String id) {\n        // BEGIN EXERCISE\n        Summary order = orders.get(id);\n        return order == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(order);\n        // END EXERCISE\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 3개 JUnit 테스트 통과.\n검증 항목: 기존 주문 조회 200 · 부재 주문 404 · 반복 조회 상태 보존.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrdersController.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport java.util.Map;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.web.bind.annotation.*;\n@RestController\n@RequestMapping(\"/orders\")\npublic class OrdersController {\n    public record Summary(String id, int quantity) {}\n    private final Map<String, Summary> orders = Map.of(\"A-1\", new Summary(\"A-1\", 2));\n    @GetMapping(\"/{id}\")\n    public ResponseEntity<Summary> find(@PathVariable(\"id\") String id) {\n        // BEGIN EXERCISE\n        Summary order = orders.get(id);\n        return order == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(order);\n        // END EXERCISE\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>mvc-rest</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "mvc-rest-q1",
+      "question": "없는 주문의 조회 응답을 결정하는 올바른 기준은?",
+      "options": [
+        "항상 200과 빈 객체를 반환한다.",
+        "서버 오류이므로 항상 500이다.",
+        "조회가 실패하면 새 주문을 생성한다.",
+        "자원 부재를 404로 표현한다."
+      ],
+      "correctIndex": 3,
+      "explanation": "이 수업의 계약은 자원이 존재하는 성공과 존재하지 않는 상태를 구분합니다. 500은 서버 내부 실패의 의미와 혼동하게 합니다."
+    },
+    {
+      "id": "mvc-rest-q2",
+      "question": "이 수업의 MockMvc 검사만으로 확인할 수 없는 것은?",
+      "options": [
+        "요청 경로의 매핑",
+        "JSON 응답 필드",
+        "실제 TLS와 네트워크 프록시 설정",
+        "부재 주문의 상태 코드"
+      ],
+      "correctIndex": 2,
+      "explanation": "MockMvc는 모의 요청·응답으로 MVC 처리를 검사하며 실제 네트워크 구간을 거치지 않습니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "주문 조회를 HTTP 자원으로 표현하고 성공·부재·읽기 요청의 상태 불변성을 분리합니다.",
+    "tasks": [
+      "GET /orders/A-1은 id A-1, quantity 2인 JSON과 200을 반환합니다.",
+      "존재하지 않는 ID는 빈 주문이나 null의 200 대신 404를 반환합니다.",
+      "반복 GET은 데이터를 변경하지 않습니다. 새 주문 생성은 이 수업 범위에 없습니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Spring MVC annotated controllers",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/web/webmvc/mvc-controller.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "MockMvc",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/testing/mockmvc.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Spring MVC",
+    "REST"
+  ],
+  "exerciseId": "mvc-rest-project",
+  "professionalExercise": {
+    "id": "mvc-rest-project",
+    "profileId": "professional-spring-web",
+    "mode": "project",
+    "instructions": [
+      "GET /orders/A-1은 id A-1, quantity 2인 JSON과 200을 반환합니다.",
+      "존재하지 않는 ID는 빈 주문이나 null의 200 대신 404를 반환합니다.",
+      "반복 GET은 데이터를 변경하지 않습니다. 새 주문 생성은 이 수업 범위에 없습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/OrdersController.java"
+    ],
+    "template": "package edu.lab;\nimport java.util.Map;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.web.bind.annotation.*;\n@RestController\n@RequestMapping(\"/orders\")\npublic class OrdersController {\n    public record Summary(String id, int quantity) {}\n    private final Map<String, Summary> orders = Map.of(\"A-1\", new Summary(\"A-1\", 2));\n    @GetMapping(\"/{id}\")\n    public ResponseEntity<Summary> find(@PathVariable(\"id\") String id) {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrdersController.java",
+        "templatePath": "lessons/mvc-rest/starter/src/main/java/edu/lab/OrdersController.java",
+        "referencePath": "lessons/mvc-rest/reference/src/main/java/edu/lab/OrdersController.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/mvc-rest/starter/pom.xml",
+        "referencePath": "lessons/mvc-rest/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/mvc-rest/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "기존 주문 조회 200",
+      "부재 주문 404",
+      "반복 조회 상태 보존"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "spring-di"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 3,
+    "starterSatisfied": false,
+    "sourceFingerprint": "cf818104cfb16da2cfc56a8a887429f7354bfbaf23b2edb5db949abe45065bdf",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

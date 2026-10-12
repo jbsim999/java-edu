@@ -1,4 +1,4 @@
-# Java Edu 교육 로드맵 v0.2
+# Java Edu 교육 로드맵 v0.3
 
 기준일 2026-10-12. 전환 경로는 진단→Java 코어→테스트·빌드→Spring·DB→인증·운영→통합 프로젝트, 현직자 경로는 진단→부족한 코어→설계·동시성·정합성→버전 전환→개선 프로젝트다. 경력·객관식 총점만으로 단원을 면제하지 않는다.
 
@@ -28,3 +28,13 @@ OOP·타입→컬렉션·실패→테스트→Spring 실행 모델→영속성�
 공통 프로젝트는 주문·재고 예약·취소다. 도메인 모델→테스트→HTTP API→영속화/트랜잭션→권한/중복/동시 요청→캐시/이벤트/관측→버전 상향을 연결한다. 모든 도구를 한 프로젝트에 무조건 끼워 넣지 않는다.
 
 선택 심화는 Batch·스케줄링, QueryDSL·검색, WebFlux, Kubernetes·분산 설계로 분기한다. 수료는 원리 설명·반례·코드 수정·행동 검증·설계 대안과 비용 설명으로 판정한다. 학습 효과는 실제 학습자 검토 전까지 미확인이다.
+
+## 웹·설치형 학습 순서
+
+1. Java 코어12단원에서 버전별 API, OOP, 타입·컬렉션·실패·동시성·설계 검증을 학습한다.
+2. Maven → JUnit·AssertJ → Mockito → Lombok → Spring DI·AOP → MVC·Validation으로 진행한다.
+3. SQL/JDBC 뒤 MyBatis와 JPA를 비교하고 Flyway·트랜잭션·낙관적 잠금으로 정합성을 검증한다.
+4. Security·CSRF → OAuth2/OIDC → JWT의 역할·검증 경계를 학습한다.
+5. Redis/Kafka 선택 실습, Micrometer 관측, Gradle/Docker/CI 비교를 거쳐 주문·재고·취소 통합 과제를 수행한다.
+
+실무22단원의 선수 관계·공식 근거·실습 파일은 [실무 과정 명세](professional-curriculum.md)와 curriculum/professional/catalog.json에 연결한다. 현대 Spring 실습은 Java17 대상으로 컴파일하고 JDK17/21 실행을 검증한다. Java8/11은 코어·레거시 이행 교재에 사용한다. 웹에서 읽고 프로젝트 ZIP을 내려받거나, Windows 앱에서 같은 코드와 고정 테스트를 직접 실행한다. 기본20개 실무 단원에는 별도 DB 서버가 필요하지 않다. Redis/Kafka 두 단원은 선택 자원을 별도로 준비한다.

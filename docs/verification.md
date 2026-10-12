@@ -1,6 +1,6 @@
 # 프로토타입 검증 기록
 
-기준일: 2026-10-12. Java 코어 첫 12수업을 대상으로 한다. 전체 교육 로드맵 수료 가능성이나 실제 학습 효과는 아직 검증하지 않았다.
+기준일: 2026-10-12. 아래 코어 프로토타입 기록은 M4 당시12수업 대상의 이력이다. 현재34수업 설치형 검증 상태는 마지막 M5–M7 절과 개발 인계를 따른다. 전체 교육 로드맵 수료 가능성이나 실제 학습 효과는 아직 검증하지 않았다.
 
 ## 소스와 마일스톤
 
@@ -39,3 +39,11 @@
 최종 출시 CI는 Content integrity, Java examples (8/11/17/21), Browser QA 모두 성공했다. Chromium 브라우저 35개 시나리오를 한 번의 전체 실행에서 35 PASS/0 FAIL로 확인했다. 로컬 Edge QA 기록의 선택 재검사와 구분한다.
 
 출시 판정: **PASS — 코어 프로토타입 범위**. private Sites 배포가 `succeeded`와 운영 URL을 반환했다. 모든 GitHub 출시 파일과 Sites source tree의 Git blob을 비교해 호스팅 manifest/ignore 설정 외 동일함을 확인했다. [배포 기록](deployment.md)에 소스·버전·배포 ID를 기록했다. 배포된 인증 세션에서의 Java 제출은 미검증이며 위 제한은 유지한다.
+
+## M5–M7 현재 구현·검증과 미완료 gate
+
+코어12+실무22, 총34수업의 Windows 앱·웹 공용 교재를 구현했다. 독립 기능 QA의 개발 Electron9/9, 모의API 웹4/4, 기존 브라우저49개 PASS. Node35 PASS/제공자1 SKIP, Worker 정적 모듈·ZIP 검사 PASS, 로컬 계약16/16 PASS. 실제 JDK8/21 core와 Spring/H2 UI 실행은 [설치형 QA 기록](desktop-qa-report.md)을 따른다.
+
+JDK21·컴파일 대상17·Maven3.10.0에서 기본20실무프로젝트를 실제 실행해 reference54개 JUnit PASS와20개 미완성 starter 실패를 확인했다. 독립 리뷰는129소스 및 부모POM 해시·Surefire XML·메타데이터를 대조했다. Redis/Kafka는 reference/starter 컴파일만 확인했으며 실제 서비스 실행은 미검증이다. 독립 코드·교재 리뷰에는 미해결 P1/P2가 없다.
+
+최종 Windows x64 NSIS 빌드 성공은 설치·제거 또는 설치된 바이너리 실행 성공과 다르다. 최종 시각 검수와 설치 패키지 QA는 담당 에이전트의 서비스 사용량 한도로 끝내지 못했다. 새로운 Windows8/11/17/21·실무17/21 CI는 정의를 추가했으며 원격 결과를 별도 확인한다. 최종 출시 판정은 **미완료**다. [개발 인계](development-handoff.md)에 설치 파일 해시와 재개 절차를 남겼다.

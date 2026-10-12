@@ -1,0 +1,164 @@
+{
+  "id": "lombok-values",
+  "title": "Lombok 생성 코드와 동등성의 범위",
+  "description": "생성 코드가 만드는 동등성·생성자 계약을 해석합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "어떤 필드가 해시 기반 동등성에 참여해야 하는가?",
+    "같은 ID 동등성",
+    "가변 표시 값 제외",
+    "HashSet 조회 유지"
+  ],
+  "theory": [
+    {
+      "heading": "애너테이션 처리 결과 읽기",
+      "text": "Lombok은 컴파일 시 생성 코드를 제공하는 도구입니다. 생성자·접근자·동등성 메서드를 직접 작성한 것과 비교하고 원하는 계약을 먼저 정합니다."
+    },
+    {
+      "heading": "가변 필드와 엔티티의 함정",
+      "text": "방문 횟수 같은 가변 표시 값까지 equals/hashCode에 포함하면 HashSet에 넣은 뒤 조회가 깨질 수 있습니다. 이 수업은 안정적인 식별자를 가진 값 객체이며 JPA 엔티티 전체에 @Data를 붙이라는 예제가 아닙니다. 엔티티 ID 할당·프록시·연관관계는 JPA 단원에서 별도로 검토합니다."
+    }
+  ],
+  "example": {
+    "title": "OrderKey 기준 구현",
+    "code": "package edu.lab;\nimport lombok.Getter;\nimport lombok.NonNull;\nimport lombok.RequiredArgsConstructor;\nimport lombok.EqualsAndHashCode;\n@Getter\n@RequiredArgsConstructor\n@EqualsAndHashCode(onlyExplicitlyIncluded = true)\npublic final class OrderKey {\n @NonNull @EqualsAndHashCode.Include private final String orderId;\n private int displayVisits;\n public void visit() { displayVisits++; }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 같은 ID 동등성 · 가변 표시 값 제외 · HashSet 조회 유지.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrderKey.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport lombok.Getter;\nimport lombok.NonNull;\nimport lombok.RequiredArgsConstructor;\nimport lombok.EqualsAndHashCode;\n@Getter\n@RequiredArgsConstructor\n@EqualsAndHashCode(onlyExplicitlyIncluded = true)\npublic final class OrderKey {\n @NonNull @EqualsAndHashCode.Include private final String orderId;\n private int displayVisits;\n public void visit() { displayVisits++; }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>lombok-values</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><scope>provided</scope></dependency></dependencies><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><configuration><annotationProcessors><annotationProcessor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor</annotationProcessor></annotationProcessors></configuration></plugin></plugins></build></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "lombok-values-q1",
+      "question": "OrderKey의 displayVisits를 equals/hashCode에서 제외하는 이유는?",
+      "options": [
+        "방문 횟수가 바뀌어도 주문 식별과 해시 탐색 기준을 유지하기 위해서다.",
+        "모든 int 필드는 동등성에 사용할 수 없기 때문이다.",
+        "Lombok은 가변 필드를 컴파일하지 못하기 때문이다.",
+        "HashSet은 항상 객체 참조만 비교하기 때문이다."
+      ],
+      "correctIndex": 0,
+      "explanation": "HashSet은 저장된 해시와 equals를 사용합니다. 가변 방문 횟수가 해시에 포함되면 저장 뒤 같은 객체를 찾지 못할 수 있습니다."
+    },
+    {
+      "id": "lombok-values-q2",
+      "question": "JPA 엔티티에 @Data를 그대로 적용하기 전에 무엇을 검토해야 하는가?",
+      "options": [
+        "식별자 수명·가변 필드·연관관계 순환·지연 로딩 접근",
+        "소스 줄 수만",
+        "어노테이션의 알파벳 순서만",
+        "필드가 private인지 여부만"
+      ],
+      "correctIndex": 0,
+      "explanation": "생성된 메서드도 실제 객체 모델의 일부입니다. 엔티티의 동등성·toString·setter가 업무와 ORM 제약을 지키는지 확인해야 합니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "생성 코드가 만드는 동등성·생성자 계약을 해석합니다.",
+    "tasks": [
+      "OrderKey의 동등성과 hashCode는 불변 orderId만 사용하게 하세요.",
+      "visit()로 displayVisits가 바뀌어도 HashSet에서 키를 찾을 수 있어야 합니다.",
+      "Lombok @EqualsAndHashCode(onlyExplicitlyIncluded=true)와 Include의 생성 의미를 설명하세요.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Lombok EqualsAndHashCode",
+      "url": "https://projectlombok.org/features/EqualsAndHashCode",
+      "edition": "Lombok",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Lombok constructor generation",
+      "url": "https://projectlombok.org/features/constructor",
+      "edition": "Lombok",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Java"
+  ],
+  "exerciseId": "lombok-values-project",
+  "professionalExercise": {
+    "id": "lombok-values-project",
+    "profileId": "professional-lombok",
+    "mode": "project",
+    "instructions": [
+      "OrderKey의 동등성과 hashCode는 불변 orderId만 사용하게 하세요.",
+      "visit()로 displayVisits가 바뀌어도 HashSet에서 키를 찾을 수 있어야 합니다.",
+      "Lombok @EqualsAndHashCode(onlyExplicitlyIncluded=true)와 Include의 생성 의미를 설명하세요."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/OrderKey.java"
+    ],
+    "template": "package edu.lab;\nimport lombok.Getter;\nimport lombok.NonNull;\nimport lombok.RequiredArgsConstructor;\n@Getter\n@RequiredArgsConstructor\npublic final class OrderKey {\n @NonNull private final String orderId;\n private int displayVisits;\n public void visit() { displayVisits++; }\n // orderId만 사용하는 동등성 계약을 Lombok으로 선언하세요.\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrderKey.java",
+        "templatePath": "lessons/lombok-values/starter/src/main/java/edu/lab/OrderKey.java",
+        "referencePath": "lessons/lombok-values/reference/src/main/java/edu/lab/OrderKey.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/lombok-values/starter/pom.xml",
+        "referencePath": "lessons/lombok-values/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/lombok-values/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "같은 ID 동등성",
+      "가변 표시 값 제외",
+      "HashSet 조회 유지"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "test-contracts",
+    "core:collections"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 2,
+    "starterSatisfied": false,
+    "sourceFingerprint": "65bcae5900047877a822e89821af9b5ac4a511c1b6a634d002757f4cee5efa9a",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

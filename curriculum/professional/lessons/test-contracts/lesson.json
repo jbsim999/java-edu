@@ -1,0 +1,161 @@
+{
+  "id": "test-contracts",
+  "title": "JUnit·AssertJ로 경계와 상태 전이 검증",
+  "description": "상태 전이와 실패 후 보존할 상태를 JUnit·AssertJ로 검사합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "실패한 명령 뒤 객체의 상태는 무엇이어야 하는가?",
+    "전량 예약",
+    "실패 후 상태 보존",
+    "생성 불변식"
+  ],
+  "theory": [
+    {
+      "heading": "기대값은 업무 계약에서",
+      "text": "테스트 기대값을 구현과 같은 수식으로 만들면 같은 결함을 공유할 수 있습니다. 예약 전후 수량과 실패 시 상태를 구체적인 값으로 확인합니다."
+    },
+    {
+      "heading": "경계 검사는 상태 전이를 포함",
+      "text": "0·음수·전체 재고·초과 수량을 선택하고 성공 여부뿐 아니라 이후 상태도 검증합니다. 테스트 통과는 선택한 사례의 증거이며 전체 상태 공간의 증명은 아닙니다."
+    }
+  ],
+  "example": {
+    "title": "Reservation 기준 구현",
+    "code": "package edu.lab;\npublic final class Reservation {\n private int stock;\n public Reservation(int stock) { if (stock < 0) throw new IllegalArgumentException(); this.stock=stock; }\n public boolean reserve(int quantity) {\n  // BEGIN EXERCISE\n  if (quantity <= 0 || quantity > stock) return false;\n  stock -= quantity; return true;\n  // END EXERCISE\n }\n public int remaining() { return stock; }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 전량 예약 · 실패 후 상태 보존 · 생성 불변식.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/Reservation.java",
+        "language": "java",
+        "code": "package edu.lab;\npublic final class Reservation {\n private int stock;\n public Reservation(int stock) { if (stock < 0) throw new IllegalArgumentException(); this.stock=stock; }\n public boolean reserve(int quantity) {\n  // BEGIN EXERCISE\n  if (quantity <= 0 || quantity > stock) return false;\n  stock -= quantity; return true;\n  // END EXERCISE\n }\n public int remaining() { return stock; }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>test-contracts</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "test-contracts-q1",
+      "question": "재고 부족 예약을 거절하는 테스트에 함께 필요한 검사는?",
+      "options": [
+        "반환값만 false면 내부 재고는 확인하지 않는다.",
+        "예외가 없으면 항상 성공으로 본다.",
+        "실패 반환뿐 아니라 남은 재고가 이전 값과 같은지 확인한다.",
+        "private 필드를 모두 public으로 바꾼다."
+      ],
+      "correctIndex": 2,
+      "explanation": "거절 응답과 상태 보존은 독립적인 계약입니다. false를 반환하면서 재고를 줄이는 결함은 반환값 검사만으로 찾지 못합니다."
+    },
+    {
+      "id": "test-contracts-q2",
+      "question": "테스트가 내부 메서드 호출 순서에만 강하게 묶일 때 생길 수 있는 비용은?",
+      "options": [
+        "동일한 외부 동작을 유지한 리팩터링도 불필요하게 테스트를 깨뜨릴 수 있다.",
+        "입력 경계 검사가 자동으로 늘어난다.",
+        "테스트 실행 JVM이 자동 고정된다.",
+        "DB 트랜잭션 격리 수준이 올라간다."
+      ],
+      "correctIndex": 0,
+      "explanation": "외부에서 관찰하는 반환·상태·필수 협력 계약을 중심으로 검사하면 내부 구조 변경에 더 유연합니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "상태 전이와 실패 후 보존할 상태를 JUnit·AssertJ로 검사합니다.",
+    "tasks": [
+      "Reservation(int stock), boolean reserve(int quantity), int remaining() 계약을 완성하세요.",
+      "초기 음수는 거절합니다. 0 이하 또는 초과 예약은 false이고 상태를 보존합니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "JUnit user guide",
+      "url": "https://docs.junit.org/5.11.4/user-guide/",
+      "edition": "JUnit 5",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "AssertJ Core documentation",
+      "url": "https://assertj.github.io/doc/",
+      "edition": "AssertJ Core",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Java"
+  ],
+  "exerciseId": "test-contracts-project",
+  "professionalExercise": {
+    "id": "test-contracts-project",
+    "profileId": "professional-junit",
+    "mode": "project",
+    "instructions": [
+      "Reservation(int stock), boolean reserve(int quantity), int remaining() 계약을 완성하세요.",
+      "초기 음수는 거절합니다. 0 이하 또는 초과 예약은 false이고 상태를 보존합니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/Reservation.java"
+    ],
+    "template": "package edu.lab;\npublic final class Reservation {\n private int stock;\n public Reservation(int stock) { if (stock < 0) throw new IllegalArgumentException(); this.stock=stock; }\n public boolean reserve(int quantity) {\n  throw new UnsupportedOperationException(\"실습 구현 필요\");\n }\n public int remaining() { return stock; }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/Reservation.java",
+        "templatePath": "lessons/test-contracts/starter/src/main/java/edu/lab/Reservation.java",
+        "referencePath": "lessons/test-contracts/reference/src/main/java/edu/lab/Reservation.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/test-contracts/starter/pom.xml",
+        "referencePath": "lessons/test-contracts/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/test-contracts/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "전량 예약",
+      "실패 후 상태 보존",
+      "생성 불변식"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "build-maven"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 2,
+    "starterSatisfied": false,
+    "sourceFingerprint": "cbdeec57521987b40feed67ef6c3af7d4964f6b8804b51c5abae9447dc147028",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

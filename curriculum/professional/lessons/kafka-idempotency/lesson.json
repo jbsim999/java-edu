@@ -1,0 +1,181 @@
+{
+  "id": "kafka-idempotency",
+  "title": "Kafka 재전달과 DB 멱등 처리",
+  "description": "Kafka 전송과 DB 반영을 분리하고 같은 이벤트의 중복 처리 및 커밋 사이의 장애 구간을 설명합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "메시지를 다시 받더라도 DB 효과를 한 번만 적용하려면?",
+    "중복 이벤트 효과 한 번",
+    "DB 실패 시 이벤트 기록 롤백",
+    "다른 payload 중복 ID 거절",
+    "Kafka 전송 후 수동 오프셋 커밋"
+  ],
+  "theory": [
+    {
+      "heading": "전달 횟수와 업무 효과",
+      "text": "메시지가 한 번 보였다는 사실과 업무 상태가 한 번 변경됐다는 사실은 다릅니다. 이 과제는 같은 eventId를 두 메시지로 전송하여 재전달 가능성을 모델링합니다. 브로커 장애나 프로세스 강제 종료 복구를 직접 재현한 검사는 아닙니다."
+    },
+    {
+      "heading": "DB 멱등 처리",
+      "text": "처리한 eventId의 UNIQUE 기록과 업무 UPDATE를 같은 DB 트랜잭션에 둡니다. 중복 이벤트는 이전 payload와 일치하는지 확인한 뒤 효과를 반복하지 않습니다. 같은 ID의 다른 payload는 조용히 무시하지 않고 계약 위반으로 거절합니다."
+    },
+    {
+      "heading": "오프셋과 DB 사이",
+      "text": "DB 커밋 뒤 오프셋을 커밋하면 두 커밋 사이 장애에서 중복 전달이 가능하므로 DB 멱등 처리가 필요합니다. Kafka 트랜잭션만으로 임의의 외부 DB까지 자동으로 exactly-once가 되는 것은 아닙니다. outbox·재시도·독성 메시지 처리 정책은 후속 설계 비교 대상입니다."
+    }
+  ],
+  "example": {
+    "title": "EventHandler 기준 구현",
+    "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport java.sql.*;\npublic final class EventHandler {\n    private final DataSource source;\n    public EventHandler(DataSource source) { this.source = java.util.Objects.requireNonNull(source); }\n    public boolean handle(String eventId, String orderId) throws SQLException {\n        // BEGIN EXERCISE\n        if (eventId == null || eventId.isBlank() || orderId == null || orderId.isBlank()) throw new IllegalArgumentException(\"event identity\");\n        try (Connection c = source.getConnection()) {\n            c.setAutoCommit(false);\n            try {\n                try (PreparedStatement s = c.prepareStatement(\"insert into processed_events(event_id,order_id) values(?,?)\")) {\n                    s.setString(1,eventId); s.setString(2,orderId); s.executeUpdate();\n                }\n                try (PreparedStatement s = c.prepareStatement(\"update orders set handled_count=handled_count+1 where id=?\")) {\n                    s.setString(1,orderId); if (s.executeUpdate() != 1) throw new SQLException(\"unknown order\",\"02000\");\n                }\n                c.commit(); return true;\n            } catch (SQLException failure) {\n                try { c.rollback(); } catch (SQLException rollback) { failure.addSuppressed(rollback); throw failure; }\n                if (!\"23505\".equals(failure.getSQLState())) throw failure;\n                try (PreparedStatement s = c.prepareStatement(\"select order_id from processed_events where event_id=?\")) {\n                    s.setString(1,eventId);\n                    try (ResultSet result = s.executeQuery()) {\n                        if (result.next() && orderId.equals(result.getString(1))) return false;\n                        throw new IllegalArgumentException(\"same eventId with different payload\",failure);\n                    }\n                }\n            }\n        }\n        // END EXERCISE\n    }\n}\n",
+    "output": "예상 검증 항목: 중복 이벤트 효과 한 번 · DB 실패 시 이벤트 기록 롤백 · 다른 payload 중복 ID 거절 · Kafka 전송 후 수동 오프셋 커밋. 아직 실행하지 않았습니다.",
+    "explanation": "기준 구현과 테스트 소스는 공개 학습 자료입니다. 실제 실행·의존성 해석·설치형 통합 검증 결과는 별도 증거로 표시합니다.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/EventHandler.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport java.sql.*;\npublic final class EventHandler {\n    private final DataSource source;\n    public EventHandler(DataSource source) { this.source = java.util.Objects.requireNonNull(source); }\n    public boolean handle(String eventId, String orderId) throws SQLException {\n        // BEGIN EXERCISE\n        if (eventId == null || eventId.isBlank() || orderId == null || orderId.isBlank()) throw new IllegalArgumentException(\"event identity\");\n        try (Connection c = source.getConnection()) {\n            c.setAutoCommit(false);\n            try {\n                try (PreparedStatement s = c.prepareStatement(\"insert into processed_events(event_id,order_id) values(?,?)\")) {\n                    s.setString(1,eventId); s.setString(2,orderId); s.executeUpdate();\n                }\n                try (PreparedStatement s = c.prepareStatement(\"update orders set handled_count=handled_count+1 where id=?\")) {\n                    s.setString(1,orderId); if (s.executeUpdate() != 1) throw new SQLException(\"unknown order\",\"02000\");\n                }\n                c.commit(); return true;\n            } catch (SQLException failure) {\n                try { c.rollback(); } catch (SQLException rollback) { failure.addSuppressed(rollback); throw failure; }\n                if (!\"23505\".equals(failure.getSQLState())) throw failure;\n                try (PreparedStatement s = c.prepareStatement(\"select order_id from processed_events where event_id=?\")) {\n                    s.setString(1,eventId);\n                    try (ResultSet result = s.executeQuery()) {\n                        if (result.next() && orderId.equals(result.getString(1))) return false;\n                        throw new IllegalArgumentException(\"same eventId with different payload\",failure);\n                    }\n                }\n            }\n        }\n        // END EXERCISE\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>kafka-idempotency</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.apache.kafka</groupId><artifactId>kafka-clients</artifactId></dependency>\n<dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId></dependency></dependencies></project>\n"
+      },
+      {
+        "path": "FIXTURE.md",
+        "language": "markdown",
+        "code": "전용 로컬 Kafka 단일 브로커가 필요합니다. 예시 JAVA_EDU_KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:19092. localhost도 허용하며 외부 호스트는 거절합니다.\n브로커 advertised.listeners도 같은 loopback 주소를 광고해야 합니다. 실제 Docker 기동과 이미지 버전 검증은 별도 환경 준비 단계입니다.\n테스트는 java-edu-<UUID> 토픽 한 개와 동일 이름 consumer group을 생성하고 자신이 만든 토픽만 삭제합니다. 업무 클러스터를 연결하지 마세요.\n중복 payload 두 건 전송은 재전달 가능성의 모델입니다. 브로커 장애 복구나 정확히 한 번의 분산 처리를 검증한 결과가 아닙니다.\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "kafka-idempotency-q1",
+      "question": "DB 커밋 후 Kafka 오프셋 커밋 전에 프로세스가 멈추면?",
+      "options": [
+        "DB 커밋도 자동으로 되돌아간다.",
+        "Kafka가 임의의 외부 DB를 자동 조정한다.",
+        "메시지는 어떤 경우에도 다시 전달되지 않는다.",
+        "같은 메시지가 다시 전달될 수 있어 DB 멱등 처리가 필요하다."
+      ],
+      "correctIndex": 3,
+      "explanation": "DB와 오프셋은 별도의 커밋입니다. 중간 장애로 다시 받은 메시지가 DB 효과를 반복하지 않도록 설계해야 합니다."
+    },
+    {
+      "id": "kafka-idempotency-q2",
+      "question": "같은 eventId로 서로 다른 orderId가 오면 이 과제는 어떻게 처리하는가?",
+      "options": [
+        "먼저 받은 eventId가 있으므로 무조건 성공한다.",
+        "두 주문에 모두 적용한다.",
+        "payload 충돌을 계약 위반으로 거절한다.",
+        "eventId를 새로 만들어 조용히 재처리한다."
+      ],
+      "correctIndex": 2,
+      "explanation": "멱등 키가 같다는 이유만으로 의미가 다른 요청을 동일 요청으로 수용해서는 안 됩니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "Kafka 전송과 DB 반영을 분리하고 같은 이벤트의 중복 처리 및 커밋 사이의 장애 구간을 설명합니다.",
+    "tasks": [
+      "handle(eventId, orderId)는 첫 정상 적용에 true, 동일 payload의 중복 적용에는 false를 반환합니다.",
+      "processed_events 기록과 orders.handled_count 증가는 같은 DB 트랜잭션입니다.",
+      "없는 주문이나 같은 eventId의 다른 orderId는 거절하고 부분 변경을 남기지 않습니다.",
+      "실제 전송 검사는 전용 loopback Kafka와 JAVA_EDU_KAFKA_BOOTSTRAP_SERVERS가 필요하며 자원 미준비 시 실행되지 않습니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "KafkaConsumer Java API",
+      "url": "https://kafka.apache.org/39/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+      "edition": "Kafka 3.9",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Apache Kafka quick start",
+      "url": "https://kafka.apache.org/39/getting-started/quickstart/",
+      "edition": "Kafka 3.9",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "JDBC transactions",
+      "url": "https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html",
+      "edition": "Java SE 17",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Kafka",
+    "Idempotency",
+    "Transaction"
+  ],
+  "exerciseId": "kafka-idempotency-project",
+  "professionalExercise": {
+    "id": "kafka-idempotency-project",
+    "profileId": "professional-kafka",
+    "mode": "project",
+    "instructions": [
+      "handle(eventId, orderId)는 첫 정상 적용에 true, 동일 payload의 중복 적용에는 false를 반환합니다.",
+      "processed_events 기록과 orders.handled_count 증가는 같은 DB 트랜잭션입니다.",
+      "없는 주문이나 같은 eventId의 다른 orderId는 거절하고 부분 변경을 남기지 않습니다.",
+      "실제 전송 검사는 전용 loopback Kafka와 JAVA_EDU_KAFKA_BOOTSTRAP_SERVERS가 필요하며 자원 미준비 시 실행되지 않습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/EventHandler.java"
+    ],
+    "template": "package edu.lab;\nimport javax.sql.DataSource;\nimport java.sql.*;\npublic final class EventHandler {\n    private final DataSource source;\n    public EventHandler(DataSource source) { this.source = java.util.Objects.requireNonNull(source); }\n    public boolean handle(String eventId, String orderId) throws SQLException {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/EventHandler.java",
+        "templatePath": "lessons/kafka-idempotency/starter/src/main/java/edu/lab/EventHandler.java",
+        "referencePath": "lessons/kafka-idempotency/reference/src/main/java/edu/lab/EventHandler.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/kafka-idempotency/starter/pom.xml",
+        "referencePath": "lessons/kafka-idempotency/reference/pom.xml",
+        "editable": false
+      },
+      {
+        "path": "FIXTURE.md",
+        "templatePath": "lessons/kafka-idempotency/starter/FIXTURE.md",
+        "referencePath": "lessons/kafka-idempotency/reference/FIXTURE.md",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/kafka-idempotency/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "중복 이벤트 효과 한 번",
+      "DB 실패 시 이벤트 기록 롤백",
+      "다른 payload 중복 ID 거절",
+      "Kafka 전송 후 수동 오프셋 커밋"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": false,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "source-prepared",
+  "executionVerified": false,
+  "prerequisites": [
+    "tx-proxy",
+    "flyway-migrations"
+  ]
+}

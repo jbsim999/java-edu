@@ -59,7 +59,7 @@ export function highlightJavaCode(target, source) {
   target.replaceChildren(fragment);
 }
 
-export function createJavaEditor({ parent, source, theme = 'dark', wrap = false, label, descriptionId, maxLength = 50000, onChange, onBlur, onLimit }) {
+export function createJavaEditor({ parent, source, theme = 'dark', wrap = false, language = 'java', readOnly = false, label, descriptionId, maxLength = 50000, onChange, onBlur, onLimit }) {
   const mode = new Compartment();
   const wrapping = new Compartment();
   let suppressChange = false;
@@ -69,8 +69,9 @@ export function createJavaEditor({ parent, source, theme = 'dark', wrap = false,
     state: EditorState.create({
       doc: source,
       extensions: [
-        new LanguageSupport(learningJava),
+        language === 'java' ? new LanguageSupport(learningJava) : [],
         syntaxHighlighting(javaHighlighter),
+        EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly),
         lineNumbers(), highlightActiveLineGutter(), highlightActiveLine(), highlightSpecialChars(),
         drawSelection(), dropCursor(), history(), bracketMatching(), indentOnInput(),
         EditorState.tabSize.of(4), indentUnit.of('    '),
@@ -81,6 +82,7 @@ export function createJavaEditor({ parent, source, theme = 'dark', wrap = false,
         EditorView.contentAttributes.of({
           role: 'textbox', 'aria-label': label, 'aria-multiline': 'true',
           'aria-describedby': descriptionId, 'data-testid': 'code-editor-input',
+          'aria-readonly': String(readOnly), tabindex: '0',
           spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off', autocomplete: 'off',
         }),
         EditorState.transactionFilter.of((transaction) => {
@@ -103,7 +105,7 @@ export function createJavaEditor({ parent, source, theme = 'dark', wrap = false,
       view.dispatch({ selection: EditorSelection.single(0, view.state.doc.length) });
       view.focus();
     },
-    indent: () => { indentMore(view); view.focus(); },
+    indent: () => { if (!readOnly) indentMore(view); view.focus(); },
     setValue: (value) => {
       if (value === view.state.doc.toString()) return;
       suppressChange = true;

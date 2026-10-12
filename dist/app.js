@@ -8,7 +8,11 @@ const TRANSITION_IDS = new Set(['java-basics', 'oop', 'polymorphism', 'collectio
 const ADVANCED_IDS = new Set(['oop', 'polymorphism', 'generics', 'streams', 'concurrency', 'records-sealed', 'java21', 'testing-design']);
 const EXECUTION_STATUSES = new Set(['passed', 'failed', 'compile_error', 'runtime_error', 'timeout', 'provider_error']);
 const SOURCE_LIMIT = 50000;
+const PROJECT_SOURCE_LIMIT = 65536;
+const PROJECT_SNAPSHOT_LIMIT = 384 * 1024;
 const NOTE_LIMIT = 20000;
+const desktop = window.javaEduDesktop || null;
+const isDesktop = Boolean(desktop);
 const mobileMedia = window.matchMedia('(max-width: 899px)');
 let lessons = [];
 let exercises = [];
@@ -22,10 +26,12 @@ let activeEditor = null;
 const state = {
   version: 21, track: 'all', search: '', lessonId: '', step: 'theory',
   quizPassed: new Set(), labPassed: new Map(), drafts: new Map(), notes: new Map(),
+  fileDrafts: new Map(), activeFiles: new Map(), projectInfo: new Map(),
   quizAnswers: new Map(), quizResults: new Map(), labResults: new Map(), undo: new Map(),
   storage: 'ready', runtime: null, runtimeStatus: 'checking', runtimeMessage: '',
   pending: null, menuOpen: false,
   editorTheme: 'dark', editorWrap: false,
+  runtimeVersion: null, settingsBusy: false, settingsMessage: '', cancelling: false,
 };
 
 const dom = Object.fromEntries([
@@ -91,10 +97,34 @@ function toast(message) {
 
 function currentLesson() { return visibleLessons().find((lesson) => lesson.id === state.lessonId); }
 function exerciseFor(lesson) { return lesson && exercises.find((exercise) => exercise.id === lesson.exerciseId || exercise.lessonId === lesson.id); }
-function sourceFor(exercise) { return state.drafts.has(exercise.id) ? state.drafts.get(exercise.id) : exercise.template; }
+function storageAdapter() { return desktop?.storage ?? window.localStorage; }
+function isProject(exercise) { return exercise?.mode === 'project'; }
+function projectFiles(exercise) { return state.projectInfo.get(exercise.id)?.files || exercise.files || []; }
+function activeFile(exercise) {
+  if (!isProject(exercise)) return null;
+  const files = projectFiles(exercise);
+  return files.find((file) => file.path === state.activeFiles.get(exercise.id)) || files.find((file) => file.editable) || files[0];
+}
+function fileKey(exercise, path = activeFile(exercise)?.path) { return isProject(exercise) ? `${exercise.id}::${path}` : exercise.id; }
+function sourceFor(exercise, path = activeFile(exercise)?.path) {
+  if (!isProject(exercise)) return state.drafts.has(exercise.id) ? state.drafts.get(exercise.id) : exercise.template;
+  const file = projectFiles(exercise).find((item) => item.path === path);
+  return file?.editable && state.fileDrafts.has(fileKey(exercise, path)) ? state.fileDrafts.get(fileKey(exercise, path)) : file?.source || '';
+}
+function setSource(exercise, value, path = activeFile(exercise)?.path) {
+  if (isProject(exercise)) state.fileDrafts.set(fileKey(exercise, path), value);
+  else state.drafts.set(exercise.id, value);
+}
+function sourcesFor(exercise) {
+  return Object.fromEntries(projectFiles(exercise).filter((file) => file.editable).map((file) => [file.path, sourceFor(exercise, file.path)]).sort(([a], [b]) => a.localeCompare(b)));
+}
+function sourceSnapshot(exercise) { return isProject(exercise) ? JSON.stringify(sourcesFor(exercise)) : sourceFor(exercise); }
+function sourceLimit(exercise) { return isProject(exercise) ? PROJECT_SOURCE_LIMIT : SOURCE_LIMIT; }
+function utf8Size(value) { return new TextEncoder().encode(value).byteLength; }
+function fileLanguage(path) { return path.endsWith('.java') ? 'Java' : `${path.split('.').at(-1).toUpperCase()} · 일반 텍스트`; }
 function labComplete(lesson) {
   const exercise = exerciseFor(lesson);
-  return Boolean(exercise && state.labPassed.has(exercise.id) && state.labPassed.get(exercise.id) === sourceFor(exercise));
+  return Boolean(exercise && state.labPassed.has(exercise.id) && state.labPassed.get(exercise.id) === sourceSnapshot(exercise));
 }
 function lessonComplete(lesson) { return state.quizPassed.has(lesson.id) && labComplete(lesson); }
 
@@ -102,7 +132,9 @@ function visibleLessons() {
   const query = state.search.trim().toLocaleLowerCase('ko');
   return lessons.filter((lesson) => {
     if (Number(lesson.minVersion) > state.version) return false;
-    if (state.track !== 'all') {
+    if (state.track === 'project') {
+      if (!isProject(exerciseFor(lesson))) return false;
+    } else if (state.track !== 'all') {
       const hasDeclaredTrack = ['transition', 'advanced', 'both'].includes(lesson.track);
       const fallback = state.track === 'transition' ? TRANSITION_IDS : ADVANCED_IDS;
       if (hasDeclaredTrack ? lesson.track !== state.track && lesson.track !== 'both' : !fallback.has(lesson.id)) return false;
@@ -127,7 +159,7 @@ function ensureSelection() {
 
 function restoreStorage() {
   let raw;
-  try { raw = window.localStorage.getItem(STORAGE_KEY); }
+  try { raw = storageAdapter().getItem(STORAGE_KEY); }
   catch { state.storage = 'unavailable'; return; }
   if (!raw) return;
   try {
@@ -140,7 +172,7 @@ function restoreStorage() {
     }
     for (const [key, destination, idKey, collection, limit] of [
       ['drafts', state.drafts, 'exerciseId', exercises, SOURCE_LIMIT],
-      ['labPassed', state.labPassed, 'exerciseId', exercises, SOURCE_LIMIT],
+      ['labPassed', state.labPassed, 'exerciseId', exercises, PROJECT_SNAPSHOT_LIMIT],
       ['notes', state.notes, 'lessonId', lessons, NOTE_LIMIT],
     ]) {
       if (!Array.isArray(record[key])) continue;
@@ -151,6 +183,13 @@ function restoreStorage() {
         destination.set(entry[idKey], value);
       }
     }
+    if (Array.isArray(record.fileDrafts)) {
+      for (const entry of record.fileDrafts) {
+        const exercise = exercises.find((item) => item.id === entry?.exerciseId && isProject(item));
+        const file = exercise?.files?.find((item) => item.path === entry.path && item.editable);
+        if (file && typeof entry.source === 'string' && entry.source.length <= PROJECT_SOURCE_LIMIT) state.fileDrafts.set(fileKey(exercise, entry.path), entry.source);
+      }
+    }
   } catch {
     state.storage = 'invalid';
   }
@@ -158,7 +197,7 @@ function restoreStorage() {
 
 function restoreEditorPreferences() {
   try {
-    const preferences = JSON.parse(window.localStorage.getItem(EDITOR_PREFERENCES_KEY));
+    const preferences = JSON.parse(storageAdapter().getItem(EDITOR_PREFERENCES_KEY));
     if (!preferences || typeof preferences !== 'object') return;
     if (EDITOR_THEMES.includes(preferences.theme)) state.editorTheme = preferences.theme;
     if (typeof preferences.wrap === 'boolean') state.editorWrap = preferences.wrap;
@@ -167,11 +206,11 @@ function restoreEditorPreferences() {
 
 function saveEditorPreferences() {
   try {
-    window.localStorage.setItem(EDITOR_PREFERENCES_KEY, JSON.stringify({ theme: state.editorTheme, wrap: state.editorWrap }));
+    storageAdapter().setItem(EDITOR_PREFERENCES_KEY, JSON.stringify({ theme: state.editorTheme, wrap: state.editorWrap }));
   } catch {
     state.storage = 'unavailable';
     updateStorageIndicator();
-    toast('코드 테마는 이번 방문 동안 적용됩니다. 브라우저 저장을 사용할 수 없습니다.');
+    toast('코드 테마는 현재 화면에서만 적용됩니다. 학습 기록 저장소를 사용할 수 없습니다.');
   }
 }
 
@@ -218,13 +257,15 @@ function destroyCodeEditor() {
 function updateStorageIndicator() {
   const indicator = document.getElementById('storage-indicator');
   indicator.classList.toggle('is-unavailable', state.storage !== 'ready');
-  const label = state.storage === 'unavailable' ? '이번 방문 동안만 기록' : state.storage === 'invalid' ? '기존 기록을 읽지 못했습니다' : '이 브라우저에 저장';
+  const location = isDesktop ? '이 PC의 앱에 저장' : '이 브라우저에 저장';
+  const label = state.storage === 'unavailable' ? '현재 화면 동안만 기록' : state.storage === 'invalid' ? '기존 기록을 읽지 못했습니다' : location;
   document.getElementById('storage-label').textContent = label;
-  indicator.title = state.storage === 'unavailable' ? '브라우저 저장소를 사용할 수 없습니다. 작성 코드를 별도로 복사해 주세요.' : '진도와 코드는 현재 브라우저에만 저장됩니다.';
+  indicator.title = state.storage === 'unavailable' ? '학습 기록 저장소를 사용할 수 없습니다. 작성 코드를 별도로 복사해 주세요.' : isDesktop ? '진도와 코드는 이 PC의 앱 데이터에 저장되며 앱 재시작 후에도 유지됩니다.' : '진도와 코드는 현재 브라우저에만 저장됩니다.';
+  document.getElementById('storage-location-badge').textContent = isDesktop ? '이 PC의 앱 기록' : '브라우저 기록';
   const editorSave = document.getElementById('editor-save-state');
-  if (editorSave) editorSave.textContent = state.storage === 'unavailable' ? '저장 불가 · 코드 복사 권장' : '브라우저에 저장';
+  if (editorSave) editorSave.textContent = state.storage === 'unavailable' ? '저장 불가 · 코드 복사 권장' : location;
   const notesSave = document.getElementById('notes-save-state');
-  if (notesSave) notesSave.textContent = state.storage === 'unavailable' ? '브라우저 저장을 사용할 수 없어 이번 방문 동안만 유지됩니다.' : '이 브라우저에 저장됩니다. 설계 메모는 자동 평가하지 않습니다.';
+  if (notesSave) notesSave.textContent = state.storage === 'unavailable' ? '저장소를 사용할 수 없어 현재 화면 동안만 유지됩니다.' : `${location}됩니다. 설계 메모는 자동 평가하지 않습니다.`;
 }
 
 function saveStorage() {
@@ -234,13 +275,14 @@ function saveStorage() {
     quizPassed: [...state.quizPassed],
     labPassed: [...state.labPassed].map(([exerciseId, source]) => ({ exerciseId, source })),
     drafts: [...state.drafts].map(([exerciseId, source]) => ({ exerciseId, source })),
+    fileDrafts: [...state.fileDrafts].map(([key, source]) => { const [exerciseId, path] = key.split('::'); return { exerciseId, path, source }; }),
     notes: [...state.notes].map(([lessonId, text]) => ({ lessonId, text })),
   };
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+    storageAdapter().setItem(STORAGE_KEY, JSON.stringify(record));
     state.storage = 'ready';
   } catch {
-    if (state.storage !== 'unavailable') toast('브라우저에 저장할 수 없습니다. 작성 코드를 별도로 복사해 주세요.');
+    if (state.storage !== 'unavailable') toast('학습 기록을 저장할 수 없습니다. 작성 코드를 별도로 복사해 주세요.');
     state.storage = 'unavailable';
   }
   updateStorageIndicator();
@@ -327,7 +369,7 @@ function renderSidebar() {
     const copy = el('span', 'lesson-link-copy');
     copy.append(el('span', 'lesson-link-title', lesson.title));
     const meta = el('span', 'lesson-link-meta');
-    meta.append(el('span', '', `Java ${lesson.minVersion}+`), el('span', '', complete ? '완료' : lesson.track === 'advanced' ? '실무 심화' : lesson.track === 'both' ? '공통' : 'Java 전환'));
+    meta.append(el('span', '', `Java ${lesson.minVersion}+`), el('span', '', complete ? '완료' : isProject(exerciseFor(lesson)) ? '실무 프로젝트' : lesson.track === 'advanced' ? '실무 심화' : lesson.track === 'both' ? '공통' : 'Java 전환'));
     copy.append(meta);
     link.append(number, copy);
     link.addEventListener('click', (event) => {
@@ -355,7 +397,7 @@ function renderProgress() {
   progress.setAttribute('aria-valuetext', `전체 ${lessons.length}개 수업 중 ${count}개 완료`);
   document.getElementById('overall-progress-fill').style.width = `${lessons.length ? (count / lessons.length) * 100 : 0}%`;
   const next = continuationLesson();
-  document.getElementById('continue-label').textContent = next && lessonComplete(next) ? '완료한 수업 다시 보기' : state.quizPassed.size || state.drafts.size ? '이어서 학습하기' : '학습 시작하기';
+  document.getElementById('continue-label').textContent = next && lessonComplete(next) ? '완료한 수업 다시 보기' : state.quizPassed.size || state.drafts.size || state.fileDrafts.size ? '이어서 학습하기' : '학습 시작하기';
   document.getElementById('continue-title').textContent = next?.title || '수업을 준비하고 있습니다';
   document.getElementById('continue-button').disabled = !next;
 }
@@ -409,6 +451,7 @@ function renderLesson() {
   if (lesson.featureSince) dom['lesson-meta'].append(el('span', 'meta-chip is-neutral', `기능 도입 ${String(lesson.featureSince)}`));
   const trackLabel = lesson.track === 'both' ? '전환 · 심화 공통' : lesson.track === 'advanced' ? '실무 심화' : 'Java 전환';
   dom['lesson-meta'].append(el('span', 'meta-chip is-neutral', trackLabel));
+  if (isProject(exerciseFor(lesson))) dom['lesson-meta'].append(el('span', 'meta-chip is-neutral', '실무 프로젝트 · Windows 앱 실행'));
   if (lesson.duration) {
     const time = el('span', 'meta-chip is-neutral');
     time.append(icon('clock'), document.createTextNode(typeof lesson.duration === 'number' ? `${lesson.duration}분` : lesson.duration));
@@ -546,6 +589,35 @@ async function copyText(text, selectableNode) {
   }
 }
 
+function fileTabs(files, selectedPath, onSelect, prefix, panelId, label) {
+  const tabs = el('div', 'file-tabs');
+  tabs.setAttribute('role', 'tablist');
+  tabs.setAttribute('aria-label', label);
+  files.forEach((file, index) => {
+    const button = actionButton(file.path.split('/').at(-1), 'file-tab', () => {
+      onSelect(file.path);
+      document.getElementById(`${prefix}-${index}`)?.focus({ preventScroll: true });
+    }, `${prefix}-${index}`);
+    button.title = file.path;
+    button.dataset.filePath = file.path;
+    button.setAttribute('role', 'tab');
+    button.setAttribute('aria-controls', panelId);
+    button.setAttribute('aria-selected', String(file.path === selectedPath));
+    button.setAttribute('aria-label', `${file.path}${file.editable === false ? ' · 읽기 전용' : ''}`);
+    button.tabIndex = file.path === selectedPath ? 0 : -1;
+    if (file.editable === false) button.append(el('span', 'file-readonly-badge', '읽기 전용'));
+    button.addEventListener('keydown', (event) => {
+      const next = event.key === 'ArrowRight' ? (index + 1) % files.length : event.key === 'ArrowLeft' ? (index + files.length - 1) % files.length : event.key === 'Home' ? 0 : event.key === 'End' ? files.length - 1 : -1;
+      if (next < 0) return;
+      event.preventDefault();
+      onSelect(files[next].path);
+      document.getElementById(`${prefix}-${next}`)?.focus({ preventScroll: true });
+    });
+    tabs.append(button);
+  });
+  return tabs;
+}
+
 function renderExample(lesson) {
   const example = lesson.example;
   if (!example) return;
@@ -553,18 +625,38 @@ function renderExample(lesson) {
   const shell = el('div', 'code-shell');
   shell.dataset.editorTheme = state.editorTheme;
   const heading = el('div', 'code-heading');
-  const filename = el('span'); filename.append(icon('code'), document.createTextNode('Main.java'));
+  const files = Array.isArray(example.files) && example.files.length ? example.files : [{ path: 'Main.java', language: 'java', code: example.code }];
+  let selected = files[0];
+  const filename = el('span', 'example-filename');
   const pre = el('pre', 'code-block');
   pre.tabIndex = 0;
   pre.setAttribute('aria-label', '학습 예제 소스 코드');
+  pre.id = 'example-file-panel';
   const code = el('code');
-  if (editorLibrary) editorLibrary.highlightJavaCode(code, example.code);
-  else code.textContent = example.code;
   pre.append(code);
-  const copy = actionButton('코드 복사', 'copy-button', () => copyText(example.code, pre), 'copy-example');
+  const copy = actionButton('코드 복사', 'copy-button', () => copyText(selected.code, pre), 'copy-example');
   copy.prepend(icon('copy'));
   heading.append(filename, copy);
-  shell.append(heading, codePreferences(), syntaxLegend(), pre);
+  const legend = syntaxLegend();
+  const tabsHost = el('div');
+  function selectFile(path) {
+    selected = files.find((file) => file.path === path) || files[0];
+    filename.replaceChildren(icon('code'), document.createTextNode(selected.path));
+    filename.append(el('span', 'file-readonly-badge', `${fileLanguage(selected.path)} · 읽기 전용 예제`));
+    pre.setAttribute('aria-label', `${selected.path} · ${fileLanguage(selected.path)} · 읽기 전용 예제`);
+    const java = selected.language === 'java' || selected.path.endsWith('.java');
+    if (editorLibrary && java) editorLibrary.highlightJavaCode(code, selected.code);
+    else code.textContent = selected.code;
+    legend.hidden = !java;
+    if (files.length > 1) {
+      tabsHost.replaceChildren(fileTabs(files, selected.path, selectFile, 'example-file', pre.id, '예제 파일'));
+      pre.setAttribute('role', 'tabpanel');
+      pre.setAttribute('aria-labelledby', `example-file-${files.indexOf(selected)}`);
+    }
+    pre.scrollLeft = 0;
+  }
+  shell.append(heading, codePreferences(), legend, tabsHost, pre);
+  selectFile(selected.path);
   const output = el('div', 'expected-output');
   output.append(el('p', 'small-label', '예상 출력 · 실행 결과가 아닙니다'), el('pre', '', example.output || '(표준 출력 없음)'));
   dom['lesson-panel'].append(shell, el('p', 'inline-note syntax-note', editorLibrary ? '색상은 코드의 구문을 구분하며, 컴파일 결과를 대신하지 않습니다.' : '문법 강조를 불러오지 못해 원문으로 표시합니다.'), output, el('p', 'explanation', example.explanation), nextStepButton('quiz', '문제로 이해 확인하기'));
@@ -707,8 +799,8 @@ function renderLab(lesson) {
     return;
   }
   const heading = el('div', 'lab-header');
-  heading.append(el('h3', '', exercise.title), el('span', 'lab-mode', exercise.mode === 'class' ? 'CLASS DESIGN' : 'METHOD IMPLEMENTATION'));
-  dom['lesson-panel'].append(heading, el('p', 'section-caption', exercise.mode === 'class' ? '주어진 계약을 만족하는 클래스를 직접 설계하세요. 클래스 전체를 편집할 수 있습니다.' : '제공된 클래스와 메서드 골격을 완성하세요. 클래스 전체를 편집할 수 있습니다.'));
+  heading.append(el('h3', '', exercise.title), el('span', 'lab-mode', isProject(exercise) ? 'PROJECT LAB' : exercise.mode === 'class' ? 'CLASS DESIGN' : 'METHOD IMPLEMENTATION'));
+  dom['lesson-panel'].append(heading, el('p', 'section-caption', isProject(exercise) ? '파일을 오가며 업무 계약을 구현하세요. 편집 가능한 Java 파일 전체를 함께 검증합니다. POM과 지원 리소스는 읽기 전용입니다.' : exercise.mode === 'class' ? '주어진 계약을 만족하는 클래스를 직접 설계하세요. 클래스 전체를 편집할 수 있습니다.' : '제공된 클래스와 메서드 골격을 완성하세요. 클래스 전체를 편집할 수 있습니다.'));
   const runtime = el('div', 'runtime-card');
   runtime.id = 'runtime-info';
   runtime.setAttribute('aria-live', 'polite');
@@ -733,7 +825,7 @@ function renderLab(lesson) {
   editorShell.dataset.editorTheme = state.editorTheme;
   const toolbar = el('div', 'editor-toolbar');
   const filename = el('span', 'editor-filename');
-  filename.append(icon('code'), document.createTextNode('Solution · Java'));
+  filename.id = 'editor-filename';
   const editorTools = el('div', 'editor-tools');
   const editor = el('div', 'code-editor');
   editor.id = 'code-editor';
@@ -753,11 +845,13 @@ function renderLab(lesson) {
     wrapToggle,
     actionButton('복사', '', () => copyText(activeEditor?.getValue() ?? sourceFor(exercise), activeEditor), 'copy-code'),
     actionButton('초기 코드', '', () => {
+      if (isProject(exercise) && !activeFile(exercise)?.editable) return;
       const previous = activeEditor?.getValue() ?? sourceFor(exercise);
-      if (previous === exercise.template) { toast('이미 초기 코드입니다.'); return; }
-      state.undo.set(exercise.id, previous);
-      state.drafts.set(exercise.id, exercise.template);
-      activeEditor?.setValue(exercise.template);
+      const template = isProject(exercise) ? activeFile(exercise).source : exercise.template;
+      if (previous === template) { toast('이미 초기 코드입니다.'); return; }
+      state.undo.set(fileKey(exercise), previous);
+      setSource(exercise, template);
+      activeEditor?.setValue(template);
       refreshDraftDependentUi(exercise);
       renderUndo(exercise);
       saveStorage();
@@ -769,21 +863,24 @@ function renderLab(lesson) {
   const lines = el('span'); lines.id = 'editor-line-count';
   const save = el('span'); save.id = 'editor-save-state';
   editorStatus.append(lines, save);
-  editorShell.append(toolbar, codePreferences(), syntaxLegend(), editor, editorStatus);
-  const hint = el('p', 'editor-hint', '문법 강조 · 줄 번호 · 괄호 짝 표시 · Tab은 다음 항목으로 이동합니다. 들여쓰기 버튼은 선택한 줄에 공백 4칸을 넣습니다. 색상은 구문을 구분하며 컴파일 결과를 대신하지 않습니다. class Solution 골격을 유지하고 최상위 public class·package·Main 선언은 추가하지 마세요. 실행 요청은 UTF-8 32 KiB까지 전송할 수 있습니다.');
+  const tabsHost = el('div'); tabsHost.id = 'project-file-tabs';
+  const legend = syntaxLegend(); legend.id = 'editor-syntax-legend';
+  editorShell.append(toolbar, codePreferences(), legend, tabsHost, editor, editorStatus);
+  const hint = el('p', 'editor-hint', `Tab은 다음 항목으로 이동하고 들여쓰기 버튼은 선택 줄에 공백 4칸을 넣습니다. 색상은 구문을 구분하며 컴파일 결과를 대신하지 않습니다. ${isProject(exercise) ? '현재 파일만 초기화합니다. 편집은 파일당 65,536자, 실행은 UTF-8 파일당 64 KiB·전체 256 KiB까지입니다. 한글은 여러 바이트를 사용합니다.' : `class Solution 골격을 유지하고 최상위 public class·package·Main 선언은 추가하지 마세요. 편집은 50,000자까지이며 ${isDesktop ? '실행 소스' : '실행 요청 전체'}는 UTF-8 32 KiB까지입니다. 한글은 여러 바이트를 사용합니다.`}`);
   hint.id = 'editor-hint';
   const undo = el('div', 'reset-undo'); undo.id = 'lab-reset-undo'; undo.hidden = true;
-  const disclosure = el('p', 'execution-disclosure', '실행·제출을 누르면 작성 코드가 외부 서비스 Wandbox로 전송됩니다. 운영 로그에 코드가 남을 수 있으니 비밀정보를 입력하지 마세요. ');
+  const disclosure = el('p', 'execution-disclosure', isDesktop ? '실행은 이 PC에서 이루어집니다. 코드는 PC의 사용자 권한으로 파일과 네트워크에 접근할 수 있으며, 격리된 보안 샌드박스가 아닙니다. 설정에서 동의한 뒤 실행하세요.' : isProject(exercise) ? '실무 프로젝트 실행은 Windows 앱에서 지원합니다. 이 웹 화면의 코드는 외부 실행 서비스로 전송하지 않습니다.' : '실행·제출을 누르면 작성 코드가 외부 서비스 Wandbox로 전송됩니다. 운영 로그에 코드가 남을 수 있으니 비밀정보를 입력하지 마세요. ');
   disclosure.id = 'execution-disclosure';
-  disclosure.append(safeLink('Wandbox 서비스 안내 ↗', 'https://github.com/melpon/wandbox#faq'));
+  if (!isDesktop && !isProject(exercise)) disclosure.append(safeLink('Wandbox 서비스 안내 ↗', 'https://github.com/melpon/wandbox#faq'));
   const actions = el('div', 'lab-actions');
-  const run = actionButton('예시 실행', 'button button-secondary', () => executeCode(exercise, 'run'), 'run-code');
+  if (isDesktop && isProject(exercise)) actions.append(actionButton('환경 준비', 'button button-secondary', () => executeCode(exercise, 'prepare'), 'prepare-project'));
+  const run = actionButton(isProject(exercise) ? '테스트 실행' : '예시 실행', 'button button-secondary', () => executeCode(exercise, 'run'), 'run-code');
   run.prepend(icon('play'));
   run.setAttribute('aria-describedby', 'execution-disclosure');
   const submit = actionButton('제출하고 검증하기', 'button button-primary', () => executeCode(exercise, 'submit'), 'submit-code');
   submit.prepend(icon('check'));
   submit.setAttribute('aria-describedby', 'execution-disclosure');
-  const cancel = actionButton('응답 대기 취소', 'button button-quiet', () => cancelPending('user'), 'cancel-execution');
+  const cancel = actionButton(isDesktop ? '실행 취소' : '응답 대기 취소', 'button button-quiet', () => cancelPending('user'), 'cancel-execution');
   cancel.hidden = true;
   const executionState = el('span', 'execution-state'); executionState.id = 'execution-state'; executionState.setAttribute('aria-live', 'polite');
   actions.append(run, submit, cancel, executionState);
@@ -794,28 +891,67 @@ function renderLab(lesson) {
   output.setAttribute('aria-busy', 'false');
   output.tabIndex = -1;
   dom['lesson-panel'].append(editorShell, hint, undo, disclosure, actions, output);
-  mountCodeEditor(editor, exercise);
+  renderEditorFile(exercise);
   if (!editorLibrary) hint.prepend(document.createTextNode('편집기 확장을 불러오지 못해 기본 텍스트 편집기를 사용합니다. '));
   renderRuntime();
   renderUndo(exercise);
   refreshEditorCounter(exercise);
   renderExecution(exercise);
   updateLabControls();
+  if (isDesktop && isProject(exercise)) void loadProject(exercise);
+}
+
+function renderEditorFile(exercise) {
+  destroyCodeEditor();
+  const parent = document.getElementById('code-editor');
+  if (!parent) return;
+  parent.replaceChildren();
+  const file = activeFile(exercise);
+  const name = document.getElementById('editor-filename');
+  name.replaceChildren(icon('code'), document.createTextNode(file ? file.path : 'Solution · Java'));
+  const readonly = Boolean(file && !file.editable);
+  if (file && !file.path.endsWith('.java')) name.append(el('span', 'file-readonly-badge', fileLanguage(file.path)));
+  if (readonly) name.append(el('span', 'file-readonly-badge', '읽기 전용'));
+  document.getElementById('indent-code').disabled = readonly;
+  document.getElementById('lab-reset').disabled = readonly;
+  document.getElementById('editor-syntax-legend').hidden = Boolean(file && !file.path.endsWith('.java'));
+  const host = document.getElementById('project-file-tabs');
+  if (file) {
+    const files = projectFiles(exercise);
+    host.replaceChildren(fileTabs(files, file.path, (path) => {
+      if (activeFile(exercise)?.path === path) return;
+      saveStorage();
+      state.activeFiles.set(exercise.id, path);
+      renderEditorFile(exercise);
+      announce(`${path}${files.find((item) => item.path === path)?.editable ? ' 편집' : ' 읽기 전용'}`);
+    }, 'project-file', parent.id, '실습 프로젝트 파일'));
+    parent.setAttribute('role', 'tabpanel');
+    parent.setAttribute('aria-labelledby', `project-file-${files.indexOf(file)}`);
+  }
+  mountCodeEditor(parent, exercise);
+  renderUndo(exercise);
+  refreshEditorCounter(exercise);
+  updateStorageIndicator();
 }
 
 function mountCodeEditor(parent, exercise) {
+  const file = activeFile(exercise);
+  const path = file?.path;
+  const readOnly = Boolean(file && !file.editable);
   const onChange = (value) => {
-    state.drafts.set(exercise.id, value);
-    state.undo.delete(exercise.id);
+    if (readOnly) return;
+    setSource(exercise, value, path);
+    state.undo.delete(fileKey(exercise, path));
     renderUndo(exercise);
     refreshDraftDependentUi(exercise);
     scheduleSave();
   };
   const options = {
     parent, source: sourceFor(exercise), theme: state.editorTheme, wrap: state.editorWrap,
-    label: `${exercise.title} Java 코드 편집기`, descriptionId: 'editor-hint editor-save-state',
-    maxLength: SOURCE_LIMIT, onChange, onBlur: saveStorage,
-    onLimit: () => toast(`코드는 ${SOURCE_LIMIT.toLocaleString('ko-KR')}자까지 작성할 수 있습니다.`),
+    label: `${file?.path || exercise.title} ${file ? fileLanguage(file.path) : 'Java'} ${readOnly ? '읽기 전용 파일' : '코드 편집기'}`, descriptionId: 'editor-hint editor-save-state',
+    readOnly, language: file && !file.path.endsWith('.java') ? 'text' : 'java',
+    maxLength: sourceLimit(exercise), onChange, onBlur: saveStorage,
+    onLimit: () => toast(`코드는 ${sourceLimit(exercise).toLocaleString('ko-KR')}자까지 작성할 수 있습니다. 실행 바이트 제한은 별도로 확인합니다.`),
   };
   if (editorLibrary) {
     activeEditor = editorLibrary.createJavaEditor(options);
@@ -823,7 +959,9 @@ function mountCodeEditor(parent, exercise) {
   }
   const textarea = el('textarea', 'code-editor-fallback');
   textarea.value = options.source;
-  textarea.maxLength = SOURCE_LIMIT;
+  textarea.maxLength = options.maxLength;
+  textarea.readOnly = readOnly;
+  textarea.setAttribute('aria-readonly', String(readOnly));
   textarea.spellcheck = false;
   textarea.setAttribute('aria-label', options.label);
   textarea.setAttribute('aria-describedby', options.descriptionId);
@@ -842,6 +980,7 @@ function mountCodeEditor(parent, exercise) {
     focus: () => textarea.focus(),
     selectAll: () => { textarea.focus(); textarea.select(); },
     indent: () => {
+      if (readOnly) return;
       textarea.setRangeText('    ', textarea.selectionStart, textarea.selectionEnd, 'end');
       onChange(textarea.value);
       textarea.focus();
@@ -854,20 +993,22 @@ function mountCodeEditor(parent, exercise) {
 
 function refreshEditorCounter(exercise) {
   const count = document.getElementById('editor-line-count');
-  if (count) count.textContent = `${sourceFor(exercise).split('\n').length} lines · ${sourceFor(exercise).length.toLocaleString('ko-KR')} / ${SOURCE_LIMIT.toLocaleString('ko-KR')} chars`;
+  const source = sourceFor(exercise);
+  if (count) count.textContent = `${source.split('\n').length} lines · ${source.length.toLocaleString('ko-KR')} / ${sourceLimit(exercise).toLocaleString('ko-KR')} chars · ${(utf8Size(source) / 1024).toFixed(1)} KiB`;
 }
 
 function renderUndo(exercise) {
   const row = document.getElementById('lab-reset-undo');
   if (!row) return;
   row.replaceChildren();
-  row.hidden = !state.undo.has(exercise.id);
+  const key = fileKey(exercise);
+  row.hidden = !state.undo.has(key);
   if (row.hidden) return;
   row.append(document.createTextNode('초기 코드로 되돌렸습니다.'), actionButton('되돌리기', '', () => {
-    if (!state.undo.has(exercise.id)) return;
-    const source = state.undo.get(exercise.id);
-    state.undo.delete(exercise.id);
-    state.drafts.set(exercise.id, source);
+    if (!state.undo.has(key)) return;
+    const source = state.undo.get(key);
+    state.undo.delete(key);
+    setSource(exercise, source);
     activeEditor?.setValue(source);
     refreshDraftDependentUi(exercise);
     renderUndo(exercise);
@@ -885,16 +1026,99 @@ function refreshDraftDependentUi(exercise) {
   renderExecution(exercise);
 }
 
+function localRuntimes(exercise) {
+  const minimum = Number(state.projectInfo.get(exercise?.id)?.runtimeRequirements?.minimumJava || exercise?.minVersion || 8);
+  return (state.runtime?.runtimes || []).filter((runtime) => runtime.available && VERSIONS.includes(Number(runtime.javaVersion)) && Number(runtime.javaVersion) >= minimum).sort((a, b) => b.javaVersion - a.javaVersion);
+}
+
+function runtimeFor(exercise) {
+  if (!isDesktop) return 21;
+  const available = localRuntimes(exercise);
+  return available.some((runtime) => Number(runtime.javaVersion) === state.runtimeVersion) ? state.runtimeVersion : Number(available[0]?.javaVersion) || null;
+}
+
+function environmentKey(version) {
+  const runtime = state.runtime?.runtimes?.find((item) => Number(item.javaVersion) === version && item.available);
+  return JSON.stringify([version, runtime?.path || '', state.runtime?.maven?.path || '', state.runtime?.maven?.version || '']);
+}
+
+function projectPrepared(exercise) {
+  const version = runtimeFor(exercise);
+  const key = environmentKey(version);
+  return (state.runtime?.preparedProjects || []).some((item) => item.exerciseId === exercise.id && JSON.stringify([Number(item.runtimeVersion), item.jdkPath || '', item.mavenPath || '', item.mavenVersion || '']) === key);
+}
+
+function executionBlockReason(exercise, action = 'run') {
+  if (isProject(exercise) && !isDesktop) return '프로젝트 실행은 Windows 앱에서 지원합니다';
+  if (state.cancelling) return '이전 실행의 취소를 확인하고 있습니다';
+  if (state.settingsBusy) return '실행 설정을 확인하고 있습니다';
+  if (state.runtimeStatus === 'checking') return '실행 환경 확인 중';
+  if (isDesktop) {
+    if (!state.runtime?.consent?.accepted) return '앱 설정에서 로컬 코드 실행에 동의해 주세요';
+    if (!runtimeFor(exercise)) return `앱 설정에서 Java ${exercise.minVersion} 이상의 JDK를 등록해 주세요`;
+    if (state.runtimeStatus !== 'ready') return state.runtimeMessage || '로컬 실행 환경을 다시 확인해 주세요';
+    if (isProject(exercise)) {
+      if (!state.runtime.maven?.available) return '앱 설정에서 Maven 3.9 이상을 등록해 주세요';
+      const project = state.projectInfo.get(exercise.id);
+      if (project?.status !== 'ready') return project?.message || '프로젝트 파일을 확인하고 있습니다';
+      if (action !== 'prepare' && !projectPrepared(exercise)) return '선택한 JDK로 환경 준비를 먼저 완료해 주세요';
+    }
+    return '';
+  }
+  return state.runtimeStatus === 'ready' && state.runtime?.supportedTargets?.includes(Number(exercise.minVersion)) ? '' : '실행 연결을 확인해 주세요';
+}
+
 function renderRuntime() {
   const card = document.getElementById('runtime-info');
   if (!card) return;
   const exercise = exerciseFor(currentLesson());
   card.replaceChildren();
-  card.classList.toggle('is-unavailable', state.runtimeStatus === 'unavailable');
+  card.classList.toggle('is-unavailable', state.runtimeStatus === 'unavailable' || (isProject(exercise) && !isDesktop));
   const line = el('div', 'runtime-line');
-  const runtimeVersion = state.runtime?.runtime?.javaVersion || 21;
-  line.append(el('strong', '', `실제 실행 JVM · Java ${runtimeVersion}`), el('span', '', `컴파일 대상 · Java ${exercise?.minVersion || 8}`));
+  const runtimeVersion = runtimeFor(exercise);
+  line.append(el('strong', '', isProject(exercise) && !isDesktop ? '실행 위치 · Windows 앱' : runtimeVersion ? `실제 실행 JVM · Java ${runtimeVersion}` : '실제 실행 JVM · JDK 등록 필요'), el('span', '', `컴파일 대상 · Java ${exercise?.minVersion || 8}`));
   card.append(line);
+  if (isProject(exercise) && !isDesktop) {
+    card.append(el('p', '', '웹에서 이론·문제·다중 파일 코드를 학습하고, Windows 앱에서 등록한 JDK와 Maven으로 테스트를 실행하세요. 웹과 앱의 학습 기록은 각각 저장됩니다.'));
+    const actions = el('div', 'project-access-actions');
+    actions.append(actionButton('Windows 앱 안내', 'button button-secondary', () => openDialog('install-dialog'), 'project-desktop-guide'));
+    if (/^\/downloads\/[a-z0-9-]+\.zip$/.test(exercise.downloadUrl || '')) {
+      const download = el('a', 'button button-secondary', '프로젝트 ZIP 다운로드');
+      download.id = 'project-download'; download.href = exercise.downloadUrl; download.download = '';
+      actions.append(download);
+    }
+    card.append(actions);
+    return;
+  }
+  if (isDesktop) {
+    const row = el('div', 'runtime-controls');
+    const label = el('label', '', '실제 실행 JDK'); label.htmlFor = 'runtime-version-select';
+    const select = el('select'); select.id = 'runtime-version-select'; select.dataset.testid = select.id;
+    const available = localRuntimes(exercise);
+    if (!available.length) select.append(el('option', '', '등록된 호환 JDK 없음'));
+    available.forEach((runtime) => { const option = el('option', '', `Java ${runtime.javaVersion}`); option.value = String(runtime.javaVersion); select.append(option); });
+    select.value = String(runtimeVersion || '');
+    select.disabled = !available.length || Boolean(state.pending) || state.cancelling || state.settingsBusy;
+    select.addEventListener('change', () => {
+      cancelPending('실행 JDK 변경', false);
+      state.runtimeVersion = Number(select.value);
+      renderRuntime(); updateLabControls();
+      document.getElementById('runtime-version-select')?.focus({ preventScroll: true });
+      announce(`실제 실행 JDK를 Java ${state.runtimeVersion}로 변경했습니다. 프로젝트 준비 상태를 확인하세요.`);
+    });
+    row.append(label, select, actionButton('실행 설정', 'button button-secondary', openDesktopSettings, 'runtime-settings-open'));
+    card.append(row, el('p', '', state.runtimeMessage || '이 PC의 등록 JDK로 실행합니다. 학습 기준 버전·컴파일 대상·실제 실행 JVM을 따로 확인하세요.'));
+    if (isProject(exercise)) {
+      const project = state.projectInfo.get(exercise.id);
+      const preparation = el('p', 'project-preparation', projectPrepared(exercise) ? '환경 준비 완료 · 현재 JDK와 Maven으로 테스트할 수 있습니다.' : '환경 준비를 누르면 고정 기준 답안으로 Maven 의존성을 내려받고 환경을 검증합니다. 이후 학습자 테스트는 오프라인으로 실행합니다.');
+      preparation.id = 'project-preparation-state'; preparation.dataset.prepared = String(projectPrepared(exercise));
+      card.append(preparation);
+      if (project?.status === 'error') card.append(el('p', '', project.message), actionButton('프로젝트 다시 확인', 'runtime-retry', () => loadProject(exercise, true), 'project-retry'));
+      for (const service of project?.runtimeRequirements?.services || []) card.append(el('p', 'project-service', `${service.label || service.type}: 학습용 ${service.host}:${service.port}가 필요합니다. 포트 확인 후 실제 통합 테스트로 검증합니다.`));
+    }
+    if (state.runtimeStatus === 'unavailable') card.append(actionButton('설정 다시 확인', 'runtime-retry', loadRuntime, 'runtime-retry'));
+    return;
+  }
   if (state.runtimeStatus === 'checking') {
     card.append(el('p', '', 'Wandbox 실행 환경의 연결 상태를 확인하고 있습니다.'));
   } else if (state.runtimeStatus === 'unavailable') {
@@ -912,13 +1136,27 @@ function updateLabControls() {
   const cancel = document.getElementById('cancel-execution');
   const status = document.getElementById('execution-state');
   if (!run || !submit || !cancel || !status || !exercise) return;
-  const busy = Boolean(state.pending && state.pending.exerciseId === exercise.id);
-  const available = state.runtimeStatus === 'ready' && state.runtime.supportedTargets.includes(Number(exercise.minVersion));
-  run.disabled = busy || !available;
-  submit.disabled = busy || !available;
-  cancel.hidden = !busy;
-  status.textContent = busy ? '실제 Java 컴파일·실행 중…' : state.runtimeStatus === 'checking' ? '실행 환경 확인 중' : !available ? '실행 연결을 확인해 주세요' : '코드는 버튼을 누를 때 전송됩니다';
+  const busy = Boolean(state.pending);
+  const reason = executionBlockReason(exercise);
+  run.disabled = busy || Boolean(reason);
+  submit.disabled = busy || Boolean(reason);
+  run.dataset.blocked = reason ? 'true' : 'false'; submit.dataset.blocked = run.dataset.blocked;
+  const prepare = document.getElementById('prepare-project');
+  if (prepare) { prepare.disabled = busy || Boolean(executionBlockReason(exercise, 'prepare')); prepare.dataset.prepared = String(projectPrepared(exercise)); }
+  const runtimeSelect = document.getElementById('runtime-version-select');
+  if (runtimeSelect) runtimeSelect.disabled = busy || state.cancelling || state.settingsBusy || !localRuntimes(exercise).length;
+  cancel.hidden = !busy || state.pending.exerciseId !== exercise.id;
+  status.textContent = busy ? state.pending.action === 'prepare' ? 'Maven 환경 준비 중 · 처음에는 수 분 걸릴 수 있습니다' : '실제 Java 컴파일·실행 중…' : reason || (isDesktop ? '이 PC에서 명시적으로 실행합니다' : '코드는 버튼을 누를 때 전송됩니다');
   document.getElementById('execution-output')?.setAttribute('aria-busy', String(busy));
+}
+
+function acceptRuntime(runtime) {
+  if (!runtime || typeof runtime !== 'object' || !Array.isArray(runtime.supportedTargets)) throw new Error('실행 환경 응답을 확인할 수 없습니다.');
+  if (isDesktop && (runtime.mode !== 'local' || !Array.isArray(runtime.runtimes))) throw new Error('로컬 실행 환경 응답을 확인할 수 없습니다.');
+  state.runtime = { ...runtime, supportedTargets: runtime.supportedTargets.map(Number).filter((version) => VERSIONS.includes(version)) };
+  const available = runtime.available === true && (isDesktop || Number(runtime.runtime?.javaVersion) === 21);
+  state.runtimeStatus = available ? 'ready' : 'unavailable';
+  state.runtimeMessage = available ? '' : typeof runtime.reason === 'string' ? runtime.reason : typeof runtime.notice === 'string' ? runtime.notice : '실행 환경 설정을 확인해 주세요.';
 }
 
 async function loadRuntime() {
@@ -933,22 +1171,101 @@ async function loadRuntime() {
     if (!response.ok) throw new Error('Runtime unavailable');
     const runtime = await response.json();
     if (sequence !== runtimeSequence) return;
-    if (!runtime || typeof runtime !== 'object' || runtime.available !== true || Number(runtime.runtime?.javaVersion) !== 21 || !Array.isArray(runtime.supportedTargets)) {
-      state.runtimeStatus = 'unavailable';
-      state.runtimeMessage = typeof runtime?.notice === 'string' ? runtime.notice : '현재 Wandbox 실행 환경을 사용할 수 없습니다. 잠시 후 다시 확인해 주세요.';
-    } else {
-      state.runtime = { ...runtime, supportedTargets: runtime.supportedTargets.map(Number).filter((version) => VERSIONS.includes(version)) };
-      state.runtimeStatus = 'ready';
-      state.runtimeMessage = '';
-    }
+    acceptRuntime(runtime);
   } catch {
     if (sequence !== runtimeSequence) return;
     state.runtimeStatus = 'unavailable';
-    state.runtimeMessage = '실행 서버에 연결하지 못했습니다. 수업·문제·코드 작성은 계속 이용할 수 있습니다.';
+    state.runtimeMessage = isDesktop ? '로컬 실행 환경을 읽지 못했습니다. 설정을 다시 확인해 주세요.' : '실행 서버에 연결하지 못했습니다. 수업·문제·코드 작성은 계속 이용할 수 있습니다.';
   } finally {
     clearTimeout(timer);
-    if (sequence === runtimeSequence) { renderRuntime(); updateLabControls(); }
+    if (sequence === runtimeSequence) { renderRuntime(); updateLabControls(); renderDesktopSettings(); }
   }
+}
+
+async function loadProject(exercise, retry = false) {
+  if (!isDesktop || !isProject(exercise)) return;
+  if (!retry && state.projectInfo.has(exercise.id)) return;
+  const marker = { status: 'loading' };
+  state.projectInfo.set(exercise.id, marker);
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(`/api/local/projects/${encodeURIComponent(exercise.id)}`, { signal: controller.signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
+    const payload = await response.json();
+    if (state.projectInfo.get(exercise.id) !== marker) return;
+    if (!response.ok) throw new Error(payload.error?.message || '프로젝트 파일을 읽지 못했습니다.');
+    const files = payload.files;
+    if (payload.exerciseId !== exercise.id || !Array.isArray(files) || files.length !== exercise.files.length || !files.every((file) => typeof file.path === 'string' && typeof file.source === 'string' && typeof file.editable === 'boolean' && exercise.files.some((expected) => expected.path === file.path && expected.editable === file.editable)) || new Set(files.map((file) => file.path)).size !== files.length) throw new Error('교재와 실행기의 파일 목록이 다릅니다. 앱의 교재 버전을 확인해 주세요.');
+    const changed = files.some((file) => exercise.files.find((item) => item.path === file.path)?.source !== file.source);
+    state.projectInfo.set(exercise.id, { status: 'ready', files, runtimeRequirements: payload.runtimeRequirements });
+    if (changed && currentLesson()?.id === exercise.lessonId && state.step === 'lab') renderEditorFile(exercise);
+  } catch (error) {
+    if (state.projectInfo.get(exercise.id) === marker) state.projectInfo.set(exercise.id, { status: 'error', message: error instanceof Error ? error.message : '프로젝트 파일을 읽지 못했습니다.' });
+  } finally {
+    clearTimeout(timer);
+    if (currentLesson()?.id === exercise.lessonId && state.step === 'lab') { renderRuntime(); updateLabControls(); }
+  }
+}
+
+function renderDesktopSettings() {
+  const body = document.getElementById('desktop-settings-body');
+  if (!isDesktop || !body) return;
+  body.replaceChildren();
+  const tools = el('div', 'settings-tools');
+  for (const version of VERSIONS) {
+    const runtime = state.runtime?.runtimes?.find((item) => Number(item.javaVersion) === version);
+    const row = el('div', 'settings-tool-row');
+    const copy = el('div');
+    copy.append(el('strong', '', `JDK ${version}`), el('p', 'settings-tool-path', runtime?.available ? runtime.path || '등록됨' : '등록하지 않음'));
+    const button = actionButton(runtime?.available ? '변경' : '폴더 선택', 'button button-secondary', () => changeDesktopSettings(() => desktop.chooseJdk(version)), `jdk-register-${version}`);
+    button.setAttribute('aria-label', `JDK ${version} 설치 폴더 선택`); button.disabled = state.settingsBusy;
+    row.append(copy, button); tools.append(row);
+  }
+  const row = el('div', 'settings-tool-row');
+  const copy = el('div');
+  copy.append(el('strong', '', `Maven${state.runtime?.maven?.version ? ` ${state.runtime.maven.version}` : ' 3.9+'}`), el('p', 'settings-tool-path', state.runtime?.maven?.available ? state.runtime.maven.path || '등록됨' : '등록하지 않음'));
+  const maven = actionButton(state.runtime?.maven?.available ? '변경' : '폴더 선택', 'button button-secondary', () => changeDesktopSettings(() => desktop.chooseMaven()), 'maven-register');
+  maven.setAttribute('aria-label', 'Maven 설치 폴더 선택'); maven.disabled = state.settingsBusy;
+  row.append(copy, maven); tools.append(row); body.append(tools);
+  const consent = el('div', 'settings-consent');
+  consent.append(el('h3', '', '이 PC에서 코드 실행'), el('p', '', 'Java 코드는 현재 PC의 사용자 권한으로 파일과 네트워크에 접근할 수 있습니다. 이 앱은 격리된 보안 샌드박스가 아닙니다. 신뢰하는 코드를 직접 확인한 뒤 실행하세요.'));
+  const label = el('label');
+  const checkbox = el('input'); checkbox.type = 'checkbox'; checkbox.id = 'execution-consent';
+  checkbox.checked = state.runtime?.consent?.accepted === true;
+  checkbox.disabled = state.settingsBusy;
+  checkbox.addEventListener('change', () => changeDesktopSettings(() => desktop.setExecutionConsent(checkbox.checked)));
+  label.append(checkbox, el('span', '', '위 실행 권한을 이해했으며 로컬 코드 실행에 동의합니다.'));
+  consent.append(label); body.append(consent);
+  const status = el('p', 'settings-status', state.settingsBusy ? '설정을 확인하고 있습니다…' : state.settingsMessage);
+  status.id = 'desktop-settings-status'; status.setAttribute('role', 'status'); body.append(status);
+}
+
+async function changeDesktopSettings(operation, mutation = true) {
+  if (!isDesktop || state.settingsBusy) return;
+  const focusId = document.activeElement?.id;
+  if (mutation) cancelPending('실행 설정 변경', false);
+  state.settingsBusy = true; state.settingsMessage = '';
+  renderDesktopSettings(); updateLabControls();
+  const sequence = ++runtimeSequence;
+  try {
+    const runtime = await operation();
+    if (sequence !== runtimeSequence) return;
+    acceptRuntime(runtime);
+    state.settingsMessage = mutation ? '실행 설정을 확인했습니다.' : '';
+  } catch (error) {
+    state.settingsMessage = error instanceof Error ? error.message : '실행 설정을 저장하지 못했습니다.';
+  } finally {
+    state.settingsBusy = false;
+    renderDesktopSettings(); renderRuntime(); updateLabControls();
+    if (document.getElementById('desktop-settings-dialog').open && focusId) document.getElementById(focusId)?.focus({ preventScroll: true });
+  }
+}
+
+function openDesktopSettings() {
+  if (!isDesktop) return;
+  renderDesktopSettings();
+  openDialog('desktop-settings-dialog');
+  void changeDesktopSettings(() => desktop.getSettings(), false);
 }
 
 function renderExecution(exercise) {
@@ -957,26 +1274,26 @@ function renderExecution(exercise) {
   panel.replaceChildren();
   const pending = state.pending?.exerciseId === exercise.id ? state.pending : null;
   const result = state.labResults.get(exercise.id);
-  const outdated = Boolean(result && result.sourceSnapshot !== sourceFor(exercise));
+  const outdated = Boolean(result && result.action !== 'prepare' && result.sourceSnapshot !== sourceSnapshot(exercise));
   panel.dataset.status = pending ? 'running' : outdated ? 'outdated' : result?.status || 'idle';
   panel.setAttribute('aria-busy', String(Boolean(pending)));
   const heading = el('div', 'execution-panel-heading');
   const title = el('strong'); title.append(icon('terminal'), document.createTextNode('실제 실행 결과'));
-  const metadata = result && result.runtimeVersion ? `Java ${result.runtimeVersion} · --release ${result.targetVersion}` : 'Wandbox / Java 21';
+  const metadata = result && result.runtimeVersion ? `Java ${result.runtimeVersion} · 컴파일 대상 ${result.targetVersion}` : isDesktop ? '이 PC의 JDK' : isProject(exercise) ? 'Windows 앱에서 실행' : 'Wandbox / Java 21';
   heading.append(title, el('span', '', metadata));
   const body = el('div', 'execution-output-body');
   if (pending) {
-    body.append(el('p', 'execution-placeholder', '작성 코드를 컴파일하고 실제 JVM에서 실행하고 있습니다. 결과가 도착하면 여기에 표시됩니다.'));
-    if (pending.source !== sourceFor(exercise)) body.append(el('p', 'execution-warning', '요청 후 코드가 변경되었습니다. 도착하는 결과는 요청 당시 코드의 결과이며 현재 코드의 완료 기록에 반영하지 않습니다.'));
+    body.append(el('p', 'execution-placeholder', pending.action === 'prepare' ? '고정 기준 답안으로 Maven 의존성을 내려받고 실행 환경을 검증합니다. 처음에는 수 분 걸릴 수 있습니다. 이 단계는 작성 코드의 제출 통과로 기록하지 않습니다.' : '작성 코드를 컴파일하고 실제 JVM에서 실행하고 있습니다. 결과가 도착하면 여기에 표시됩니다.'));
+    if (pending.action !== 'prepare' && pending.source !== sourceSnapshot(exercise)) body.append(el('p', 'execution-warning', '요청 후 코드가 변경되었습니다. 도착하는 결과는 요청 당시 코드의 결과이며 현재 코드의 완료 기록에 반영하지 않습니다.'));
   } else if (!result) {
-    body.append(el('p', 'execution-placeholder', '아직 실행하지 않았습니다. 예시 실행으로 공개 사례를 확인하고, 제출로 전체 테스트를 검증하세요. 예상 출력은 실제 실행 결과로 사용하지 않습니다.'));
+    body.append(el('p', 'execution-placeholder', isProject(exercise) ? '아직 실행하지 않았습니다. Windows 앱에서 환경 준비 후 프로젝트 전체 테스트를 실행하세요. 제출 통과와 객관식 성취를 모두 마치면 수업 완료입니다.' : '아직 실행하지 않았습니다. 예시 실행으로 공개 사례를 확인하고, 제출로 전체 테스트를 검증하세요. 예상 출력은 실제 실행 결과로 사용하지 않습니다.'));
   } else {
     if (outdated) body.append(el('p', 'execution-warning', '요청 후 코드가 변경되었습니다. 현재 코드의 실행 결과가 아닙니다. 현재 코드를 다시 실행·제출해 주세요.'));
     const labels = {
-      passed: result.action === 'submit' ? '제출 테스트 통과' : '공개 예시 실행 통과',
+      passed: result.action === 'prepare' ? '환경 준비 완료' : result.action === 'submit' ? '제출 테스트 통과' : isProject(exercise) ? '프로젝트 테스트 통과' : '공개 예시 실행 통과',
       failed: '검증 조건을 충족하지 못했습니다',
       compile_error: '컴파일 오류', runtime_error: '실행 중 오류', timeout: '실행 시간 초과',
-      provider_error: '실행 요청을 완료하지 못했습니다', cancelled: '응답 대기를 취소했습니다', validation_error: '실행할 코드의 크기를 확인해 주세요',
+      provider_error: '실행 요청을 완료하지 못했습니다', cancelled: isDesktop ? '실행 취소 요청' : '응답 대기를 취소했습니다', validation_error: '실행할 코드의 크기를 확인해 주세요',
     };
     const isError = !['passed', 'cancelled'].includes(result.status);
     body.append(el('p', `execution-result-label${isError ? ' is-error' : ''}`, labels[result.status] || '실행 결과 확인 필요'));
@@ -1004,7 +1321,8 @@ function renderExecution(exercise) {
       section.append(el('h4', '', name), pre);
       body.append(section);
     }
-    if (result.action === 'run' && result.status === 'passed') body.append(el('p', 'inline-note', '예시 실행은 수업 완료에 포함되지 않습니다. 전체 테스트는 제출로 확인하세요.'));
+    if (result.action === 'run' && result.status === 'passed') body.append(el('p', 'inline-note', '실행만으로 수업 완료를 기록하지 않습니다. 현재 코드의 성취를 기록하려면 제출하세요.'));
+    if (result.action === 'prepare') body.append(el('p', 'inline-note', '환경 준비는 기준 답안의 결과입니다. 작성 코드의 테스트 통과·수업 완료와 별도로 표시합니다.'));
     if (result.action === 'submit' && result.status === 'passed' && !outdated) body.append(el('p', 'inline-note', '현재 코드의 테스트 통과를 기록했습니다. 설계 판단과 설명은 실무 탭에서 직접 점검하세요.'));
     if (Number.isFinite(result.durationMs)) body.append(el('p', 'execution-timing', `${result.provider || 'Wandbox'} · 응답 시간 ${(result.durationMs / 1000).toFixed(2)}초`));
   }
@@ -1020,10 +1338,11 @@ function cancelPending(reason = 'user', update = true) {
   if (reason === 'user') {
     state.labResults.set(pending.exerciseId, {
       status: 'cancelled', action: pending.action, sourceSnapshot: pending.source,
-      message: '브라우저의 응답 대기를 중단했습니다. 외부 서비스에서 이미 시작한 실행이 종료되었다는 의미는 아닙니다.',
+      message: isDesktop ? '로컬 실행의 취소를 요청하고 있습니다.' : '브라우저의 응답 대기를 중단했습니다. 외부 서비스에서 이미 시작한 실행이 종료되었다는 의미는 아닙니다.',
     });
-    announce('응답 대기를 취소했습니다. 외부 실행의 종료를 보장하지 않습니다.');
+    announce(isDesktop ? '로컬 실행의 취소를 요청했습니다.' : '응답 대기를 취소했습니다. 외부 실행의 종료를 보장하지 않습니다.');
   }
+  if (isDesktop) void cancelLocalRequest(pending, reason === 'user');
   if (update) {
     const exercise = exerciseFor(currentLesson());
     if (exercise) renderExecution(exercise);
@@ -1031,9 +1350,35 @@ function cancelPending(reason = 'user', update = true) {
   }
 }
 
+async function cancelLocalRequest(request, showResult = false) {
+  if (!isDesktop) return;
+  state.cancelling = true;
+  updateLabControls();
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 10000);
+  let message;
+  try {
+    const response = await fetch('/api/local/cancel', { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ requestId: request.id }) });
+    const payload = await response.json();
+    if (!response.ok || typeof payload.cancelled !== 'boolean') throw new Error('취소 응답을 확인하지 못했습니다.');
+    message = payload.cancelled ? '로컬 실행기에 취소가 반영되었습니다.' : '취소할 실행이 없습니다. 요청이 이미 종료되었을 수 있습니다.';
+  } catch {
+    message = '로컬 실행의 취소 여부를 확인하지 못했습니다. 앱의 실행 상태를 다시 확인해 주세요.';
+    toast(message);
+  } finally {
+    clearTimeout(timer);
+    state.cancelling = false;
+    if (showResult && state.labResults.get(request.exerciseId)?.status === 'cancelled') state.labResults.get(request.exerciseId).message = message;
+    const current = exerciseFor(currentLesson());
+    if (current) renderExecution(current);
+    updateLabControls();
+  }
+}
+
 function executionResult(payload, request, exercise) {
   if (!payload || typeof payload !== 'object' || payload.requestId !== request.id || !EXECUTION_STATUSES.has(payload.status)) throw new Error('실행 서버의 응답 형식을 확인할 수 없습니다. 다시 시도해 주세요.');
-  if (Number(payload.runtimeVersion) !== 21 || Number(payload.targetVersion) !== Number(exercise.minVersion)) throw new Error('응답의 실행 환경이 이 실습의 계약과 일치하지 않습니다. 완료 기록에 반영하지 않았습니다.');
+  if (Number(payload.runtimeVersion) !== request.runtimeVersion || Number(payload.targetVersion) !== Number(exercise.minVersion)) throw new Error('응답의 실행 환경이 이 실습의 계약과 일치하지 않습니다. 완료 기록에 반영하지 않았습니다.');
+  if (request.action === 'prepare' && payload.status === 'passed' && payload.prepared !== true) throw new Error('환경 준비 성공을 확인하지 못했습니다. 다시 준비해 주세요.');
   const checks = Array.isArray(payload.checks) ? payload.checks.filter((check) => check && typeof check.name === 'string' && typeof check.passed === 'boolean').map((check) => ({ name: check.name, passed: check.passed })) : [];
   const total = Number(payload.total);
   const passed = Number(payload.passed);
@@ -1046,41 +1391,57 @@ function executionResult(payload, request, exercise) {
     compilerOutput: typeof payload.compilerOutput === 'string' ? payload.compilerOutput : '',
     message: typeof payload.error?.message === 'string' ? payload.error.message : '',
     checks, passed: Number.isFinite(passed) ? passed : 0, total: Number.isFinite(total) ? total : checks.length,
-    provider: typeof payload.provider === 'string' ? payload.provider : 'Wandbox',
+    provider: typeof payload.provider === 'string' ? payload.provider : isDesktop ? 'Local JDK' : 'Wandbox',
     durationMs: Number.isFinite(payload.durationMs) ? payload.durationMs : undefined,
   };
 }
 
 async function executeCode(exercise, action) {
-  if (state.pending || state.runtimeStatus !== 'ready' || !state.runtime.supportedTargets.includes(Number(exercise.minVersion))) return;
-  const source = sourceFor(exercise);
-  if (!source.trim()) {
+  if (state.pending || executionBlockReason(exercise, action)) return;
+  if (action === 'prepare' && (!isDesktop || !isProject(exercise))) return;
+  const source = sourceSnapshot(exercise);
+  const files = isProject(exercise) ? sourcesFor(exercise) : null;
+  if (action !== 'prepare' && (files ? Object.values(files).some((value) => !value.trim()) : !source.trim())) {
     toast('실행할 Java 코드를 입력해 주세요.');
     activeEditor?.focus();
     return;
   }
   saveStorage();
   const id = window.crypto?.randomUUID ? window.crypto.randomUUID() : `request_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
-  const requestBody = JSON.stringify({ exerciseId: exercise.id, source, action, requestId: id });
-  if (new TextEncoder().encode(requestBody).byteLength > 32 * 1024) {
+  const runtimeVersion = runtimeFor(exercise);
+  const body = { exerciseId: exercise.id, requestId: id };
+  if (isDesktop) body.runtimeVersion = runtimeVersion;
+  if (action !== 'prepare') { body.action = action; if (files) body.files = files; else body.source = source; }
+  const requestBody = JSON.stringify(body);
+  let sizeMessage = '';
+  if (action !== 'prepare') {
+    if (files) {
+      const oversized = Object.entries(files).find(([, value]) => utf8Size(value) > 64 * 1024);
+      if (oversized) sizeMessage = `${oversized[0]} 파일이 UTF-8 64 KiB를 초과합니다.`;
+      else if (Object.values(files).reduce((sum, value) => sum + utf8Size(value), 0) > 256 * 1024) sizeMessage = '편집 파일 전체가 UTF-8 256 KiB를 초과합니다.';
+    } else if (isDesktop && utf8Size(source) > 32 * 1024) sizeMessage = 'Java 소스가 UTF-8 32 KiB를 초과합니다.';
+    if (!sizeMessage && utf8Size(requestBody) > (isDesktop ? 384 : 32) * 1024) sizeMessage = `요청 전체가 UTF-8 ${isDesktop ? 384 : 32} KiB를 초과합니다.`;
+  }
+  if (sizeMessage) {
     state.labResults.set(exercise.id, {
       status: 'validation_error', action, sourceSnapshot: source,
-      message: '요청 전체가 UTF-8 32 KiB를 초과합니다. 코드를 줄여 다시 시도해 주세요. 한글은 여러 바이트를 사용하며 작성 코드는 이 브라우저에 유지됩니다.',
+      message: `${sizeMessage} 코드를 줄여 다시 시도해 주세요. 한글은 여러 바이트를 사용하며 작성 코드는 유지됩니다.`,
     });
     renderExecution(exercise);
-    announce('코드가 실행 요청의 32 KiB 제한을 초과했습니다. 코드를 줄여 주세요.');
+    announce(sizeMessage);
     return;
   }
   const controller = new AbortController();
-  const request = { id, source, action, exerciseId: exercise.id, lessonId: state.lessonId, version: state.version, controller, timedOut: false, timer: null };
-  request.timer = window.setTimeout(() => { request.timedOut = true; controller.abort(); }, 60000);
+  const request = { id, source, action, runtimeVersion, environment: environmentKey(runtimeVersion), exerciseId: exercise.id, lessonId: state.lessonId, version: state.version, controller, timedOut: false, timer: null };
+  const timeoutMs = isDesktop ? action === 'prepare' ? 360000 : isProject(exercise) ? 180000 : 60000 : 60000;
+  request.timer = window.setTimeout(() => { request.timedOut = true; controller.abort(); if (isDesktop) void cancelLocalRequest(request); }, timeoutMs);
   state.pending = request;
   state.labResults.delete(exercise.id);
   updateLabControls();
   renderExecution(exercise);
-  announce(action === 'submit' ? '코드를 제출해 전체 테스트를 검증합니다.' : '공개 예시를 실제 Java 환경에서 실행합니다.');
+  announce(action === 'prepare' ? '기준 답안으로 실행 환경을 준비합니다.' : action === 'submit' ? '코드를 제출해 전체 테스트를 검증합니다.' : '실제 Java 환경에서 코드를 실행합니다.');
   try {
-    const response = await fetch('/api/execute', {
+    const response = await fetch(action === 'prepare' ? '/api/local/prepare' : '/api/execute', {
       method: 'POST', signal: controller.signal,
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: requestBody,
@@ -1094,7 +1455,7 @@ async function executeCode(exercise, action) {
     }
     const result = executionResult(payload, request, exercise);
     state.labResults.set(exercise.id, result);
-    const fresh = request.source === sourceFor(exercise) && request.lessonId === state.lessonId && request.version === state.version;
+    const fresh = request.source === sourceSnapshot(exercise) && request.lessonId === state.lessonId && request.version === state.version && (!isDesktop || request.environment === environmentKey(runtimeFor(exercise)));
     if (result.status === 'passed' && action === 'submit' && fresh) {
       state.labPassed.set(exercise.id, request.source);
       saveStorage();
@@ -1108,12 +1469,12 @@ async function executeCode(exercise, action) {
       renderSidebar();
       renderProgress();
     }
-    announce(!fresh ? '요청 당시 코드의 결과가 도착했습니다. 현재 코드를 다시 제출해 주세요.' : result.status === 'passed' ? action === 'submit' ? '제출한 코드가 전체 테스트를 통과했습니다.' : '공개 예시 실행을 통과했습니다.' : '실행 결과를 확인해 주세요.');
+    announce(action === 'prepare' ? result.status === 'passed' ? '실행 환경 준비를 완료했습니다. 작성 코드를 제출해 주세요.' : '실행 환경 준비 결과를 확인해 주세요.' : !fresh ? '요청 당시 코드의 결과가 도착했습니다. 현재 코드를 다시 제출해 주세요.' : result.status === 'passed' ? action === 'submit' ? '제출한 코드가 전체 테스트를 통과했습니다.' : '코드 실행을 통과했습니다.' : '실행 결과를 확인해 주세요.');
   } catch (error) {
     if (state.pending !== request) return;
     state.labResults.set(exercise.id, {
       status: request.timedOut ? 'timeout' : 'provider_error', action, sourceSnapshot: source,
-      message: request.timedOut ? '60초 안에 응답을 받지 못했습니다. 외부 실행이 계속 중일 수 있습니다. 잠시 후 다시 시도해 주세요.' : error instanceof Error ? error.message : '실행 서비스에 연결할 수 없습니다.',
+      message: request.timedOut ? isDesktop ? '응답 대기 시간을 초과해 로컬 실행 취소를 요청했습니다. 실행 상태를 확인한 뒤 다시 시도해 주세요.' : '60초 안에 응답을 받지 못했습니다. 외부 실행이 계속 중일 수 있습니다. 잠시 후 다시 시도해 주세요.' : error instanceof Error ? error.message : '실행 서비스에 연결할 수 없습니다.',
     });
     announce(request.timedOut ? '실행 응답 대기 시간이 초과되었습니다.' : '실행 요청을 완료하지 못했습니다. 오류 안내를 확인해 주세요.');
   } finally {
@@ -1122,6 +1483,7 @@ async function executeCode(exercise, action) {
       state.pending = null;
       renderExecution(exercise);
       updateLabControls();
+      if (isDesktop) void loadRuntime();
     }
   }
 }
@@ -1207,15 +1569,20 @@ function openDialog(id) {
 
 function resetProgress() {
   cancelPending('학습 기록 초기화', false);
-  for (const key of ['quizPassed', 'labPassed', 'drafts', 'notes', 'quizAnswers', 'quizResults', 'labResults', 'undo']) state[key].clear();
+  for (const key of ['quizPassed', 'labPassed', 'drafts', 'fileDrafts', 'activeFiles', 'notes', 'quizAnswers', 'quizResults', 'labResults', 'undo']) state[key].clear();
   saveStorage();
   document.getElementById('reset-dialog').close();
   renderAll();
   dom['lesson-title'].focus({ preventScroll: true });
-  toast('이 브라우저의 진도, 작성 코드와 설계 메모를 초기화했습니다.');
+  toast(`${isDesktop ? '이 PC 앱' : '이 브라우저'}의 진도, 작성 코드와 설계 메모를 초기화했습니다.`);
 }
 
 function bindEvents() {
+  document.getElementById('desktop-settings-open').hidden = !isDesktop;
+  document.getElementById('desktop-install-open').hidden = isDesktop;
+  document.getElementById('desktop-settings-open').addEventListener('click', openDesktopSettings);
+  document.getElementById('desktop-install-open').addEventListener('click', () => openDialog('install-dialog'));
+  document.getElementById('reset-records-description').textContent = `${isDesktop ? '이 PC 앱' : '이 브라우저'}의 진도, 파일별 작성 코드와 설계 메모를 모두 지웁니다. 현재 학습 기준 버전은 유지됩니다.`;
   dom['version-select'].addEventListener('change', (event) => {
     const version = Number(event.target.value);
     if (!VERSIONS.includes(version)) return;
@@ -1282,12 +1649,14 @@ function bindEvents() {
 
 async function boot() {
   try {
-    const [curriculumModule, exerciseModule, evidenceModule, editorModule] = await Promise.all([
+    const [curriculumModule, exerciseModule, evidenceModule, editorModule, professionalModule] = await Promise.all([
       import('./data/curriculum.js'), import('./data/exercises.js'), import('./data/job-evidence.js'),
       import('./assets/editor.bundle.js').catch(() => null),
+      import('./data/professional.js'),
     ]);
-    lessons = curriculumModule.lessons;
-    exercises = exerciseModule.exercises;
+    if (!Array.isArray(professionalModule.professionalLessons) || !Array.isArray(professionalModule.professionalExercises)) throw new Error('Professional content data unavailable');
+    lessons = [...curriculumModule.lessons, ...professionalModule.professionalLessons];
+    exercises = [...exerciseModule.exercises, ...professionalModule.professionalExercises];
     jobEvidence = evidenceModule.jobEvidence;
     editorLibrary = editorModule;
     if (!Array.isArray(lessons) || !lessons.length || !Array.isArray(exercises) || !Array.isArray(jobEvidence)) throw new Error('Content data unavailable');
@@ -1302,7 +1671,7 @@ async function boot() {
     closeMenu(false);
     syncHash();
     if (state.storage === 'invalid') toast('기존 저장 기록을 읽을 수 없어 새 학습 상태로 시작합니다.');
-    else if (state.storage === 'unavailable') toast('브라우저 저장이 제한되어 기록은 이번 방문 동안만 유지됩니다.');
+    else if (state.storage === 'unavailable') toast('학습 기록 저장소가 제한되어 현재 화면 동안만 유지됩니다.');
     void loadRuntime();
   } catch (error) {
     dom['loading-state'].classList.add('is-error');

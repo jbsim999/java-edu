@@ -1,0 +1,168 @@
+{
+  "id": "test-collaborators",
+  "title": "Mockito로 외부 협력의 실패를 통제",
+  "description": "외부 결제 협력의 호출 횟수와 실패 전파를 제어합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "대역으로 무엇을 검증하며 무엇은 검증하지 못하는가?",
+    "결제 한 번 호출",
+    "잘못된 입력에서 미호출",
+    "협력 오류 전파"
+  ],
+  "theory": [
+    {
+      "heading": "대역의 범위",
+      "text": "Mockito는 테스트에서 협력 객체의 응답과 실패를 통제합니다. 실제 네트워크·결제 시스템의 계약을 검증한 것으로 확대하지 않습니다."
+    },
+    {
+      "heading": "행동 중심 검증",
+      "text": "유효 입력에서 한 번 호출, 잘못된 입력에서 호출하지 않음, 협력 실패의 전파처럼 의미 있는 경계를 검증합니다. private 메서드 호출 순서와 같은 내부 구현 세부에 테스트를 결합하지 않습니다."
+    }
+  ],
+  "example": {
+    "title": "Checkout 기준 구현",
+    "code": "package edu.lab;\npublic final class Checkout {\n public interface PaymentPort { void charge(String orderId, int cents); }\n private final PaymentPort payments;\n public Checkout(PaymentPort payments) { this.payments=java.util.Objects.requireNonNull(payments); }\n public void submit(String orderId, int cents) {\n  // BEGIN EXERCISE\n  if (orderId == null || orderId.isBlank() || cents <= 0) throw new IllegalArgumentException();\n  payments.charge(orderId, cents);\n  // END EXERCISE\n }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 결제 한 번 호출 · 잘못된 입력에서 미호출 · 협력 오류 전파.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/Checkout.java",
+        "language": "java",
+        "code": "package edu.lab;\npublic final class Checkout {\n public interface PaymentPort { void charge(String orderId, int cents); }\n private final PaymentPort payments;\n public Checkout(PaymentPort payments) { this.payments=java.util.Objects.requireNonNull(payments); }\n public void submit(String orderId, int cents) {\n  // BEGIN EXERCISE\n  if (orderId == null || orderId.isBlank() || cents <= 0) throw new IllegalArgumentException();\n  payments.charge(orderId, cents);\n  // END EXERCISE\n }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>test-collaborators</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.mockito</groupId><artifactId>mockito-core</artifactId><scope>test</scope></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "test-collaborators-q1",
+      "question": "외부 결제 협력자를 Mockito로 대체할 때 이 과제의 핵심 검증은?",
+      "options": [
+        "서비스의 모든 private 메서드를 mock한다.",
+        "호출 횟수만 맞으면 잘못된 금액 전달은 허용한다.",
+        "외부 포트의 예외는 항상 성공으로 바꾼다.",
+        "유효 입력에서 한 번 호출하고 잘못된 입력에서는 호출하지 않는다."
+      ],
+      "correctIndex": 3,
+      "explanation": "협력의 입력과 호출 횟수는 외부 효과의 계약입니다. 내부 구현 전체를 mock하면 실제 서비스의 조합 오류를 놓칠 수 있습니다."
+    },
+    {
+      "id": "test-collaborators-q2",
+      "question": "결제 포트가 실패했다고 자동으로 무제한 재시도하면 왜 위험한가?",
+      "options": [
+        "첫 요청이 실제 처리됐는지 모르면 중복 결제가 생길 수 있다.",
+        "Mockito가 숫자를 비교하지 못한다.",
+        "인터페이스가 있으면 예외를 던질 수 없다.",
+        "생성자 주입을 사용하면 재시도가 금지된다."
+      ],
+      "correctIndex": 0,
+      "explanation": "외부 효과의 확정 여부와 멱등 키·재시도 정책을 함께 정해야 하며, 단순 반복 호출은 안전을 보장하지 않습니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "외부 결제 협력의 호출 횟수와 실패 전파를 제어합니다.",
+    "tasks": [
+      "Checkout.submit(String orderId, int cents)를 완성하세요.",
+      "orderId는 비어 있지 않고 cents는 양수여야 합니다. 잘못된 입력은 외부 호출 전에 거절합니다.",
+      "PaymentPort.charge를 한 번 호출하고 실패를 삼키지 않습니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Mockito documentation",
+      "url": "https://javadoc.io/doc/org.mockito/mockito-core/latest/org/mockito/Mockito.html",
+      "edition": "Mockito 5; BOM resolved version",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "JUnit user guide",
+      "url": "https://docs.junit.org/5.11.4/user-guide/",
+      "edition": "JUnit 5",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Java"
+  ],
+  "exerciseId": "test-collaborators-project",
+  "professionalExercise": {
+    "id": "test-collaborators-project",
+    "profileId": "professional-mockito",
+    "mode": "project",
+    "instructions": [
+      "Checkout.submit(String orderId, int cents)를 완성하세요.",
+      "orderId는 비어 있지 않고 cents는 양수여야 합니다. 잘못된 입력은 외부 호출 전에 거절합니다.",
+      "PaymentPort.charge를 한 번 호출하고 실패를 삼키지 않습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/Checkout.java"
+    ],
+    "template": "package edu.lab;\npublic final class Checkout {\n public interface PaymentPort { void charge(String orderId, int cents); }\n private final PaymentPort payments;\n public Checkout(PaymentPort payments) { this.payments=java.util.Objects.requireNonNull(payments); }\n public void submit(String orderId, int cents) {\n  throw new UnsupportedOperationException(\"실습 구현 필요\");\n }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/Checkout.java",
+        "templatePath": "lessons/test-collaborators/starter/src/main/java/edu/lab/Checkout.java",
+        "referencePath": "lessons/test-collaborators/reference/src/main/java/edu/lab/Checkout.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/test-collaborators/starter/pom.xml",
+        "referencePath": "lessons/test-collaborators/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/test-collaborators/grader/src/test/java/edu/lab/ContractTest.java"
+      },
+      {
+        "path": "src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker",
+        "sourcePath": "lessons/test-collaborators/grader/src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker"
+      }
+    ],
+    "behaviorCriteria": [
+      "결제 한 번 호출",
+      "잘못된 입력에서 미호출",
+      "협력 오류 전파"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "test-contracts",
+    "core:polymorphism"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 2,
+    "starterSatisfied": false,
+    "sourceFingerprint": "9b36daa6c1fdc7557702c6825819f8b92f1384bb562f8b95e8b9f79368bab733",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

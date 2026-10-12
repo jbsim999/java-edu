@@ -288,8 +288,11 @@ async function run(browser, name, test, options = {}) {
 async function main() {
   await waitForServer();
   await mkdir(artifactRoot, { recursive: true });
-  const { lessons } = await import('../dist/data/curriculum.js');
-  const { exercises } = await import('../dist/data/exercises.js');
+  const { lessons: coreLessons } = await import('../dist/data/curriculum.js');
+  const { exercises: coreExercises } = await import('../dist/data/exercises.js');
+  const { professionalLessons, professionalExercises } = await import('../dist/data/professional.js');
+  const lessons = [...coreLessons, ...professionalLessons];
+  const exercises = [...coreExercises, ...professionalExercises];
   assert.ok(lessons.length >= 2, 'real lessons are present');
   const first = lessons.find(lesson => lesson.minVersion === 8);
   const other = lessons.find(lesson => lesson.id !== first.id && lesson.minVersion === 8);
@@ -337,7 +340,8 @@ async function main() {
         }
         const exercise = exercises.find(item => item.lessonId === lesson.id);
         assert.ok(exercise, `${lesson.id} has a coding task`);
-        assert.equal(await readEditorSource(page), exercise.template);
+        const initialFile = exercise.files?.find(file => file.editable) || exercise.files?.[0];
+        assert.equal(await readEditorSource(page), initialFile ? initialFile.source : exercise.template);
       }
       assert.equal(api.requests.length, 0);
     });
@@ -1204,7 +1208,7 @@ async function main() {
       assert.equal(await page.locator('#editor-theme-select').inputValue(), 'dark');
       await page.evaluate(() => { Storage.prototype.setItem = function () { throw new DOMException('QA blocked preferences', 'SecurityError'); }; });
       await chooseTheme(page, 'light');
-      assert.match(await page.locator('#storage-label').textContent(), /이번 방문/);
+      assert.match(await page.locator('#storage-label').textContent(), /이번 방문|현재 화면/);
       const source = `${firstExercise.template}\n// memory-only preferences`;
       await editorInput(page).fill(source);
       await stepTo(page, 'example');

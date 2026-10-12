@@ -1,0 +1,192 @@
+{
+  "id": "flyway-migrations",
+  "title": "Flyway로 스키마 변경을 기록",
+  "description": "테이블 초기화와 운영 스키마 변경 이력을 구분하고 요청 키의 유일성을 DB 계약으로 남깁니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "애플리케이션 배포와 스키마 변경의 순서를 어떻게 재현하는가?",
+    "두 버전 적용",
+    "재실행 시 0개 적용",
+    "중복 요청 키 거절"
+  ],
+  "theory": [
+    {
+      "heading": "버전 있는 변경 이력",
+      "text": "Flyway는 적용된 버전과 체크섬을 기록합니다. 이미 배포된 버전 파일을 수정하기보다 새 마이그레이션으로 다음 상태를 표현합니다. 재실행 시 이미 적용된 버전은 다시 적용되지 않습니다."
+    },
+    {
+      "heading": "제약 추가의 데이터 전제",
+      "text": "UNIQUE를 추가하기 전에 기존 데이터의 중복과 NULL 의미를 확인해야 합니다. 이 과제는 새 학습 DB에 nullable request_key와 UNIQUE를 추가합니다. 실제 서비스의 데이터 정리·대형 테이블 잠금·롤링 배포 전략은 추가 검증이 필요합니다."
+    },
+    {
+      "heading": "확장 후 전환",
+      "text": "앱과 DB를 동시에 원자적으로 교체할 수 없는 배포에서는 추가 가능한 스키마를 먼저 배포하고 코드 전환 뒤 제거하는 방식이 유용할 수 있습니다. 모든 DB의 DDL 트랜잭션 동작이 같다는 가정은 피합니다."
+    }
+  ],
+  "example": {
+    "title": "MigrationLab 기준 구현",
+    "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport org.flywaydb.core.Flyway;\npublic final class MigrationLab {\n    private MigrationLab() {}\n    public static Flyway configured(DataSource source) {\n        return Flyway.configure().dataSource(source).locations(\"classpath:db/migration\").load();\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 1개 JUnit 테스트 통과.\n검증 항목: 두 버전 적용 · 재실행 시 0개 적용 · 중복 요청 키 거절.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/MigrationLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport org.flywaydb.core.Flyway;\npublic final class MigrationLab {\n    private MigrationLab() {}\n    public static Flyway configured(DataSource source) {\n        return Flyway.configure().dataSource(source).locations(\"classpath:db/migration\").load();\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>flyway-migrations</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.flywaydb</groupId><artifactId>flyway-core</artifactId></dependency>\n<dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId></dependency></dependencies></project>\n"
+      },
+      {
+        "path": "src/main/resources/db/migration/V1__create_orders.sql",
+        "language": "sql",
+        "code": "CREATE TABLE orders (id VARCHAR(60) PRIMARY KEY, quantity INT NOT NULL CHECK (quantity > 0));\n"
+      },
+      {
+        "path": "src/main/resources/db/migration/V2__request_key.sql",
+        "language": "sql",
+        "code": "ALTER TABLE orders ADD COLUMN request_key VARCHAR(80);\nALTER TABLE orders ADD CONSTRAINT uq_order_request UNIQUE (request_key);\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "flyway-migrations-q1",
+      "question": "이미 배포되어 적용된 V1 파일의 의미를 바꾸어야 할 때 일반적인 선택은?",
+      "options": [
+        "새 버전 마이그레이션으로 다음 상태를 표현한다.",
+        "V1 내용을 바꾸고 이력은 무시한다.",
+        "모든 DB에서 clean을 실행한다.",
+        "파일 이름만 V1으로 유지하면 체크섬은 무관하다."
+      ],
+      "correctIndex": 0,
+      "explanation": "이미 적용된 변경 이력을 유지하고 다음 버전을 추가해야 다른 환경에서도 같은 순서를 재현할 수 있습니다."
+    },
+    {
+      "id": "flyway-migrations-q2",
+      "question": "UNIQUE 제약을 기존 운영 테이블에 추가하기 전에 필요한 확인은?",
+      "options": [
+        "기존 중복·NULL 정책·DDL 잠금과 배포 호환성",
+        "Java 클래스의 줄 수",
+        "JSON 필드 순서",
+        "서비스 포트 번호만"
+      ],
+      "correctIndex": 0,
+      "explanation": "제약 추가는 기존 데이터와 DB의 DDL 특성, 동시 배포 코드에 영향을 받습니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "테이블 초기화와 운영 스키마 변경 이력을 구분하고 요청 키의 유일성을 DB 계약으로 남깁니다.",
+    "tasks": [
+      "V1은 orders 기본 테이블, V2는 request_key 열과 UNIQUE 제약을 추가합니다.",
+      "서로 다른 주문에 같은 non-null request_key를 저장하면 DB가 거절해야 합니다.",
+      "같은 DB에 migrate를 다시 실행하면 이미 적용된 마이그레이션 수는 0입니다.",
+      "학습용 DB만 대상으로 하며 clean 호출을 구현하지 않습니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Flyway Java API",
+      "url": "https://documentation.red-gate.com/flyway/reference/usage/api-java",
+      "edition": "Flyway",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Flyway versioned migrations",
+      "url": "https://documentation.red-gate.com/flyway/flyway-concepts/migrations/versioned-migrations",
+      "edition": "Flyway",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Flyway",
+    "SQL"
+  ],
+  "exerciseId": "flyway-migrations-project",
+  "professionalExercise": {
+    "id": "flyway-migrations-project",
+    "profileId": "professional-flyway",
+    "mode": "project",
+    "instructions": [
+      "V1은 orders 기본 테이블, V2는 request_key 열과 UNIQUE 제약을 추가합니다.",
+      "서로 다른 주문에 같은 non-null request_key를 저장하면 DB가 거절해야 합니다.",
+      "같은 DB에 migrate를 다시 실행하면 이미 적용된 마이그레이션 수는 0입니다.",
+      "학습용 DB만 대상으로 하며 clean 호출을 구현하지 않습니다."
+    ],
+    "editableFiles": [
+      "src/main/resources/db/migration/V2__request_key.sql"
+    ],
+    "template": "package edu.lab;\nimport javax.sql.DataSource;\nimport org.flywaydb.core.Flyway;\npublic final class MigrationLab {\n    private MigrationLab() {}\n    public static Flyway configured(DataSource source) {\n        return Flyway.configure().dataSource(source).locations(\"classpath:db/migration\").load();\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/MigrationLab.java",
+        "templatePath": "lessons/flyway-migrations/starter/src/main/java/edu/lab/MigrationLab.java",
+        "referencePath": "lessons/flyway-migrations/reference/src/main/java/edu/lab/MigrationLab.java",
+        "editable": false
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/flyway-migrations/starter/pom.xml",
+        "referencePath": "lessons/flyway-migrations/reference/pom.xml",
+        "editable": false
+      },
+      {
+        "path": "src/main/resources/db/migration/V1__create_orders.sql",
+        "templatePath": "lessons/flyway-migrations/starter/src/main/resources/db/migration/V1__create_orders.sql",
+        "referencePath": "lessons/flyway-migrations/reference/src/main/resources/db/migration/V1__create_orders.sql",
+        "editable": false
+      },
+      {
+        "path": "src/main/resources/db/migration/V2__request_key.sql",
+        "templatePath": "lessons/flyway-migrations/starter/src/main/resources/db/migration/V2__request_key.sql",
+        "referencePath": "lessons/flyway-migrations/reference/src/main/resources/db/migration/V2__request_key.sql",
+        "editable": true
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/flyway-migrations/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "두 버전 적용",
+      "재실행 시 0개 적용",
+      "중복 요청 키 거절"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "sql-jdbc"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 1,
+    "starterSatisfied": false,
+    "sourceFingerprint": "f26b6d4349c223d9c0ee58c03a190193431592dd68baa2cdec3775fcc42ecd6f",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

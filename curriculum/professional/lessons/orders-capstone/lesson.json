@@ -1,0 +1,221 @@
+{
+  "id": "orders-capstone",
+  "title": "주문·예약·취소 통합 계약",
+  "description": "HTTP 입력·역할·객체 소유권·재고 트랜잭션·중복 요청·취소를 하나의 주문 흐름으로 연결합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "부분적으로 옳은 기능들을 합쳤을 때도 주문 불변식이 유지되는가?",
+    "입력·미인증 거절",
+    "동일 요청 멱등 처리",
+    "payload 충돌과 재고 부족 롤백",
+    "다른 사용자 취소 거절",
+    "반복 취소 재고 한 번 복원"
+  ],
+  "theory": [
+    {
+      "heading": "계약을 먼저 연결한다",
+      "text": "요청 어댑터는 입력과 인증 주체를 받고 서비스는 상태 전이와 DB 경계를 결정합니다. DB는 재고 음수 금지와 요청 ID 유일성을 보조합니다. 계층 수를 늘리는 것 자체가 목표가 아니라 어느 실패를 누가 처리하는지 설명하는 것이 목표입니다."
+    },
+    {
+      "heading": "반복 요청과 경쟁",
+      "text": "같은 요청 ID·사용자·SKU·수량의 순차 재시도는 기존 주문을 반환합니다. 같은 ID의 다른 내용은 충돌입니다. 동시 신규 요청의 유일 키 충돌은 409로 돌려주고 같은 요청으로 다시 조회하도록 합니다. 단일 DB의 조건부 UPDATE와 트랜잭션을 쓰지만 이 테스트만으로 모든 고부하 경쟁을 검증했다고 주장하지 않습니다."
+    },
+    {
+      "heading": "취소와 경계의 증거",
+      "text": "취소 상태를 조건부로 바꾼 트랜잭션만 재고를 복원합니다. 권한 검사 실패·재고 부족·입력 실패는 부분 변경을 남기지 않아야 합니다. 실제 결제 취소와 이벤트 발행은 포함하지 않으며 추가 시 외부 시스템과의 실패 경계를 다시 설계합니다."
+    },
+    {
+      "heading": "SOLID와 추상화의 비용",
+      "text": "컨트롤러·서비스·SQL의 책임을 구분하되 모든 클래스에 인터페이스를 추가하지 않습니다. 구현 대체나 외부 협력 테스트가 필요한 지점에 추상화를 도입하고 SQL의 원자적 조건을 무의미한 객체 계층으로 숨기지 않습니다. 정답 코드는 한 가지 설계안이며 대안은 동일 행동 기준으로 비교합니다."
+    }
+  ],
+  "example": {
+    "title": "CapstoneLab 기준 구현",
+    "code": "package edu.lab;\nimport java.util.*;\nimport jakarta.validation.Valid;\nimport jakarta.validation.constraints.*;\nimport org.springframework.boot.SpringApplication;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.dao.DuplicateKeyException;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.jdbc.core.*;\nimport org.springframework.security.config.Customizer;\nimport org.springframework.security.config.annotation.web.builders.HttpSecurity;\nimport org.springframework.security.core.Authentication;\nimport org.springframework.security.core.userdetails.*;\nimport org.springframework.security.provisioning.InMemoryUserDetailsManager;\nimport org.springframework.security.web.SecurityFilterChain;\nimport org.springframework.stereotype.Service;\nimport org.springframework.transaction.annotation.Transactional;\nimport org.springframework.web.bind.annotation.*;\n@SpringBootApplication\npublic class CapstoneLab {\n    public static void main(String[] args) { SpringApplication.run(CapstoneLab.class,args); }\n    public record Create(@NotBlank @Size(max=60) @Pattern(regexp=\"[A-Za-z0-9_-]{1,60}\") String requestId, @NotBlank @Pattern(regexp=\"BOOK\") String sku, @Min(1) int quantity) {}\n    public record OrderView(String id, String sku, int quantity, String status) {}\n    private record Stored(String id, String buyer, String sku, int quantity, String status) {\n        OrderView view() { return new OrderView(id,sku,quantity,status); }\n    }\n    public static class Failure extends RuntimeException {\n        final int status;\n        Failure(int status,String message) { super(message); this.status=status; }\n    }\n    @Service public static class Orders {\n        private final JdbcTemplate jdbc;\n        private static final RowMapper<Stored> ROW = (r,n) -> new Stored(r.getString(\"id\"),r.getString(\"buyer\"),r.getString(\"sku\"),r.getInt(\"quantity\"),r.getString(\"status\"));\n        public Orders(JdbcTemplate jdbc) { this.jdbc=jdbc; }\n        private List<Stored> find(String id) { return jdbc.query(\"select id,buyer,sku,quantity,status from orders where id=?\",ROW,id); }\n        private Stored require(String id) { var rows=find(id); if(rows.isEmpty()) throw new Failure(404,\"order not found\"); return rows.get(0); }\n        private void own(Stored order,String buyer) { if(!order.buyer().equals(buyer)) throw new Failure(403,\"not order owner\"); }\n        @Transactional public OrderView reserve(String buyer,Create request) {\n            // BEGIN EXERCISE\n            if (buyer==null || buyer.isBlank() || request.requestId()==null || !request.requestId().matches(\"[A-Za-z0-9_-]{1,60}\")\n                || !\"BOOK\".equals(request.sku()) || request.quantity()<=0) throw new Failure(400,\"invalid order\");\n            var existing=find(request.requestId());\n            if(!existing.isEmpty()) {\n                Stored order=existing.get(0); own(order,buyer);\n                if(!order.sku().equals(request.sku()) || order.quantity()!=request.quantity()) throw new Failure(409,\"request payload conflicts\");\n                return order.view();\n            }\n            int changed=jdbc.update(\"update inventory set stock=stock-? where sku=? and stock>=?\",request.quantity(),request.sku(),request.quantity());\n            if(changed!=1) throw new Failure(409,\"insufficient stock\");\n            jdbc.update(\"insert into orders(id,buyer,sku,quantity,status) values(?,?,?,?,?)\",request.requestId(),buyer,request.sku(),request.quantity(),\"RESERVED\");\n            return new OrderView(request.requestId(),request.sku(),request.quantity(),\"RESERVED\");\n            // END EXERCISE\n        }\n        @Transactional public OrderView cancel(String buyer,String id) {\n            // BEGIN EXERCISE\n            Stored order=require(id); own(order,buyer);\n            int changed=jdbc.update(\"update orders set status='CANCELLED' where id=? and status='RESERVED'\",id);\n            if(changed==1) jdbc.update(\"update inventory set stock=stock+? where sku=?\",order.quantity(),order.sku());\n            return require(id).view();\n            // END EXERCISE\n        }\n    }\n    @RestController @RequestMapping(\"/orders\")\n    public static class Controller {\n        private final Orders orders;\n        public Controller(Orders orders) { this.orders=orders; }\n        @PostMapping public OrderView create(@Valid @RequestBody Create request,Authentication auth) { return orders.reserve(auth.getName(),request); }\n        @PostMapping(\"/{id}/cancel\") public OrderView cancel(@PathVariable(\"id\") String id,Authentication auth) { return orders.cancel(auth.getName(),id); }\n        @ExceptionHandler(Failure.class) public ResponseEntity<Map<String,String>> failure(Failure failure) {\n            return ResponseEntity.status(failure.status).body(Map.of(\"error\",failure.getMessage()));\n        }\n        @ExceptionHandler(DuplicateKeyException.class) public ResponseEntity<Map<String,String>> duplicate() {\n            return ResponseEntity.status(409).body(Map.of(\"error\",\"concurrent request conflict; retry the same request\"));\n        }\n    }\n    @Bean SecurityFilterChain security(HttpSecurity http) throws Exception {\n        http.authorizeHttpRequests(a -> a.requestMatchers(\"/orders\",\"/orders/**\").hasRole(\"BUYER\").anyRequest().authenticated())\n            .httpBasic(Customizer.withDefaults()).csrf(Customizer.withDefaults());\n        return http.build();\n    }\n    @Bean UserDetailsService users() {\n        return new InMemoryUserDetailsManager(\n            User.withUsername(\"alice\").password(\"{noop}training\").roles(\"BUYER\").build(),\n            User.withUsername(\"bob\").password(\"{noop}training\").roles(\"BUYER\").build());\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 6개 JUnit 테스트 통과.\n검증 항목: 입력·미인증 거절 · 동일 요청 멱등 처리 · payload 충돌과 재고 부족 롤백 · 다른 사용자 취소 거절 · 반복 취소 재고 한 번 복원.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/CapstoneLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport java.util.*;\nimport jakarta.validation.Valid;\nimport jakarta.validation.constraints.*;\nimport org.springframework.boot.SpringApplication;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.dao.DuplicateKeyException;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.jdbc.core.*;\nimport org.springframework.security.config.Customizer;\nimport org.springframework.security.config.annotation.web.builders.HttpSecurity;\nimport org.springframework.security.core.Authentication;\nimport org.springframework.security.core.userdetails.*;\nimport org.springframework.security.provisioning.InMemoryUserDetailsManager;\nimport org.springframework.security.web.SecurityFilterChain;\nimport org.springframework.stereotype.Service;\nimport org.springframework.transaction.annotation.Transactional;\nimport org.springframework.web.bind.annotation.*;\n@SpringBootApplication\npublic class CapstoneLab {\n    public static void main(String[] args) { SpringApplication.run(CapstoneLab.class,args); }\n    public record Create(@NotBlank @Size(max=60) @Pattern(regexp=\"[A-Za-z0-9_-]{1,60}\") String requestId, @NotBlank @Pattern(regexp=\"BOOK\") String sku, @Min(1) int quantity) {}\n    public record OrderView(String id, String sku, int quantity, String status) {}\n    private record Stored(String id, String buyer, String sku, int quantity, String status) {\n        OrderView view() { return new OrderView(id,sku,quantity,status); }\n    }\n    public static class Failure extends RuntimeException {\n        final int status;\n        Failure(int status,String message) { super(message); this.status=status; }\n    }\n    @Service public static class Orders {\n        private final JdbcTemplate jdbc;\n        private static final RowMapper<Stored> ROW = (r,n) -> new Stored(r.getString(\"id\"),r.getString(\"buyer\"),r.getString(\"sku\"),r.getInt(\"quantity\"),r.getString(\"status\"));\n        public Orders(JdbcTemplate jdbc) { this.jdbc=jdbc; }\n        private List<Stored> find(String id) { return jdbc.query(\"select id,buyer,sku,quantity,status from orders where id=?\",ROW,id); }\n        private Stored require(String id) { var rows=find(id); if(rows.isEmpty()) throw new Failure(404,\"order not found\"); return rows.get(0); }\n        private void own(Stored order,String buyer) { if(!order.buyer().equals(buyer)) throw new Failure(403,\"not order owner\"); }\n        @Transactional public OrderView reserve(String buyer,Create request) {\n            // BEGIN EXERCISE\n            if (buyer==null || buyer.isBlank() || request.requestId()==null || !request.requestId().matches(\"[A-Za-z0-9_-]{1,60}\")\n                || !\"BOOK\".equals(request.sku()) || request.quantity()<=0) throw new Failure(400,\"invalid order\");\n            var existing=find(request.requestId());\n            if(!existing.isEmpty()) {\n                Stored order=existing.get(0); own(order,buyer);\n                if(!order.sku().equals(request.sku()) || order.quantity()!=request.quantity()) throw new Failure(409,\"request payload conflicts\");\n                return order.view();\n            }\n            int changed=jdbc.update(\"update inventory set stock=stock-? where sku=? and stock>=?\",request.quantity(),request.sku(),request.quantity());\n            if(changed!=1) throw new Failure(409,\"insufficient stock\");\n            jdbc.update(\"insert into orders(id,buyer,sku,quantity,status) values(?,?,?,?,?)\",request.requestId(),buyer,request.sku(),request.quantity(),\"RESERVED\");\n            return new OrderView(request.requestId(),request.sku(),request.quantity(),\"RESERVED\");\n            // END EXERCISE\n        }\n        @Transactional public OrderView cancel(String buyer,String id) {\n            // BEGIN EXERCISE\n            Stored order=require(id); own(order,buyer);\n            int changed=jdbc.update(\"update orders set status='CANCELLED' where id=? and status='RESERVED'\",id);\n            if(changed==1) jdbc.update(\"update inventory set stock=stock+? where sku=?\",order.quantity(),order.sku());\n            return require(id).view();\n            // END EXERCISE\n        }\n    }\n    @RestController @RequestMapping(\"/orders\")\n    public static class Controller {\n        private final Orders orders;\n        public Controller(Orders orders) { this.orders=orders; }\n        @PostMapping public OrderView create(@Valid @RequestBody Create request,Authentication auth) { return orders.reserve(auth.getName(),request); }\n        @PostMapping(\"/{id}/cancel\") public OrderView cancel(@PathVariable(\"id\") String id,Authentication auth) { return orders.cancel(auth.getName(),id); }\n        @ExceptionHandler(Failure.class) public ResponseEntity<Map<String,String>> failure(Failure failure) {\n            return ResponseEntity.status(failure.status).body(Map.of(\"error\",failure.getMessage()));\n        }\n        @ExceptionHandler(DuplicateKeyException.class) public ResponseEntity<Map<String,String>> duplicate() {\n            return ResponseEntity.status(409).body(Map.of(\"error\",\"concurrent request conflict; retry the same request\"));\n        }\n    }\n    @Bean SecurityFilterChain security(HttpSecurity http) throws Exception {\n        http.authorizeHttpRequests(a -> a.requestMatchers(\"/orders\",\"/orders/**\").hasRole(\"BUYER\").anyRequest().authenticated())\n            .httpBasic(Customizer.withDefaults()).csrf(Customizer.withDefaults());\n        return http.build();\n    }\n    @Bean UserDetailsService users() {\n        return new InMemoryUserDetailsManager(\n            User.withUsername(\"alice\").password(\"{noop}training\").roles(\"BUYER\").build(),\n            User.withUsername(\"bob\").password(\"{noop}training\").roles(\"BUYER\").build());\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>orders-capstone</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jdbc</artifactId></dependency>\n<dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.flywaydb</groupId><artifactId>flyway-core</artifactId></dependency></dependencies></project>\n"
+      },
+      {
+        "path": "src/main/resources/application.properties",
+        "language": "text",
+        "code": "spring.datasource.url=jdbc:h2:mem:orders-capstone;DB_CLOSE_DELAY=-1\nspring.datasource.username=sa\nspring.datasource.password=\nspring.sql.init.mode=never\nspring.main.banner-mode=off\nserver.address=127.0.0.1\n"
+      },
+      {
+        "path": "src/main/resources/db/migration/V1__orders.sql",
+        "language": "sql",
+        "code": "CREATE TABLE inventory(sku VARCHAR(30) PRIMARY KEY, stock INT NOT NULL CHECK(stock >= 0));\nCREATE TABLE orders(id VARCHAR(60) PRIMARY KEY, buyer VARCHAR(60) NOT NULL, sku VARCHAR(30) NOT NULL, quantity INT NOT NULL CHECK(quantity > 0), status VARCHAR(20) NOT NULL CHECK(status IN ('RESERVED','CANCELLED')));\nINSERT INTO inventory(sku,stock) VALUES('BOOK',5);\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "orders-capstone-q1",
+      "question": "같은 requestId로 수량이 다른 요청이 도착했을 때 이 과제의 정책은?",
+      "options": [
+        "기존 요청으로 간주해 성공이라고 답한다.",
+        "기존 주문 수량을 조용히 덮어쓴다.",
+        "원래 요청과 의미가 다르므로 409로 거절한다.",
+        "재고가 있으면 같은 ID의 주문을 하나 더 만든다."
+      ],
+      "correctIndex": 2,
+      "explanation": "멱등성은 같은 의미의 요청을 반복할 때의 계약입니다. 같은 키의 다른 내용은 업무 충돌로 명시해야 합니다."
+    },
+    {
+      "id": "orders-capstone-q2",
+      "question": "두 취소 요청이 경쟁할 때 재고를 복원할 작업을 정하는 기준은?",
+      "options": [
+        "처음 주문을 조회한 요청",
+        "HTTP 연결이 먼저 열린 요청",
+        "RESERVED에서 CANCELLED로 조건부 UPDATE한 행 수가 1인 트랜잭션",
+        "더 높은 역할 이름을 가진 사용자"
+      ],
+      "correctIndex": 2,
+      "explanation": "상태 전이의 실제 성공을 DB 영향 행 수로 판단하고 재고 복원을 같은 트랜잭션에 둡니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "HTTP 입력·역할·객체 소유권·재고 트랜잭션·중복 요청·취소를 하나의 주문 흐름으로 연결합니다.",
+    "tasks": [
+      "POST /orders는 requestId·sku=BOOK·양수 quantity를 받고 200과 주문 상태를 반환합니다. requestId는 영문 대소문자·숫자·_·-만 사용한 1~60자이며 취소 URL의 단일 경로 요소로 사용합니다.",
+      "동일 사용자·동일 payload의 같은 requestId 재시도는 재고를 다시 차감하지 않습니다. 다른 payload는 409입니다.",
+      "재고 부족은 409이며 주문 기록과 재고 모두 바뀌지 않습니다.",
+      "POST /orders/{id}/cancel은 주문 소유자만 수행할 수 있고 반복 취소는 재고를 한 번만 복원합니다.",
+      "인증·BUYER 역할·CSRF가 필요합니다. Flyway는 실행별 학습 H2 스키마를 준비합니다.",
+      "동시 생성에서 같은 requestId가 충돌하면 409 후 동일 요청 재시도 정책을 사용합니다. 결제·메일·외부 이벤트는 이 프로젝트에 연결하지 않습니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Spring transaction semantics",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/annotations.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Spring MVC validation",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/web/webmvc/mvc-controller/ann-validation.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Spring Security authorization",
+      "url": "https://docs.spring.io/spring-security/reference/6.5/servlet/authorization/authorize-http-requests.html",
+      "edition": "Spring Security 6.5",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Flyway Java API",
+      "url": "https://documentation.red-gate.com/flyway/reference/usage/api-java",
+      "edition": "Flyway",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Spring Boot",
+    "Transaction",
+    "Security",
+    "SQL"
+  ],
+  "exerciseId": "orders-capstone-project",
+  "professionalExercise": {
+    "id": "orders-capstone-project",
+    "profileId": "professional-capstone",
+    "mode": "project",
+    "instructions": [
+      "POST /orders는 requestId·sku=BOOK·양수 quantity를 받고 200과 주문 상태를 반환합니다. requestId는 영문 대소문자·숫자·_·-만 사용한 1~60자이며 취소 URL의 단일 경로 요소로 사용합니다.",
+      "동일 사용자·동일 payload의 같은 requestId 재시도는 재고를 다시 차감하지 않습니다. 다른 payload는 409입니다.",
+      "재고 부족은 409이며 주문 기록과 재고 모두 바뀌지 않습니다.",
+      "POST /orders/{id}/cancel은 주문 소유자만 수행할 수 있고 반복 취소는 재고를 한 번만 복원합니다.",
+      "인증·BUYER 역할·CSRF가 필요합니다. Flyway는 실행별 학습 H2 스키마를 준비합니다.",
+      "동시 생성에서 같은 requestId가 충돌하면 409 후 동일 요청 재시도 정책을 사용합니다. 결제·메일·외부 이벤트는 이 프로젝트에 연결하지 않습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/CapstoneLab.java"
+    ],
+    "template": "package edu.lab;\nimport java.util.*;\nimport jakarta.validation.Valid;\nimport jakarta.validation.constraints.*;\nimport org.springframework.boot.SpringApplication;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.dao.DuplicateKeyException;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.jdbc.core.*;\nimport org.springframework.security.config.Customizer;\nimport org.springframework.security.config.annotation.web.builders.HttpSecurity;\nimport org.springframework.security.core.Authentication;\nimport org.springframework.security.core.userdetails.*;\nimport org.springframework.security.provisioning.InMemoryUserDetailsManager;\nimport org.springframework.security.web.SecurityFilterChain;\nimport org.springframework.stereotype.Service;\nimport org.springframework.transaction.annotation.Transactional;\nimport org.springframework.web.bind.annotation.*;\n@SpringBootApplication\npublic class CapstoneLab {\n    public static void main(String[] args) { SpringApplication.run(CapstoneLab.class,args); }\n    public record Create(@NotBlank @Size(max=60) @Pattern(regexp=\"[A-Za-z0-9_-]{1,60}\") String requestId, @NotBlank @Pattern(regexp=\"BOOK\") String sku, @Min(1) int quantity) {}\n    public record OrderView(String id, String sku, int quantity, String status) {}\n    private record Stored(String id, String buyer, String sku, int quantity, String status) {\n        OrderView view() { return new OrderView(id,sku,quantity,status); }\n    }\n    public static class Failure extends RuntimeException {\n        final int status;\n        Failure(int status,String message) { super(message); this.status=status; }\n    }\n    @Service public static class Orders {\n        private final JdbcTemplate jdbc;\n        private static final RowMapper<Stored> ROW = (r,n) -> new Stored(r.getString(\"id\"),r.getString(\"buyer\"),r.getString(\"sku\"),r.getInt(\"quantity\"),r.getString(\"status\"));\n        public Orders(JdbcTemplate jdbc) { this.jdbc=jdbc; }\n        private List<Stored> find(String id) { return jdbc.query(\"select id,buyer,sku,quantity,status from orders where id=?\",ROW,id); }\n        private Stored require(String id) { var rows=find(id); if(rows.isEmpty()) throw new Failure(404,\"order not found\"); return rows.get(0); }\n        private void own(Stored order,String buyer) { if(!order.buyer().equals(buyer)) throw new Failure(403,\"not order owner\"); }\n        @Transactional public OrderView reserve(String buyer,Create request) {\n            throw new UnsupportedOperationException(\"실습 구현 필요\");\n        }\n        @Transactional public OrderView cancel(String buyer,String id) {\n            throw new UnsupportedOperationException(\"실습 구현 필요\");\n        }\n    }\n    @RestController @RequestMapping(\"/orders\")\n    public static class Controller {\n        private final Orders orders;\n        public Controller(Orders orders) { this.orders=orders; }\n        @PostMapping public OrderView create(@Valid @RequestBody Create request,Authentication auth) { return orders.reserve(auth.getName(),request); }\n        @PostMapping(\"/{id}/cancel\") public OrderView cancel(@PathVariable(\"id\") String id,Authentication auth) { return orders.cancel(auth.getName(),id); }\n        @ExceptionHandler(Failure.class) public ResponseEntity<Map<String,String>> failure(Failure failure) {\n            return ResponseEntity.status(failure.status).body(Map.of(\"error\",failure.getMessage()));\n        }\n        @ExceptionHandler(DuplicateKeyException.class) public ResponseEntity<Map<String,String>> duplicate() {\n            return ResponseEntity.status(409).body(Map.of(\"error\",\"concurrent request conflict; retry the same request\"));\n        }\n    }\n    @Bean SecurityFilterChain security(HttpSecurity http) throws Exception {\n        http.authorizeHttpRequests(a -> a.requestMatchers(\"/orders\",\"/orders/**\").hasRole(\"BUYER\").anyRequest().authenticated())\n            .httpBasic(Customizer.withDefaults()).csrf(Customizer.withDefaults());\n        return http.build();\n    }\n    @Bean UserDetailsService users() {\n        return new InMemoryUserDetailsManager(\n            User.withUsername(\"alice\").password(\"{noop}training\").roles(\"BUYER\").build(),\n            User.withUsername(\"bob\").password(\"{noop}training\").roles(\"BUYER\").build());\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/CapstoneLab.java",
+        "templatePath": "lessons/orders-capstone/starter/src/main/java/edu/lab/CapstoneLab.java",
+        "referencePath": "lessons/orders-capstone/reference/src/main/java/edu/lab/CapstoneLab.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/orders-capstone/starter/pom.xml",
+        "referencePath": "lessons/orders-capstone/reference/pom.xml",
+        "editable": false
+      },
+      {
+        "path": "src/main/resources/application.properties",
+        "templatePath": "lessons/orders-capstone/starter/src/main/resources/application.properties",
+        "referencePath": "lessons/orders-capstone/reference/src/main/resources/application.properties",
+        "editable": false
+      },
+      {
+        "path": "src/main/resources/db/migration/V1__orders.sql",
+        "templatePath": "lessons/orders-capstone/starter/src/main/resources/db/migration/V1__orders.sql",
+        "referencePath": "lessons/orders-capstone/reference/src/main/resources/db/migration/V1__orders.sql",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/orders-capstone/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "입력·미인증 거절",
+      "동일 요청 멱등 처리",
+      "payload 충돌과 재고 부족 롤백",
+      "다른 사용자 취소 거절",
+      "반복 취소 재고 한 번 복원"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "json-validation",
+    "tx-proxy",
+    "security-csrf",
+    "flyway-migrations"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 6,
+    "starterSatisfied": false,
+    "sourceFingerprint": "da15b7d861d2b0be337ec2cb9e5a67f8f72e089b444043a84e821298bf159431",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

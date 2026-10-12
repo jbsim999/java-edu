@@ -1,0 +1,180 @@
+{
+  "id": "sql-jdbc",
+  "title": "SQL·JDBC로 재고 변경과 롤백",
+  "description": "재고 감소와 예약 기록을 같은 DB 트랜잭션으로 묶고 SQL 실패 후 상태를 확인합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "두 개의 SQL 중 하나가 실패하면 어떤 상태가 남아야 하는가?",
+    "성공 시 두 변경 커밋",
+    "재고 부족 상태 보존",
+    "중복 키 실패 재고 롤백",
+    "잘못된 입력 거절"
+  ],
+  "theory": [
+    {
+      "heading": "불변식은 DB 변경 조건에 남긴다",
+      "text": "재고를 읽고 자바에서 비교한 뒤 갱신하면 두 요청 사이에 값이 바뀔 수 있습니다. stock >= quantity 조건을 UPDATE에 포함하고 영향 행 수로 성공을 판단합니다. 이 예제는 단일 DB 안의 원자성을 다루며 분산 예약 시스템을 보장하지 않습니다."
+    },
+    {
+      "heading": "자원 수명과 실패 소유권",
+      "text": "Connection·PreparedStatement는 try-with-resources로 닫습니다. 자동 커밋을 끈 연결에서 감소와 INSERT를 수행하고 성공 시 커밋합니다. SQL 예외 시 롤백을 시도하되 롤백 실패는 원래 예외의 suppressed로 보존합니다."
+    },
+    {
+      "heading": "바인딩과 값의 의미",
+      "text": "PreparedStatement의 ?에는 값을 바인딩합니다. 테이블 이름이나 정렬 방향 같은 SQL 문법을 값 파라미터로 바꿀 수 없습니다. 허용 목록과 별도 쿼리 선택이 필요한 경계를 구분합니다."
+    }
+  ],
+  "example": {
+    "title": "JdbcReservations 기준 구현",
+    "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport java.sql.*;\nimport java.util.Objects;\npublic final class JdbcReservations {\n    private final DataSource dataSource;\n    public JdbcReservations(DataSource dataSource) { this.dataSource = Objects.requireNonNull(dataSource); }\n    public boolean reserve(String orderId, int quantity) throws SQLException {\n        // BEGIN EXERCISE\n        if (orderId == null || orderId.isBlank() || quantity <= 0) throw new IllegalArgumentException(\"invalid reservation\");\n        try (Connection connection = dataSource.getConnection()) {\n            connection.setAutoCommit(false);\n            try {\n                int changed;\n                try (PreparedStatement update = connection.prepareStatement(\"update inventory set stock = stock - ? where sku = 'BOOK' and stock >= ?\")) {\n                    update.setInt(1, quantity); update.setInt(2, quantity); changed = update.executeUpdate();\n                }\n                if (changed == 0) { connection.rollback(); return false; }\n                try (PreparedStatement insert = connection.prepareStatement(\"insert into orders(id, quantity) values (?, ?)\")) {\n                    insert.setString(1, orderId); insert.setInt(2, quantity); insert.executeUpdate();\n                }\n                connection.commit(); return true;\n            } catch (SQLException | RuntimeException failure) {\n                try { connection.rollback(); } catch (SQLException rollback) { failure.addSuppressed(rollback); }\n                throw failure;\n            }\n        }\n        // END EXERCISE\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 4개 JUnit 테스트 통과.\n검증 항목: 성공 시 두 변경 커밋 · 재고 부족 상태 보존 · 중복 키 실패 재고 롤백 · 잘못된 입력 거절.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/JdbcReservations.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport java.sql.*;\nimport java.util.Objects;\npublic final class JdbcReservations {\n    private final DataSource dataSource;\n    public JdbcReservations(DataSource dataSource) { this.dataSource = Objects.requireNonNull(dataSource); }\n    public boolean reserve(String orderId, int quantity) throws SQLException {\n        // BEGIN EXERCISE\n        if (orderId == null || orderId.isBlank() || quantity <= 0) throw new IllegalArgumentException(\"invalid reservation\");\n        try (Connection connection = dataSource.getConnection()) {\n            connection.setAutoCommit(false);\n            try {\n                int changed;\n                try (PreparedStatement update = connection.prepareStatement(\"update inventory set stock = stock - ? where sku = 'BOOK' and stock >= ?\")) {\n                    update.setInt(1, quantity); update.setInt(2, quantity); changed = update.executeUpdate();\n                }\n                if (changed == 0) { connection.rollback(); return false; }\n                try (PreparedStatement insert = connection.prepareStatement(\"insert into orders(id, quantity) values (?, ?)\")) {\n                    insert.setString(1, orderId); insert.setInt(2, quantity); insert.executeUpdate();\n                }\n                connection.commit(); return true;\n            } catch (SQLException | RuntimeException failure) {\n                try { connection.rollback(); } catch (SQLException rollback) { failure.addSuppressed(rollback); }\n                throw failure;\n            }\n        }\n        // END EXERCISE\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>sql-jdbc</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework</groupId><artifactId>spring-jdbc</artifactId></dependency>\n<dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "sql-jdbc-q1",
+      "question": "재고 UPDATE 뒤 예약 INSERT가 실패했다. 과제의 올바른 동작은?",
+      "options": [
+        "재고는 줄인 채 false만 반환한다.",
+        "같은 연결의 트랜잭션을 롤백해 재고도 복원한다.",
+        "INSERT만 재시도하면 모든 중복이 해결된다.",
+        "예외를 무시하고 커밋한다."
+      ],
+      "correctIndex": 1,
+      "explanation": "두 변경은 하나의 업무 상태 전이입니다. 같은 연결의 트랜잭션을 롤백해야 예약 기록 없는 재고 감소를 남기지 않습니다."
+    },
+    {
+      "id": "sql-jdbc-q2",
+      "question": "PreparedStatement의 ?로 직접 바인딩할 수 있는 것은?",
+      "options": [
+        "테이블 이름",
+        "ORDER BY의 ASC 키워드",
+        "검색할 orderId 값",
+        "SQL 전체 문장"
+      ],
+      "correctIndex": 2,
+      "explanation": "파라미터는 값의 위치를 표현합니다. SQL 식별자와 문법은 허용된 쿼리 구성으로 따로 제어해야 합니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "재고 감소와 예약 기록을 같은 DB 트랜잭션으로 묶고 SQL 실패 후 상태를 확인합니다.",
+    "tasks": [
+      "reserve(orderId, quantity)의 quantity는 양수이고 orderId는 비어 있지 않습니다.",
+      "재고 부족이면 false, 성공이면 true이며 한 예약 행과 감소된 재고가 함께 커밋됩니다.",
+      "중복 orderId로 INSERT가 실패하면 재고 감소도 롤백되어야 합니다.",
+      "orders와 inventory는 테스트가 생성한 전용 H2 DB만 사용합니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "JDBC Connection",
+      "url": "https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html",
+      "edition": "Java SE 17",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "JDBC PreparedStatement",
+      "url": "https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/PreparedStatement.html",
+      "edition": "Java SE 17",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Spring JDBC core",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/data-access/jdbc/core.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "SQL",
+    "JDBC",
+    "Transaction"
+  ],
+  "exerciseId": "sql-jdbc-project",
+  "professionalExercise": {
+    "id": "sql-jdbc-project",
+    "profileId": "professional-jdbc",
+    "mode": "project",
+    "instructions": [
+      "reserve(orderId, quantity)의 quantity는 양수이고 orderId는 비어 있지 않습니다.",
+      "재고 부족이면 false, 성공이면 true이며 한 예약 행과 감소된 재고가 함께 커밋됩니다.",
+      "중복 orderId로 INSERT가 실패하면 재고 감소도 롤백되어야 합니다.",
+      "orders와 inventory는 테스트가 생성한 전용 H2 DB만 사용합니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/JdbcReservations.java"
+    ],
+    "template": "package edu.lab;\nimport javax.sql.DataSource;\nimport java.sql.*;\nimport java.util.Objects;\npublic final class JdbcReservations {\n    private final DataSource dataSource;\n    public JdbcReservations(DataSource dataSource) { this.dataSource = Objects.requireNonNull(dataSource); }\n    public boolean reserve(String orderId, int quantity) throws SQLException {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/JdbcReservations.java",
+        "templatePath": "lessons/sql-jdbc/starter/src/main/java/edu/lab/JdbcReservations.java",
+        "referencePath": "lessons/sql-jdbc/reference/src/main/java/edu/lab/JdbcReservations.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/sql-jdbc/starter/pom.xml",
+        "referencePath": "lessons/sql-jdbc/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/sql-jdbc/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "성공 시 두 변경 커밋",
+      "재고 부족 상태 보존",
+      "중복 키 실패 재고 롤백",
+      "잘못된 입력 거절"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "test-contracts",
+    "core:exceptions"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 4,
+    "starterSatisfied": false,
+    "sourceFingerprint": "408fed487770c066b90e1e7c078dc734c57e66818a2bfeb14f65d66372dc02ba",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

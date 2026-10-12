@@ -1,0 +1,166 @@
+{
+  "id": "build-maven",
+  "title": "Maven으로 재현 가능한 주문 계산 빌드",
+  "description": "컴파일 대상, 의존성, 테스트 실행이 빌드에 어떤 계약으로 남는지 확인합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "동일 소스를 다른 환경에서 검증하려면 무엇을 고정해야 하는가?",
+    "정상 곱셈",
+    "0원 상품",
+    "잘못된 수량 거절",
+    "정수 오버플로 거절"
+  ],
+  "theory": [
+    {
+      "heading": "빌드는 실행 조건의 문서",
+      "text": "JDK 실행 버전과 javac release 대상은 다릅니다. 이 과정은 Java 17 대상 소스와 고정된 Maven 의존성 관리 정보를 제공하며, 실제 실행 JDK는 설치형에서 따로 표시합니다."
+    },
+    {
+      "heading": "금액 규칙과 빌드 재현성",
+      "text": "의존성 이름만 적는 것으로 재현성이 완성되지 않습니다. 플러그인·BOM·문자 인코딩·테스트 검색 규칙을 고정하고 네트워크 의존성 준비와 실제 테스트 실행을 구분합니다. 금액 계산에는 음수·0·오버플로 계약이 필요합니다."
+    }
+  ],
+  "example": {
+    "title": "OrderAmounts 기준 구현",
+    "code": "package edu.lab;\npublic final class OrderAmounts {\n    private OrderAmounts() {}\n    public static int lineTotal(int unitPrice, int quantity) {\n        // BEGIN EXERCISE\n        if (unitPrice < 0 || quantity <= 0) throw new IllegalArgumentException(\"invalid amount\");\n        return Math.multiplyExact(unitPrice, quantity);\n        // END EXERCISE\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 정상 곱셈 · 0원 상품 · 잘못된 수량 거절 · 정수 오버플로 거절.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrderAmounts.java",
+        "language": "java",
+        "code": "package edu.lab;\npublic final class OrderAmounts {\n    private OrderAmounts() {}\n    public static int lineTotal(int unitPrice, int quantity) {\n        // BEGIN EXERCISE\n        if (unitPrice < 0 || quantity <= 0) throw new IllegalArgumentException(\"invalid amount\");\n        return Math.multiplyExact(unitPrice, quantity);\n        // END EXERCISE\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>build-maven</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "build-maven-q1",
+      "question": "BOM의 dependencyManagement에서 버전을 관리하는 라이브러리를 실제로 쓰려면?",
+      "options": [
+        "BOM을 import하면 관리되는 모든 라이브러리가 자동 추가된다.",
+        "프로젝트 dependencies에도 해당 의존성을 선언한다.",
+        "라이브러리 JAR를 소스 폴더에 복사하면 Maven이 자동 인식한다.",
+        "컴파일 플러그인의 release 값에 라이브러리 이름을 넣는다."
+      ],
+      "correctIndex": 1,
+      "explanation": "BOM의 dependencyManagement는 의존성을 추가하는 것이 아니라 선언될 의존성의 버전과 기본 설정을 관리합니다."
+    },
+    {
+      "id": "build-maven-q2",
+      "question": "JDK 21에서 javac --release 17로 컴파일하는 의미는?",
+      "options": [
+        "테스트 JVM이 자동으로 17이 된다.",
+        "Java 17 대상 언어·클래스 파일·공개 API 범위로 컴파일한다.",
+        "Java 21 API를 모두 쓸 수 있고 클래스 파일만 17이 된다.",
+        "네이티브 라이브러리의 모든 호환성이 검증된다."
+      ],
+      "correctIndex": 1,
+      "explanation": "컴파일 대상과 실제 테스트 JVM은 다릅니다. release는 대상 언어·API·클래스 파일을 제한하지만 실제 Java 17 실행 검사를 대신하지 않습니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "컴파일 대상, 의존성, 테스트 실행이 빌드에 어떤 계약으로 남는지 확인합니다.",
+    "tasks": [
+      "OrderAmounts.lineTotal(int unitPrice, int quantity)를 구현하세요.",
+      "unitPrice는 0 이상, quantity는 1 이상입니다. 위반하면 IllegalArgumentException을 던집니다.",
+      "int 범위 초과는 Math.multiplyExact를 통해 ArithmeticException으로 알립니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Maven dependency mechanism",
+      "url": "https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html",
+      "edition": "Maven 3",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Java 17 Math.multiplyExact",
+      "url": "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Math.html",
+      "edition": "Java SE 17",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Java"
+  ],
+  "exerciseId": "build-maven-project",
+  "professionalExercise": {
+    "id": "build-maven-project",
+    "profileId": "professional-junit",
+    "mode": "project",
+    "instructions": [
+      "OrderAmounts.lineTotal(int unitPrice, int quantity)를 구현하세요.",
+      "unitPrice는 0 이상, quantity는 1 이상입니다. 위반하면 IllegalArgumentException을 던집니다.",
+      "int 범위 초과는 Math.multiplyExact를 통해 ArithmeticException으로 알립니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/OrderAmounts.java"
+    ],
+    "template": "package edu.lab;\npublic final class OrderAmounts {\n    private OrderAmounts() {}\n    public static int lineTotal(int unitPrice, int quantity) {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrderAmounts.java",
+        "templatePath": "lessons/build-maven/starter/src/main/java/edu/lab/OrderAmounts.java",
+        "referencePath": "lessons/build-maven/reference/src/main/java/edu/lab/OrderAmounts.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/build-maven/starter/pom.xml",
+        "referencePath": "lessons/build-maven/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/build-maven/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "정상 곱셈",
+      "0원 상품",
+      "잘못된 수량 거절",
+      "정수 오버플로 거절"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "core:oop",
+    "core:testing-design"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 2,
+    "starterSatisfied": false,
+    "sourceFingerprint": "a9d4d663d97d617409faa0998490cce985e0199084dc3fa55e42351f452d2405",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

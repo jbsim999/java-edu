@@ -1,0 +1,161 @@
+{
+  "id": "spring-di",
+  "title": "Spring IoC·DI와 객체 수명",
+  "description": "Spring의 빈 조립과 서비스의 업무 책임을 분리합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "컨테이너가 대신하는 일과 도메인이 책임질 일은 무엇인가?",
+    "컨테이너 조립",
+    "정책 계약",
+    "기본 singleton 확인"
+  ],
+  "theory": [
+    {
+      "heading": "IoC와 생성자 주입",
+      "text": "컨테이너가 객체 생성·조립을 관리해도 업무 불변식은 서비스와 도메인이 책임집니다. 생성자 주입은 필수 협력을 드러내고 대역을 넣어 테스트하기 쉽게 합니다."
+    },
+    {
+      "heading": "스코프와 가변 상태",
+      "text": "기본 singleton 빈은 컨테이너 내에서 공유됩니다. singleton이라는 사실이 필드 변경의 스레드 안전성을 보장하지 않습니다. 사용자별 요청 상태를 무심코 서비스 필드에 저장하지 않습니다."
+    }
+  ],
+  "example": {
+    "title": "DiLab 기준 구현",
+    "code": "package edu.lab;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.context.annotation.Configuration;\npublic final class DiLab {\n public interface PricePolicy { int fee(int subtotal); }\n public static final class OrderService {\n  private final PricePolicy policy;\n  public OrderService(PricePolicy policy) { this.policy=java.util.Objects.requireNonNull(policy); }\n  public int total(int subtotal) { if(subtotal<0) throw new IllegalArgumentException(); return Math.addExact(subtotal,policy.fee(subtotal)); }\n }\n @Configuration\n public static class Config {\n  @Bean public PricePolicy policy() { return subtotal -> subtotal>=30000 ? 0 : 3000; }\n  @Bean public OrderService orders(PricePolicy policy) {\n   // BEGIN EXERCISE\n   return new OrderService(policy);\n   // END EXERCISE\n  }\n }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 컨테이너 조립 · 정책 계약 · 기본 singleton 확인.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/DiLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.context.annotation.Configuration;\npublic final class DiLab {\n public interface PricePolicy { int fee(int subtotal); }\n public static final class OrderService {\n  private final PricePolicy policy;\n  public OrderService(PricePolicy policy) { this.policy=java.util.Objects.requireNonNull(policy); }\n  public int total(int subtotal) { if(subtotal<0) throw new IllegalArgumentException(); return Math.addExact(subtotal,policy.fee(subtotal)); }\n }\n @Configuration\n public static class Config {\n  @Bean public PricePolicy policy() { return subtotal -> subtotal>=30000 ? 0 : 3000; }\n  @Bean public OrderService orders(PricePolicy policy) {\n   // BEGIN EXERCISE\n   return new OrderService(policy);\n   // END EXERCISE\n  }\n }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>spring-di</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "spring-di-q1",
+      "question": "생성자 주입의 실질적 장점은?",
+      "options": [
+        "의존 객체가 자동으로 스레드 안전해진다.",
+        "객체가 필요한 협력을 생성 시점에 드러내고 테스트에서 대체하기 쉽다.",
+        "모든 의존성에 인터페이스가 자동 생성된다.",
+        "순환 의존성이 모두 올바른 구조로 바뀐다."
+      ],
+      "correctIndex": 1,
+      "explanation": "생성자는 필수 협력 관계를 명확히 하지만 협력 객체의 동시성·수명·설계 적합성까지 자동으로 해결하지는 않습니다."
+    },
+    {
+      "id": "spring-di-q2",
+      "question": "Spring의 기본 singleton scope에 대한 설명으로 맞는 것은?",
+      "options": [
+        "전체 JVM의 모든 컨테이너가 항상 같은 인스턴스를 공유한다.",
+        "해당 컨테이너의 빈 정의별 공유 인스턴스이며 스레드 안전성은 별도다.",
+        "요청마다 항상 새 객체를 만든다.",
+        "필드가 자동으로 불변이 된다."
+      ],
+      "correctIndex": 1,
+      "explanation": "스코프는 인스턴스 수명과 공유 범위입니다. 공유되는 가변 상태의 동시성은 개발자가 설계해야 합니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "Spring의 빈 조립과 서비스의 업무 책임을 분리합니다.",
+    "tasks": [
+      "Config의 @Bean 메서드로 PricePolicy와 OrderService를 조립하세요.",
+      "PricePolicy는 소계 30000 이상 배송비 0, 미만 3000입니다. OrderService는 생성자로 정책을 받습니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Spring IoC container",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/core/beans.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Spring bean scopes",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/core/beans/factory-scopes.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Java"
+  ],
+  "exerciseId": "spring-di-project",
+  "professionalExercise": {
+    "id": "spring-di-project",
+    "profileId": "professional-spring-core",
+    "mode": "project",
+    "instructions": [
+      "Config의 @Bean 메서드로 PricePolicy와 OrderService를 조립하세요.",
+      "PricePolicy는 소계 30000 이상 배송비 0, 미만 3000입니다. OrderService는 생성자로 정책을 받습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/DiLab.java"
+    ],
+    "template": "package edu.lab;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.context.annotation.Configuration;\npublic final class DiLab {\n public interface PricePolicy { int fee(int subtotal); }\n public static final class OrderService {\n  private final PricePolicy policy;\n  public OrderService(PricePolicy policy) { this.policy=java.util.Objects.requireNonNull(policy); }\n  public int total(int subtotal) { if(subtotal<0) throw new IllegalArgumentException(); return Math.addExact(subtotal,policy.fee(subtotal)); }\n }\n @Configuration\n public static class Config {\n  @Bean public PricePolicy policy() { return subtotal -> subtotal>=30000 ? 0 : 3000; }\n  @Bean public OrderService orders(PricePolicy policy) {\n   throw new UnsupportedOperationException(\"실습 구현 필요\");\n  }\n }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/DiLab.java",
+        "templatePath": "lessons/spring-di/starter/src/main/java/edu/lab/DiLab.java",
+        "referencePath": "lessons/spring-di/reference/src/main/java/edu/lab/DiLab.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/spring-di/starter/pom.xml",
+        "referencePath": "lessons/spring-di/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/spring-di/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "컨테이너 조립",
+      "정책 계약",
+      "기본 singleton 확인"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "test-collaborators"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 2,
+    "starterSatisfied": false,
+    "sourceFingerprint": "092bd10703609e7a73d032f092ed2ace7c53fdf37819c64a4c41504b156ed844",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

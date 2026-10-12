@@ -1,12 +1,12 @@
 # 실행 아키텍처와 공개 범위
 
-기준일 2026-10-12. 프로토타입은 정적 교육 UI와 Cloudflare Worker API를 owner-private Sites에 배포한다. 사용자 기기에 임의 Java 코드를 직접 실행하지 않는다. 공개 GitHub와 개인 전용 호스팅의 접근 범위는 별개다.
+기준일 2026-10-12. Windows 설치형 앱과 owner-private Sites의 웹 교재가 같은 UI·교육 데이터를 공유한다. 설치형은 로컬 JDK/Maven으로 학습자 코드를 실행한다. 웹 코어 실행은 Cloudflare Worker API에서 Wandbox로 연결한다. 공개 GitHub와 개인 전용 호스팅의 접근 범위는 별개다.
 
 ## Java 실행 계약
 
 브라우저→같은 origin의 실행 API→외부 Wandbox 컴파일/실행 API로 연결한다. 제공자 endpoint·compiler·옵션은 서버가 고정한다. 교육 콘텐츠가 가진 과제 ID·버전·trusted checks를 서버가 결정하며 클라이언트의 기대값·컴파일 옵션을 신뢰하지 않는다.
 
-실제 JVM은21(`openjdk-jdk-21+35`). `--release`로8/11/17/21의 언어/API 대상 컴파일을 검사해도 실행 JVM은21이다. 8/11/17의 실제 런타임 검증은 별도 CI와 후속 실행 서버에서 분리한다. 2026-10-12 실제 확인용 코드는 `--release\n8`과 package-private `class Main`으로 컴파일하고 `JAVA_EDU_OK`·`21-internal`을 출력했다. Java8 obsolete 경고와 종료0을 함께 확인했다. 이 결과는 전체 과제 검증을 대신하지 않는다.
+웹 실행의 실제 JVM은21(`openjdk-jdk-21+35`). `--release`로8/11/17/21의 언어/API 대상 컴파일을 검사해도 실행 JVM은21이다. 설치형은 등록한 실제 JDK8/11/17/21을 사용하며 CI에서도 네 런타임을 분리한다. 2026-10-12 웹 확인용 코드는 `--release\n8`과 package-private `class Main`으로 컴파일하고 `JAVA_EDU_OK`·`21-internal`을 출력했다. Java8 obsolete 경고와 종료0을 함께 확인했다. 이 결과는 전체 과제 검증을 대신하지 않는다.
 
 주 파일은prog.java이므로 template의 Solution과 Main은 package-private다. 사용자 Solution과 trusted Main harness를 합쳐 실행한다. 호출·반환 타입·컴파일 대상·샘플/제출 검사는 배포 소스에서 고정한다. 결과는 실행ID·작성 코드 snapshot에 연결한다. 단순 stdout 문구만으로 정답을 판정하지 않는다. 교육용 행동 검증은 악의적 제출에 대한 완전한 부정행위 방지 시스템을 뜻하지 않는다.
 
@@ -22,9 +22,13 @@ Sites private gateway가 접근을 제한하고 인증된 방문자의 `oai-auth
 
 서버에서 요청·소스·응답 크기와 대기시간을 제한하고 동일 origin·과제 ID·JSON 구조를 검사한다. 제공자별429·장애·컴파일 오류·실행 오류·검사 실패를 구분한다. POST 실행을 자동 재시도하지 않는다. 제공자의 IP 쿼터는 shared proxy 요청이 합산될 수 있으며 운영 상한은 미확인이다. 브라우저 취소는 결과 대기를 중단하는 것이며 원격 프로세스 종료를 보장하지 않는다.
 
-## 후속 실행 기반
+## Windows 설치형 실행 기반
 
-네 실제 JDK, 승인 의존성, 다중 Java/XML/SQL 파일, 임시 DB, HTTP 앱·준비된 외부 시스템을 실행별 격리한다. 컴파일·annotation processing부터 제한한다. 데이터 초기화·하위 프로세스 종료·임시 파일 정리·네트워크 범위를 검사한다. 교육 코드에 호스트 Docker 권한을 제공하지 않는다. 배포 계정·비용·실행 자원은 현재 확보하지 않았다.
+사용자가 Windows 설치형 + 웹 교재 구성을 선택했다. Electron 앱의 격리된 렌더러가 세션·Origin·Host·CSRF로 보호된 loopback API와 통신한다. 등록한 실제 JDK8/11/17/21를 검사하고 선택한 JVM으로 실행한다. 전용 실행 디렉터리, 고정된 POM·테스트·편집 파일 목록, 출력·시간·Job Object 프로세스 한도로 실행과 정리를 관리한다. 학습 코드 자체는 학습자 OS 권한으로 동작하는 개인 IDE이므로 보안 샌드박스로 표현하지 않는다.
+
+Maven 의존성은 명시적인 환경 준비에서 내려받고 과제 실행은 오프라인이다. 기본 DB·웹 요청 실습은 H2·MockMvc를 사용하며 별도 호스팅 컨테이너 서버가 필요하지 않다. Redis/Kafka 단원의 실제 연동은 선택적인 고정 loopback 자원이 필요하다. 상세 계약과 제한은 [로컬 실행 계약](local-execution.md)을 따른다.
+
+설치형의 진도·초안·테마는 앱 userData에 보존하며 실행 서버의 임의 포트 변경과 무관하다. 웹과 설치형 사이 자동 동기화는 제공하지 않는다. 웹은 실무22단원의 정적 교재·다중 파일 예제·퀴즈·프로젝트 ZIP을 제공하고 해당 실행은 설치형에서 진행한다. 다운로드에는 상대 경로가 유지된 부모 POM·starter·reference·공개 grader를 함께 넣는다.
 
 ## 공식 근거
 

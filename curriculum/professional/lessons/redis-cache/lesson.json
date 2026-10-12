@@ -1,0 +1,179 @@
+{
+  "id": "redis-cache",
+  "title": "Redis TTL·무효화·키 소유권",
+  "description": "캐시의 TTL과 무효화 범위를 명시하고 Redis 데이터와 원본 DB의 일관성을 구분합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "캐시 값이 있다는 사실과 현재 재고가 정확하다는 사실은 같은가?",
+    "문자열 수량 저장·조회",
+    "양수 TTL 설정",
+    "지정 키만 무효화",
+    "잘못된 캐시 입력 거절"
+  ],
+  "theory": [
+    {
+      "heading": "원본과 복제된 조회 값",
+      "text": "이 단원의 Redis 값은 조회를 돕는 캐시입니다. 판매 가능 수량의 최종 판단은 트랜잭션으로 보호한 DB에 둡니다. TTL은 오래된 값이 남는 시간을 제한하는 수단이며 모든 동시 요청의 일관성을 자동 보장하지 않습니다."
+    },
+    {
+      "heading": "쓰기와 무효화의 순서",
+      "text": "DB 변경 뒤 캐시를 지우는 방식에도 장애·재조회 경쟁이 남을 수 있습니다. 요구하는 최신성과 장애 허용 범위를 정하고 무효화 재시도나 이벤트 전달을 설계합니다. 이 실습은 키별 put/get/invalidate 계약만 자동 검사합니다."
+    },
+    {
+      "heading": "키 소유권과 환경",
+      "text": "각 실행은 java-edu: 아래 UUID 접두사를 사용하고 자신의 키만 지웁니다. FLUSHALL·FLUSHDB를 사용하지 않습니다. StringRedisTemplate으로 문자열 형식을 고정하며 학습 전용 loopback Redis가 준비되지 않으면 통합 검사를 수행한 것으로 표시하지 않습니다."
+    }
+  ],
+  "example": {
+    "title": "StockCache 기준 구현",
+    "code": "package edu.lab;\nimport java.time.Duration;\nimport java.util.OptionalInt;\nimport org.springframework.data.redis.core.StringRedisTemplate;\npublic final class StockCache {\n    private final StringRedisTemplate redis; private final String prefix;\n    public StockCache(StringRedisTemplate redis, String prefix) {\n        if (prefix == null || !prefix.startsWith(\"java-edu:\") || !prefix.endsWith(\":\")) throw new IllegalArgumentException(\"training prefix\");\n        this.redis = java.util.Objects.requireNonNull(redis); this.prefix = prefix;\n    }\n    public String key(String sku) { if (sku == null || sku.isBlank()) throw new IllegalArgumentException(\"sku\"); return prefix + sku; }\n    public void put(String sku, int quantity, Duration ttl) {\n        // BEGIN EXERCISE\n        if (quantity < 0 || ttl == null || ttl.isZero() || ttl.isNegative()) throw new IllegalArgumentException(\"cache value or ttl\");\n        redis.opsForValue().set(key(sku), Integer.toString(quantity), ttl);\n        // END EXERCISE\n    }\n    public OptionalInt get(String sku) {\n        // BEGIN EXERCISE\n        String value = redis.opsForValue().get(key(sku));\n        return value == null ? OptionalInt.empty() : OptionalInt.of(Integer.parseInt(value));\n        // END EXERCISE\n    }\n    public void invalidate(String sku) {\n        // BEGIN EXERCISE\n        redis.delete(key(sku));\n        // END EXERCISE\n    }\n}\n",
+    "output": "예상 검증 항목: 문자열 수량 저장·조회 · 양수 TTL 설정 · 지정 키만 무효화 · 잘못된 캐시 입력 거절. 아직 실행하지 않았습니다.",
+    "explanation": "기준 구현과 테스트 소스는 공개 학습 자료입니다. 실제 실행·의존성 해석·설치형 통합 검증 결과는 별도 증거로 표시합니다.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/StockCache.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport java.time.Duration;\nimport java.util.OptionalInt;\nimport org.springframework.data.redis.core.StringRedisTemplate;\npublic final class StockCache {\n    private final StringRedisTemplate redis; private final String prefix;\n    public StockCache(StringRedisTemplate redis, String prefix) {\n        if (prefix == null || !prefix.startsWith(\"java-edu:\") || !prefix.endsWith(\":\")) throw new IllegalArgumentException(\"training prefix\");\n        this.redis = java.util.Objects.requireNonNull(redis); this.prefix = prefix;\n    }\n    public String key(String sku) { if (sku == null || sku.isBlank()) throw new IllegalArgumentException(\"sku\"); return prefix + sku; }\n    public void put(String sku, int quantity, Duration ttl) {\n        // BEGIN EXERCISE\n        if (quantity < 0 || ttl == null || ttl.isZero() || ttl.isNegative()) throw new IllegalArgumentException(\"cache value or ttl\");\n        redis.opsForValue().set(key(sku), Integer.toString(quantity), ttl);\n        // END EXERCISE\n    }\n    public OptionalInt get(String sku) {\n        // BEGIN EXERCISE\n        String value = redis.opsForValue().get(key(sku));\n        return value == null ? OptionalInt.empty() : OptionalInt.of(Integer.parseInt(value));\n        // END EXERCISE\n    }\n    public void invalidate(String sku) {\n        // BEGIN EXERCISE\n        redis.delete(key(sku));\n        // END EXERCISE\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>redis-cache</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-redis</artifactId></dependency></dependencies></project>\n"
+      },
+      {
+        "path": "FIXTURE.md",
+        "language": "markdown",
+        "code": "이 단원은 전용 로컬 Redis가 필요합니다. 예시 연결은 127.0.0.1:16379이며 설치형에서 별도 자원 지원을 확인해야 합니다.\nJAVA_EDU_REDIS_HOST와 JAVA_EDU_REDIS_PORT를 둘 다 명시합니다. 허용 호스트는 127.0.0.1, localhost, ::1뿐입니다.\n공유 업무 Redis를 연결하지 마세요. 테스트는 java-edu:<UUID>: 접두사의 BOOK/PEN 두 키만 만들고 지웁니다. FLUSHALL/FLUSHDB는 사용하지 않습니다.\nDocker 이미지 준비·실행·네트워크 격리는 이 소스만으로 검증되지 않았습니다. 자원 미준비 오류를 단원 통과나 건너뛴 성공으로 처리하지 않습니다.\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "redis-cache-q1",
+      "question": "TTL을 설정한 재고 캐시에 대한 올바른 설명은?",
+      "options": [
+        "TTL이 있으면 DB 트랜잭션은 필요 없다.",
+        "TTL이 있으면 중복 주문은 불가능하다.",
+        "만료를 제어하지만 DB와 캐시의 모든 동시 변경을 원자화하지는 않는다.",
+        "캐시 조회 값은 언제나 최신 DB 값과 같다."
+      ],
+      "correctIndex": 2,
+      "explanation": "TTL은 만료 정책입니다. DB와 Redis 두 저장소 사이의 쓰기 순서와 동시성 문제는 별도 계약으로 남습니다."
+    },
+    {
+      "id": "redis-cache-q2",
+      "question": "학습용 키를 정리할 때 적절한 방식은?",
+      "options": [
+        "모든 Redis 키를 FLUSHALL로 지운다.",
+        "현재 실행이 생성한 UUID 접두사의 키만 지운다.",
+        "다른 애플리케이션의 키도 같은 DB면 지운다.",
+        "정리를 하지 않으면 항상 안전하다."
+      ],
+      "correctIndex": 1,
+      "explanation": "공유 저장소 전체를 지우지 않고 실행별 소유권을 제한해야 다른 데이터에 영향을 주지 않습니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "캐시의 TTL과 무효화 범위를 명시하고 Redis 데이터와 원본 DB의 일관성을 구분합니다.",
+    "tasks": [
+      "put은 0 이상 수량과 양수 TTL만 허용하며 문자열로 저장합니다.",
+      "get은 부재이면 OptionalInt.empty, 존재하면 수량을 반환합니다.",
+      "invalidate는 지정 SKU만 지우고 다른 키를 보존합니다.",
+      "전용 로컬 Redis와 JAVA_EDU_REDIS_HOST/JAVA_EDU_REDIS_PORT가 필요합니다. 자원이 없으면 단원 통합 검사는 미실행 상태입니다.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Spring Data Redis templates",
+      "url": "https://docs.spring.io/spring-data/redis/reference/3.5/redis/template.html",
+      "edition": "Spring Data Redis 3.5",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Redis EXPIRE",
+      "url": "https://redis.io/docs/latest/commands/expire/",
+      "edition": "Redis command reference",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Redis Docker installation",
+      "url": "https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/docker/",
+      "edition": "Redis official guide",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Redis",
+    "Cache"
+  ],
+  "exerciseId": "redis-cache-project",
+  "professionalExercise": {
+    "id": "redis-cache-project",
+    "profileId": "professional-redis",
+    "mode": "project",
+    "instructions": [
+      "put은 0 이상 수량과 양수 TTL만 허용하며 문자열로 저장합니다.",
+      "get은 부재이면 OptionalInt.empty, 존재하면 수량을 반환합니다.",
+      "invalidate는 지정 SKU만 지우고 다른 키를 보존합니다.",
+      "전용 로컬 Redis와 JAVA_EDU_REDIS_HOST/JAVA_EDU_REDIS_PORT가 필요합니다. 자원이 없으면 단원 통합 검사는 미실행 상태입니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/StockCache.java"
+    ],
+    "template": "package edu.lab;\nimport java.time.Duration;\nimport java.util.OptionalInt;\nimport org.springframework.data.redis.core.StringRedisTemplate;\npublic final class StockCache {\n    private final StringRedisTemplate redis; private final String prefix;\n    public StockCache(StringRedisTemplate redis, String prefix) {\n        if (prefix == null || !prefix.startsWith(\"java-edu:\") || !prefix.endsWith(\":\")) throw new IllegalArgumentException(\"training prefix\");\n        this.redis = java.util.Objects.requireNonNull(redis); this.prefix = prefix;\n    }\n    public String key(String sku) { if (sku == null || sku.isBlank()) throw new IllegalArgumentException(\"sku\"); return prefix + sku; }\n    public void put(String sku, int quantity, Duration ttl) {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n    public OptionalInt get(String sku) {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n    public void invalidate(String sku) {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/StockCache.java",
+        "templatePath": "lessons/redis-cache/starter/src/main/java/edu/lab/StockCache.java",
+        "referencePath": "lessons/redis-cache/reference/src/main/java/edu/lab/StockCache.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/redis-cache/starter/pom.xml",
+        "referencePath": "lessons/redis-cache/reference/pom.xml",
+        "editable": false
+      },
+      {
+        "path": "FIXTURE.md",
+        "templatePath": "lessons/redis-cache/starter/FIXTURE.md",
+        "referencePath": "lessons/redis-cache/reference/FIXTURE.md",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/redis-cache/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "문자열 수량 저장·조회",
+      "양수 TTL 설정",
+      "지정 키만 무효화",
+      "잘못된 캐시 입력 거절"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": false,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "source-prepared",
+  "executionVerified": false,
+  "prerequisites": [
+    "tx-proxy"
+  ]
+}

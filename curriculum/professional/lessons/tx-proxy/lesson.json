@@ -1,0 +1,172 @@
+{
+  "id": "tx-proxy",
+  "title": "Spring 트랜잭션 프록시와 롤백 경계",
+  "description": "@Transactional 표기와 실제 프록시 진입을 구분하고 self-invocation의 실패 상태를 관찰합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "트랜잭션 어노테이션이 있어도 롤백되지 않는 경로는 무엇인가?",
+    "외부 프록시 호출 롤백",
+    "자기 호출 반례 재현",
+    "호출 경로 설명"
+  ],
+  "theory": [
+    {
+      "heading": "프록시가 여는 경계",
+      "text": "기본 프록시 모드에서는 외부에서 프록시를 통과한 호출에 트랜잭션 조언이 적용됩니다. 같은 객체의 this 호출은 프록시를 다시 통과하지 않습니다. 어노테이션 존재만으로 모든 호출 경로가 같은 트랜잭션을 얻지는 않습니다."
+    },
+    {
+      "heading": "예외와 롤백 정책",
+      "text": "기본 선언적 트랜잭션은 RuntimeException과 Error에 롤백합니다. checked 예외나 예외를 잡아 정상 반환하는 흐름에는 별도 정책을 검토해야 합니다. 예외 타입, 경계 밖으로의 전파, DB 변경 시점을 함께 확인합니다."
+    },
+    {
+      "heading": "실패 예제의 목적",
+      "text": "이 과제는 안전한 외부 호출과 안전하지 않은 자기 호출을 둘 다 재현합니다. self-invocation에서 남은 행은 모범 동작이 아니라 수정해야 할 반례입니다. 해결은 역할 분리 후 다른 빈을 호출하거나 명시적 트랜잭션 경계를 사용하는 설계와 비교합니다."
+    }
+  ],
+  "example": {
+    "title": "TransactionLab 기준 구현",
+    "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport java.util.UUID;\nimport org.h2.jdbcx.JdbcDataSource;\nimport org.springframework.context.annotation.*;\nimport org.springframework.jdbc.core.JdbcTemplate;\nimport org.springframework.jdbc.datasource.DataSourceTransactionManager;\nimport org.springframework.transaction.PlatformTransactionManager;\nimport org.springframework.transaction.annotation.*;\npublic final class TransactionLab {\n    public static class Orders {\n        private final JdbcTemplate jdbc;\n        public Orders(JdbcTemplate jdbc) { this.jdbc = jdbc; }\n        @Transactional\n        public void reserveThenFail() {\n            // BEGIN EXERCISE\n            jdbc.update(\"insert into audit_events(id) values('reserved')\");\n            throw new IllegalStateException(\"simulated downstream failure\");\n            // END EXERCISE\n        }\n        public void bypassProxy() { this.reserveThenFail(); }\n    }\n    @Configuration\n    @EnableTransactionManagement(proxyTargetClass=true)\n    public static class Config {\n        @Bean public DataSource dataSource() {\n            JdbcDataSource ds = new JdbcDataSource(); ds.setURL(\"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"); return ds;\n        }\n        @Bean public JdbcTemplate jdbc(DataSource ds) { JdbcTemplate jdbc = new JdbcTemplate(ds); jdbc.execute(\"create table audit_events(id varchar(60) primary key)\"); return jdbc; }\n        @Bean public PlatformTransactionManager transactionManager(DataSource ds) { return new DataSourceTransactionManager(ds); }\n        @Bean public Orders orders(JdbcTemplate jdbc) { return new Orders(jdbc); }\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 외부 프록시 호출 롤백 · 자기 호출 반례 재현 · 호출 경로 설명.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/TransactionLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport java.util.UUID;\nimport org.h2.jdbcx.JdbcDataSource;\nimport org.springframework.context.annotation.*;\nimport org.springframework.jdbc.core.JdbcTemplate;\nimport org.springframework.jdbc.datasource.DataSourceTransactionManager;\nimport org.springframework.transaction.PlatformTransactionManager;\nimport org.springframework.transaction.annotation.*;\npublic final class TransactionLab {\n    public static class Orders {\n        private final JdbcTemplate jdbc;\n        public Orders(JdbcTemplate jdbc) { this.jdbc = jdbc; }\n        @Transactional\n        public void reserveThenFail() {\n            // BEGIN EXERCISE\n            jdbc.update(\"insert into audit_events(id) values('reserved')\");\n            throw new IllegalStateException(\"simulated downstream failure\");\n            // END EXERCISE\n        }\n        public void bypassProxy() { this.reserveThenFail(); }\n    }\n    @Configuration\n    @EnableTransactionManagement(proxyTargetClass=true)\n    public static class Config {\n        @Bean public DataSource dataSource() {\n            JdbcDataSource ds = new JdbcDataSource(); ds.setURL(\"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"); return ds;\n        }\n        @Bean public JdbcTemplate jdbc(DataSource ds) { JdbcTemplate jdbc = new JdbcTemplate(ds); jdbc.execute(\"create table audit_events(id varchar(60) primary key)\"); return jdbc; }\n        @Bean public PlatformTransactionManager transactionManager(DataSource ds) { return new DataSourceTransactionManager(ds); }\n        @Bean public Orders orders(JdbcTemplate jdbc) { return new Orders(jdbc); }\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>tx-proxy</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId></dependency>\n<dependency><groupId>org.springframework</groupId><artifactId>spring-jdbc</artifactId></dependency>\n<dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "tx-proxy-q1",
+      "question": "기본 프록시 모드에서 같은 객체의 this 호출에 대한 설명은?",
+      "options": [
+        "모든 this 호출은 자동으로 프록시 호출로 바뀐다.",
+        "프록시를 다시 지나지 않아 내부 메서드의 조언이 새로 적용되지 않는다.",
+        "어노테이션이 있으면 객체 생성 방식은 무관하다.",
+        "private 메서드에도 항상 같은 트랜잭션이 새로 생성된다."
+      ],
+      "correctIndex": 1,
+      "explanation": "어노테이션은 적용 조건이 필요한 메타데이터입니다. 기본 프록시 모드의 자기 호출은 조언을 다시 통과하지 않습니다."
+    },
+    {
+      "id": "tx-proxy-q2",
+      "question": "기본 롤백 규칙에서 checked 예외가 경계 밖으로 전달된다면?",
+      "options": [
+        "항상 rollback된다.",
+        "항상 JVM이 종료된다.",
+        "rollbackFor 등 정책을 확인해야 하며 기본 규칙은 RuntimeException·Error와 다르다.",
+        "예외 타입은 롤백과 무관하다."
+      ],
+      "correctIndex": 2,
+      "explanation": "checked 예외의 업무 의미를 기준으로 롤백 정책을 명시하고 테스트해야 합니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "@Transactional 표기와 실제 프록시 진입을 구분하고 self-invocation의 실패 상태를 관찰합니다.",
+    "tasks": [
+      "외부 프록시를 통해 reserveThenFail을 호출하면 예외 뒤 audit_events 행이 0개입니다.",
+      "bypassProxy는 의도적 반례로 this.reserveThenFail을 호출합니다. 별도 트랜잭션이 없어서 행 1개가 남는 차이를 설명하세요.",
+      "트랜잭션 빈은 Spring 컨테이너에서 가져오고 직접 new로 대체하지 않습니다.",
+      "학습 완료 설명에서는 업무 서비스에서 자기 호출 문제를 제거할 대안을 제시하세요.",
+      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+    ],
+    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+  },
+  "sources": [
+    {
+      "title": "Spring @Transactional semantics",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/annotations.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Spring declarative rollback",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/rolling-back.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Spring",
+    "Transaction",
+    "AOP"
+  ],
+  "exerciseId": "tx-proxy-project",
+  "professionalExercise": {
+    "id": "tx-proxy-project",
+    "profileId": "professional-spring-tx",
+    "mode": "project",
+    "instructions": [
+      "외부 프록시를 통해 reserveThenFail을 호출하면 예외 뒤 audit_events 행이 0개입니다.",
+      "bypassProxy는 의도적 반례로 this.reserveThenFail을 호출합니다. 별도 트랜잭션이 없어서 행 1개가 남는 차이를 설명하세요.",
+      "트랜잭션 빈은 Spring 컨테이너에서 가져오고 직접 new로 대체하지 않습니다.",
+      "학습 완료 설명에서는 업무 서비스에서 자기 호출 문제를 제거할 대안을 제시하세요."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/TransactionLab.java"
+    ],
+    "template": "package edu.lab;\nimport javax.sql.DataSource;\nimport java.util.UUID;\nimport org.h2.jdbcx.JdbcDataSource;\nimport org.springframework.context.annotation.*;\nimport org.springframework.jdbc.core.JdbcTemplate;\nimport org.springframework.jdbc.datasource.DataSourceTransactionManager;\nimport org.springframework.transaction.PlatformTransactionManager;\nimport org.springframework.transaction.annotation.*;\npublic final class TransactionLab {\n    public static class Orders {\n        private final JdbcTemplate jdbc;\n        public Orders(JdbcTemplate jdbc) { this.jdbc = jdbc; }\n        @Transactional\n        public void reserveThenFail() {\n            throw new UnsupportedOperationException(\"실습 구현 필요\");\n        }\n        public void bypassProxy() { this.reserveThenFail(); }\n    }\n    @Configuration\n    @EnableTransactionManagement(proxyTargetClass=true)\n    public static class Config {\n        @Bean public DataSource dataSource() {\n            JdbcDataSource ds = new JdbcDataSource(); ds.setURL(\"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"); return ds;\n        }\n        @Bean public JdbcTemplate jdbc(DataSource ds) { JdbcTemplate jdbc = new JdbcTemplate(ds); jdbc.execute(\"create table audit_events(id varchar(60) primary key)\"); return jdbc; }\n        @Bean public PlatformTransactionManager transactionManager(DataSource ds) { return new DataSourceTransactionManager(ds); }\n        @Bean public Orders orders(JdbcTemplate jdbc) { return new Orders(jdbc); }\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/TransactionLab.java",
+        "templatePath": "lessons/tx-proxy/starter/src/main/java/edu/lab/TransactionLab.java",
+        "referencePath": "lessons/tx-proxy/reference/src/main/java/edu/lab/TransactionLab.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/tx-proxy/starter/pom.xml",
+        "referencePath": "lessons/tx-proxy/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/tx-proxy/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "외부 프록시 호출 롤백",
+      "자기 호출 반례 재현",
+      "호출 경로 설명"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "spring-aop",
+    "sql-jdbc"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 2,
+    "starterSatisfied": false,
+    "sourceFingerprint": "bec5b6f575b6d3e3a8875aa5cd5db2b14f6e5e84f99e76bc0a8c435e0339a0ab",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}
