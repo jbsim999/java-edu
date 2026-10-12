@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, session, shell } = require('electro
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { createDesktopStorage } = require('./storage.cjs');
+const { loadBundledRuntime } = require('./bundled-runtime.cjs');
 const { externalReferenceUrl } = require('./reference-policy.cjs');
 const { mkdirSync } = require('node:fs');
 
@@ -35,7 +36,8 @@ async function initialize() {
     import(pathToFileURL(path.join(root, 'server/local/engine.mjs'))),
     import(pathToFileURL(path.join(root, 'server/local/http.mjs'))),
   ]);
-  settings = createSettingsStore(dataRoot);
+  const bundledRuntime = await loadBundledRuntime(app.isPackaged ? path.join(process.resourcesPath, 'toolchains') : path.join(root, 'work', 'desktop-bundle'), { required: app.isPackaged });
+  settings = createSettingsStore(dataRoot, { bundledRuntime });
   await settings.initialize();
   const storage = createDesktopStorage(dataRoot);
   engine = await createLocalEngine({ dataRoot, projectRoot: path.join(root, 'curriculum/professional'), settings });

@@ -499,12 +499,27 @@ ul, ol { padding-left: 1.35rem; }
 .compact-dialog { max-width: 460px; }
 .compact-dialog > .small-label { margin-bottom: .65rem; }
 .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .6rem; margin-top: 1.5rem; }
-.settings-dialog { width: min(660px, calc(100% - 2rem)); }
+.settings-dialog { width: min(660px, calc(100% - 2rem)); word-break: keep-all; overflow-wrap: anywhere; }
+.settings-bundle { margin: 1.1rem 0; padding: 1rem; border: 1px solid #cbdac4; border-radius: 9px; background: #f0f5ec; }
+.settings-bundle h3 { font-size: 1rem; line-height: 1.6; color: var(--green); }
+.settings-bundle p + p { margin-top: .45rem; }
+.settings-bundle .settings-bundle-tools { display: flex; flex-wrap: wrap; gap: .6rem; list-style: none; padding: 0; margin: .75rem 0; }
+.settings-bundle-tools li { display: flex; flex: 1 1 11rem; flex-wrap: wrap; align-items: baseline; gap: .15rem .6rem; min-width: 0; padding: .6rem .75rem; border: 1px solid #d5e0cd; border-radius: 7px; background: var(--card); }
+.settings-bundle-tools li + li { margin: 0; }
+.settings-bundle-tools strong { color: var(--green); font-size: .875rem; }
+.settings-bundle-tools span { color: #586d4c; font-size: .75rem; }
+.settings-bundle.is-unavailable { border-color: #dac9b8; background: #faf4eb; }
+.settings-advanced { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: .85rem; }
+.settings-advanced summary { cursor: pointer; min-height: 44px; padding: .4rem 0; color: var(--green); font-size: .8125rem; font-weight: 650; line-height: 1.8; touch-action: manipulation; }
+.settings-advanced > p { margin-top: .4rem; }
+.settings-advanced .settings-tools { margin-bottom: 0; }
+.settings-bundle, .settings-advanced { overflow-wrap: anywhere; }
 .settings-tools { display: grid; gap: .3rem; margin: 1.2rem 0; }
 .settings-tool-row { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .8rem 0; border-bottom: 1px solid var(--line); }
 .settings-tool-row > div { flex: 1 1 15rem; min-width: 0; }
 .settings-tool-row strong { font-size: .875rem; }
 .settings-tool-row .button { font-size: .75rem; }
+.settings-tool-source { font-size: .6875rem !important; margin-top: .2rem; }
 .settings-tool-path { font-family: var(--mono); font-size: .6875rem !important; overflow-wrap: anywhere; margin-top: .2rem; }
 .settings-consent { padding: 1rem; border: 1px solid #dac9b8; background: #faf4eb; border-radius: 9px; }
 .settings-consent h3 { font-size: .9375rem; margin-bottom: .4rem; }
@@ -629,6 +644,8 @@ ul, ol { padding-left: 1.35rem; }
   .lab-actions .execution-state { margin-left: 0; flex-basis: 100%; font-size: .625rem; }
   .execution-output-body { padding: .85rem; }
   .app-dialog { padding: 1.3rem; }
+  .settings-dialog { width: calc(100% - 24px); max-width: calc(100% - 24px); padding: clamp(12px, 4vw, 1.3rem); }
+  .settings-bundle, .settings-consent { padding: clamp(12px, 4vw, 1rem); }
   .app-dialog h2 { font-size: 1.2rem; }
   .dialog-actions .button { flex: 1; }
 }

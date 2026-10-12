@@ -1155,6 +1155,14 @@ function localRuntimes(exercise) {
   return (state.runtime?.runtimes || []).filter((runtime) => runtime.available && VERSIONS.includes(Number(runtime.javaVersion)) && Number(runtime.javaVersion) >= minimum).sort((a, b) => b.javaVersion - a.javaVersion);
 }
 
+function hasBundledRuntime() {
+  return Boolean(state.runtime?.bundledRuntime || state.runtime?.runtimes?.some((runtime) => runtime.source === 'bundled') || state.runtime?.maven?.source === 'bundled');
+}
+
+function runtimeSourceLabel(tool) {
+  return tool?.source === 'bundled' ? '앱에 포함' : tool?.available ? '직접 등록' : '등록하지 않음';
+}
+
 function runtimeFor(exercise) {
   if (!isDesktop) return 21;
   const available = localRuntimes(exercise);
@@ -1203,7 +1211,7 @@ function renderRuntime() {
   line.append(el('strong', '', isProject(exercise) && !isDesktop ? '실행 위치 · Windows 앱' : runtimeVersion ? `실제 실행 JVM · Java ${runtimeVersion}` : '실제 실행 JVM · JDK 등록 필요'), el('span', '', `컴파일 대상 · Java ${exercise?.minVersion || 8}`));
   card.append(line);
   if (isProject(exercise) && !isDesktop) {
-    card.append(el('p', '', '웹에서 이론·문제·다중 파일 코드를 학습하고, Windows 앱에서 등록한 JDK와 Maven으로 테스트를 실행하세요. 웹과 앱의 학습 기록은 각각 저장됩니다.'));
+    card.append(el('p', '', '웹에서 이론·문제·다중 파일 코드를 학습하고, Windows 앱에 포함된 Java 21과 Maven으로 테스트를 실행하세요. 웹과 앱의 학습 기록은 각각 저장됩니다.'));
     const actions = el('div', 'project-access-actions');
     actions.append(actionButton('Windows 앱 안내', 'button button-secondary', () => openDialog('install-dialog'), 'project-desktop-guide'));
     if (/^\/downloads\/[a-z0-9-]+\.zip$/.test(exercise.downloadUrl || '')) {
@@ -1220,7 +1228,7 @@ function renderRuntime() {
     const select = el('select'); select.id = 'runtime-version-select'; select.dataset.testid = select.id;
     const available = localRuntimes(exercise);
     if (!available.length) select.append(el('option', '', '등록된 호환 JDK 없음'));
-    available.forEach((runtime) => { const option = el('option', '', `Java ${runtime.javaVersion}`); option.value = String(runtime.javaVersion); select.append(option); });
+    available.forEach((runtime) => { const option = el('option', '', `Java ${runtime.javaVersion}${runtime.source ? ` · ${runtimeSourceLabel(runtime)}` : ''}`); option.value = String(runtime.javaVersion); select.append(option); });
     select.value = String(runtimeVersion || '');
     select.disabled = !available.length || Boolean(state.pending) || state.cancelling || state.settingsBusy;
     select.addEventListener('change', () => {
@@ -1230,11 +1238,13 @@ function renderRuntime() {
       document.getElementById('runtime-version-select')?.focus({ preventScroll: true });
       announce(`실제 실행 JDK를 Java ${state.runtimeVersion}로 변경했습니다. 프로젝트 준비 상태를 확인하세요.`);
     });
-    row.append(label, select, actionButton('실행 설정', 'button button-secondary', openDesktopSettings, 'runtime-settings-open'));
-    card.append(row, el('p', '', state.runtimeMessage || '이 PC의 등록 JDK로 실행합니다. 학습 기준 버전·컴파일 대상·실제 실행 JVM을 따로 확인하세요.'));
+    const needsConsent = !state.runtime?.consent?.accepted;
+    const selectedRuntime = available.find((runtime) => Number(runtime.javaVersion) === runtimeVersion);
+    row.append(label, select, actionButton(needsConsent ? '실행 권한 확인' : '실행 설정', `button ${needsConsent ? 'button-primary' : 'button-secondary'}`, openDesktopSettings, 'runtime-settings-open'));
+    card.append(row, el('p', '', state.runtimeMessage || (selectedRuntime?.source === 'bundled' ? '앱에 포함된 JDK를 사용합니다. 컴파일 대상과 실제 실행 JVM은 위에 따로 표시됩니다.' : '이 PC의 등록 JDK로 실행합니다. 학습 기준 버전·컴파일 대상·실제 실행 JVM을 따로 확인하세요.')));
     if (isProject(exercise)) {
       const project = state.projectInfo.get(exercise.id);
-      const preparation = el('p', 'project-preparation', projectPrepared(exercise) ? '환경 준비 완료 · 현재 JDK와 Maven으로 테스트할 수 있습니다.' : '환경 준비를 누르면 고정 기준 답안으로 Maven 의존성을 내려받고 환경을 검증합니다. 이후 학습자 테스트는 오프라인으로 실행합니다.');
+      const preparation = el('p', 'project-preparation', projectPrepared(exercise) ? '환경 준비 완료 · 현재 JDK와 Maven으로 테스트할 수 있습니다.' : '처음 환경 준비에는 인터넷 연결이 필요합니다. 고정 기준 답안으로 Maven 라이브러리를 자동으로 내려받고 환경을 검증합니다. 이후 학습자 테스트는 저장된 라이브러리로 실행합니다.');
       preparation.id = 'project-preparation-state'; preparation.dataset.prepared = String(projectPrepared(exercise));
       card.append(preparation);
       if (project?.status === 'error') card.append(el('p', '', project.message), actionButton('프로젝트 다시 확인', 'runtime-retry', () => loadProject(exercise, true), 'project-retry'));
@@ -1280,7 +1290,8 @@ function acceptRuntime(runtime) {
   state.runtime = { ...runtime, supportedTargets: runtime.supportedTargets.map(Number).filter((version) => VERSIONS.includes(version)) };
   const available = runtime.available === true && (isDesktop || Number(runtime.runtime?.javaVersion) === 21);
   state.runtimeStatus = available ? 'ready' : 'unavailable';
-  state.runtimeMessage = available ? '' : typeof runtime.reason === 'string' ? runtime.reason : typeof runtime.notice === 'string' ? runtime.notice : '실행 환경 설정을 확인해 주세요.';
+  const reasons = { execution_consent_required: '실행 도구를 사용하려면 실행 권한을 확인하고 동의해 주세요.', jdk_required: '실행 설정에서 사용할 JDK를 등록해 주세요.' };
+  state.runtimeMessage = available ? '' : Object.hasOwn(reasons, runtime.reason) ? reasons[runtime.reason] : typeof runtime.reason === 'string' ? runtime.reason : typeof runtime.notice === 'string' ? runtime.notice : '실행 환경 설정을 확인해 주세요.';
 }
 
 async function loadRuntime() {
@@ -1334,23 +1345,49 @@ async function loadProject(exercise, retry = false) {
 function renderDesktopSettings() {
   const body = document.getElementById('desktop-settings-body');
   if (!isDesktop || !body) return;
+  const bundled = hasBundledRuntime();
+  const externalTools = state.runtime?.runtimes?.some((runtime) => runtime.available && runtime.source !== 'bundled') || (state.runtime?.maven?.available && state.runtime.maven.source !== 'bundled');
+  const advancedOpen = document.getElementById('desktop-advanced-settings')?.open ?? Boolean(externalTools);
+  const description = document.getElementById('desktop-settings-description');
+  if (description) description.textContent = !state.runtime ? '실행 도구를 확인하고 있습니다. 코드는 실행·제출 버튼을 눌렀을 때 실행됩니다.' : bundled ? '앱에 포함된 도구로 시작하세요. 동의 후 실행·제출 버튼을 누르면 코드를 실행합니다.' : '설치된 JDK와 Maven의 폴더를 선택하세요. 시스템 PATH를 바꾸지 않으며, 코드는 실행·제출 버튼을 눌렀을 때 실행됩니다.';
   body.replaceChildren();
+  if (bundled) {
+    const jdk = state.runtime.runtimes.find((runtime) => Number(runtime.javaVersion) === 21);
+    const maven = state.runtime.maven;
+    const ready = jdk?.available && maven?.available;
+    const included = ready && jdk.source === 'bundled' && maven.source === 'bundled';
+    const card = el('section', `settings-bundle${ready ? '' : ' is-unavailable'}`);
+    card.id = 'desktop-bundle-status'; card.setAttribute('aria-labelledby', 'desktop-bundle-title');
+    const heading = el('h3', '', included ? '별도 설치 없이 시작하세요' : ready ? '사용 중인 실행 도구' : '실행 도구를 확인해 주세요');
+    heading.id = 'desktop-bundle-title';
+    const tools = el('ul', 'settings-bundle-tools');
+    for (const [name, tool] of [['Java 21', jdk], [`Maven${maven?.version ? ` ${maven.version}` : ''}`, maven]]) {
+      const item = el('li'); item.append(el('strong', '', name), el('span', '', runtimeSourceLabel(tool))); tools.append(item);
+    }
+    card.append(heading, tools, el('p', '', included ? 'Java 8·11·17·21 대상의 코드를 컴파일할 수 있습니다. 기본 실제 실행 JVM은 Java 21입니다.' : '직접 등록한 도구가 있으면 해당 설정을 유지합니다. 사용할 JDK와 Maven은 아래 고급 설정에서 확인할 수 있습니다.'), el('p', '', 'Spring 등 실무 수업은 처음 환경 준비 시 인터넷으로 필요한 라이브러리를 자동 다운로드합니다.'));
+    body.append(card);
+  }
   const tools = el('div', 'settings-tools');
   for (const version of VERSIONS) {
     const runtime = state.runtime?.runtimes?.find((item) => Number(item.javaVersion) === version);
     const row = el('div', 'settings-tool-row');
     const copy = el('div');
-    copy.append(el('strong', '', `JDK ${version}`), el('p', 'settings-tool-path', runtime?.available ? runtime.path || '등록됨' : '등록하지 않음'));
-    const button = actionButton(runtime?.available ? '변경' : '폴더 선택', 'button button-secondary', () => changeDesktopSettings(() => desktop.chooseJdk(version)), `jdk-register-${version}`);
+    copy.append(el('strong', '', `JDK ${version}${bundled && !runtime?.available ? ' · 선택 사항' : ''}`));
+    if (runtime?.source) copy.append(el('p', 'settings-tool-source', runtimeSourceLabel(runtime)));
+    copy.append(el('p', 'settings-tool-path', runtime?.available ? runtime.path || '등록됨' : '등록하지 않음'));
+    const button = actionButton(runtime?.source === 'bundled' ? '다른 폴더 선택' : runtime?.available ? '변경' : '폴더 선택', 'button button-secondary', () => changeDesktopSettings(() => desktop.chooseJdk(version)), `jdk-register-${version}`);
     button.setAttribute('aria-label', `JDK ${version} 설치 폴더 선택`); button.disabled = state.settingsBusy;
     row.append(copy, button); tools.append(row);
   }
   const row = el('div', 'settings-tool-row');
   const copy = el('div');
-  copy.append(el('strong', '', `Maven${state.runtime?.maven?.version ? ` ${state.runtime.maven.version}` : ' 3.9+'}`), el('p', 'settings-tool-path', state.runtime?.maven?.available ? state.runtime.maven.path || '등록됨' : '등록하지 않음'));
-  const maven = actionButton(state.runtime?.maven?.available ? '변경' : '폴더 선택', 'button button-secondary', () => changeDesktopSettings(() => desktop.chooseMaven()), 'maven-register');
+  copy.append(el('strong', '', `Maven${state.runtime?.maven?.version ? ` ${state.runtime.maven.version}` : ' 3.9+'}`));
+  if (state.runtime?.maven?.source) copy.append(el('p', 'settings-tool-source', runtimeSourceLabel(state.runtime.maven)));
+  copy.append(el('p', 'settings-tool-path', state.runtime?.maven?.available ? state.runtime.maven.path || '등록됨' : '등록하지 않음'));
+  const maven = actionButton(state.runtime?.maven?.source === 'bundled' ? '다른 폴더 선택' : state.runtime?.maven?.available ? '변경' : '폴더 선택', 'button button-secondary', () => changeDesktopSettings(() => desktop.chooseMaven()), 'maven-register');
   maven.setAttribute('aria-label', 'Maven 설치 폴더 선택'); maven.disabled = state.settingsBusy;
-  row.append(copy, maven); tools.append(row); body.append(tools);
+  row.append(copy, maven); tools.append(row);
+  if (!bundled) body.append(tools);
   const consent = el('div', 'settings-consent');
   consent.append(el('h3', '', '이 PC에서 코드 실행'), el('p', '', 'Java 코드는 현재 PC의 사용자 권한으로 파일과 네트워크에 접근할 수 있습니다. 이 앱은 격리된 보안 샌드박스가 아닙니다. 신뢰하는 코드를 직접 확인한 뒤 실행하세요.'));
   const label = el('label');
@@ -1362,6 +1399,12 @@ function renderDesktopSettings() {
   consent.append(label); body.append(consent);
   const status = el('p', 'settings-status', state.settingsBusy ? '설정을 확인하고 있습니다…' : state.settingsMessage);
   status.id = 'desktop-settings-status'; status.setAttribute('role', 'status'); body.append(status);
+  if (bundled) {
+    const advanced = el('details', 'settings-advanced'); advanced.id = 'desktop-advanced-settings'; advanced.open = advancedOpen;
+    const summary = el('summary', '', '고급 설정 · 다른 JDK 또는 Maven 사용'); summary.id = 'desktop-advanced-summary';
+    advanced.append(summary, el('p', '', '실제 Java 8·11·17 JVM을 비교하거나 다른 도구를 사용할 때만 직접 등록하세요. 기본 학습에는 추가 설치와 폴더 선택이 필요하지 않습니다.'), tools);
+    body.append(advanced);
+  }
 }
 
 async function changeDesktopSettings(operation, mutation = true) {

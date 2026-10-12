@@ -53,11 +53,11 @@ export async function inspectMaven(home) {
   return { home: mavenHome, launcher, configuration, version, verifiedAt: new Date().toISOString() };
 }
 
-export function createSettingsStore(dataRoot, { runner = runProcess } = {}) {
+export function createSettingsStore(dataRoot, { runner = runProcess, bundledRuntime = null } = {}) {
   if (!path.isAbsolute(dataRoot)) throw new Error('An absolute app-owned data root is required.');
   const settingsFile = path.join(dataRoot, 'settings.json');
   const inspectionRoot = path.join(dataRoot, 'tool-checks');
-  let settings = { schema: 1, jdks: {}, maven: null, executionConsent: false };
+  let settings = { schema: 1, jdks: {}, maven: null, executionConsent: false, bundledRuntime: null };
   let writeQueue = Promise.resolve();
   async function save() {
     const snapshot = JSON.stringify(settings, null, 2);
@@ -78,24 +78,42 @@ export function createSettingsStore(dataRoot, { runner = runProcess } = {}) {
           for (const version of JAVA_VERSIONS) {
             const entry = stored.jdks[version];
             // Startup reads only metadata. Executables are probed after the user's selection or execution action.
-            if (entry && entry.version === version && typeof entry.home === 'string' && path.isAbsolute(entry.home)) {
-              settings.jdks[version] = { home: entry.home, version, java: path.join(entry.home, 'bin', executableName('java')), javac: path.join(entry.home, 'bin', executableName('javac')), verifiedAt: entry.verifiedAt, description: entry.description };
+            // A persisted bundled path can be stale after reinstall/moving a ZIP. Never use it.
+            if (entry && entry.source !== 'bundled' && entry.version === version && typeof entry.home === 'string' && path.isAbsolute(entry.home)) {
+              settings.jdks[version] = { home: entry.home, version, java: path.join(entry.home, 'bin', executableName('java')), javac: path.join(entry.home, 'bin', executableName('javac')), verifiedAt: entry.verifiedAt, description: entry.description, source: 'external' };
             }
           }
-          if (stored.maven?.home && path.isAbsolute(stored.maven.home)) settings.maven = await inspectMaven(stored.maven.home).catch(() => null);
+          if (stored.maven?.source !== 'bundled' && stored.maven?.home && path.isAbsolute(stored.maven.home)) {
+            const maven = await inspectMaven(stored.maven.home).catch(() => null);
+            if (maven) settings.maven = { ...maven, source: 'external' };
+          }
         }
       } catch { /* An absent or malformed settings file starts with no configured tools. */ }
+      if (bundledRuntime) {
+        // Only desktop main supplies this verified, app-resource-owned object. It is not an IPC input.
+        const bundledMaven = await inspectMaven(bundledRuntime.maven.home);
+        if (bundledMaven.version !== bundledRuntime.maven.version) throw new LocalError('bundled_maven_mismatch', '앱에 포함된 Maven 버전을 확인할 수 없습니다.', 500);
+        for (const jdk of bundledRuntime.jdks) {
+          if (!JAVA_VERSIONS.includes(jdk.version) || !path.isAbsolute(jdk.home)) throw new LocalError('invalid_bundled_jdk', '앱에 포함된 JDK 경로를 확인할 수 없습니다.', 500);
+          if (!settings.jdks[jdk.version]) settings.jdks[jdk.version] = {
+            home: jdk.home, version: jdk.version, java: path.join(jdk.home, 'bin', executableName('java')), javac: path.join(jdk.home, 'bin', executableName('javac')),
+            description: jdk.description, source: 'bundled', bundleId: bundledRuntime.id,
+          };
+        }
+        if (!settings.maven) settings.maven = { ...bundledMaven, source: 'bundled', bundleId: bundledRuntime.id };
+        settings.bundledRuntime = { id: bundledRuntime.id, javaVersions: bundledRuntime.jdks.map((jdk) => jdk.version), mavenVersion: bundledMaven.version };
+      }
       return this.snapshot();
     },
     snapshot() { return structuredClone(settings); },
     async chooseJdk(home, version) {
       const result = await inspectJdk(home, version, { cwd: inspectionRoot, runner });
-      settings.jdks[version] = result;
+      settings.jdks[version] = { ...result, source: 'external' };
       await save();
       return this.snapshot();
     },
     async chooseMaven(home) {
-      settings.maven = await inspectMaven(home);
+      settings.maven = { ...await inspectMaven(home), source: 'external' };
       await save();
       return this.snapshot();
     },
@@ -109,8 +127,8 @@ export function createSettingsStore(dataRoot, { runner = runProcess } = {}) {
       const entry = settings.jdks[version];
       if (!entry) throw new LocalError('jdk_required', `실행할 Java ${version} JDK를 먼저 등록하세요.`, 409);
       const verified = await inspectJdk(entry.home, version, { cwd: inspectionRoot, runner });
-      settings.jdks[version] = verified;
-      return verified;
+      settings.jdks[version] = { ...verified, source: entry.source || 'external', ...(entry.bundleId ? { bundleId: entry.bundleId } : {}) };
+      return settings.jdks[version];
     },
   };
 }
