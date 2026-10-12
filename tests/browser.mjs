@@ -10,6 +10,7 @@ const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 const baseUrl = process.env.QA_BASE_URL || 'http://127.0.0.1:4173';
 const artifactRoot = process.env.QA_ARTIFACT_DIR || path.resolve(projectRoot, '../../work/java-edu-qa');
 const storageKey = 'java-edu:progress:v1';
+const editorPreferencesKey = 'java-edu:editor-preferences:v1';
 const filter = process.env.QA_FILTER ? new RegExp(process.env.QA_FILTER) : null;
 const results = [];
 
@@ -62,7 +63,7 @@ async function activeTabVisible(page) {
   assert.ok(geometry.tabLeft >= geometry.containerLeft - 1 && geometry.tabRight <= geometry.containerRight + 1 && geometry.tabTop >= geometry.containerTop - 1 && geometry.tabBottom <= geometry.containerBottom + 1, `selected tab is clipped: ${JSON.stringify(geometry)}`);
 }
 
-async function screenshot(page, name, fullPage = true) {
+async function screenshot(page, name, fullPage = true, options = {}) {
   const position = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
   if (fullPage) await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
   if (process.env.QA_TRACE_SCREENSHOTS === '1') {
@@ -73,7 +74,7 @@ async function screenshot(page, name, fullPage = true) {
     })));
   }
   try {
-    await page.screenshot({ path: path.join(artifactRoot, `${name}.png`), fullPage });
+    await page.screenshot({ path: path.join(artifactRoot, `${name}.png`), fullPage, ...options });
   } finally {
     if (fullPage) await page.evaluate(({ x, y }) => window.scrollTo({ top: y, left: x, behavior: 'instant' }), position);
   }
@@ -178,6 +179,59 @@ async function visibleLessonIds(page) {
   return page.locator('#lesson-list [data-lesson-id]').evaluateAll(nodes => nodes.map(node => node.dataset.lessonId));
 }
 
+function editorInput(page) {
+  return page.locator('#code-editor [role="textbox"]');
+}
+
+function editorScroller(page) {
+  return page.locator('#code-editor .cm-scroller');
+}
+
+async function readEditorSource(page) {
+  // A virtualized editor's DOM text is not the complete document. Read through
+  // the public full-source copy action, using an isolated clipboard mock.
+  const activeElement = await page.evaluateHandle(() => document.activeElement);
+  const denied = await page.evaluate(() => window.qaClipboardDenied);
+  await page.evaluate(() => { window.qaClipboardDenied = false; window.qaClipboardText = undefined; });
+  try {
+    await page.locator('#copy-code').click();
+    return await expectEventually(() => page.evaluate(() => window.qaClipboardText), value => typeof value === 'string', 'copy exposes the complete editor document');
+  } finally {
+    await page.evaluate(value => { window.qaClipboardDenied = value; }, denied);
+    await activeElement.evaluate(element => element?.isConnected && element.focus({ preventScroll: true })).catch(() => {});
+    await activeElement.dispose();
+  }
+}
+
+async function assertDraft(page, exerciseId, expected) {
+  await expectEventually(async () => (await storedProgress(page))?.drafts.find(entry => entry.exerciseId === exerciseId)?.source, expected, 'stored draft retains the exact source');
+}
+
+async function tokenPalette(page, scope) {
+  return page.locator(scope).evaluate(element => {
+    const colors = {};
+    for (const category of ['keyword', 'class', 'type', 'variable', 'method', 'string', 'comment', 'number']) {
+      const token = element.querySelector(`.tok-${category}`);
+      if (token) colors[category] = getComputedStyle(token).color;
+    }
+    return colors;
+  });
+}
+
+async function chooseTheme(page, theme) {
+  await page.locator('#editor-theme-select').selectOption(theme);
+  await expectEventually(() => page.locator('[data-editor-theme]').first().getAttribute('data-editor-theme'), theme, 'requested theme reaches the rendered code');
+}
+
+function contrastRatio(foreground, background) {
+  const luminance = rgb => rgb.match(/[\d.]+/g).slice(0, 3).map(value => Number(value) / 255)
+    .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+    .reduce((total, value, index) => total + value * [0.2126, 0.7152, 0.0722][index], 0);
+  const foregroundLuminance = luminance(foreground);
+  const backgroundLuminance = luminance(background);
+  return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05) / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+}
+
 async function achievement(page, kind) {
   return page.locator(`#lesson-achievements [data-achievement="${kind}"]`).getAttribute('data-complete');
 }
@@ -203,6 +257,14 @@ async function waitForOutput(page, expected) {
 async function run(browser, name, test, options = {}) {
   if (filter && !filter.test(name)) return;
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, ...options });
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+      writeText: async text => {
+        if (window.qaClipboardDenied) throw new DOMException('QA denied', 'NotAllowedError');
+        window.qaClipboardText = text;
+      },
+    } });
+  });
   const page = await context.newPage();
   page.setDefaultTimeout(5_000);
   const pageErrors = [];
@@ -253,7 +315,7 @@ async function main() {
         await noViewportOverflow(page);
         if (step === 'example') await screenshot(page, 'desktop-example');
         if (step === 'lab') {
-          assert.equal(await page.locator('#code-editor').inputValue(), firstExercise.template);
+          assert.equal(await readEditorSource(page), firstExercise.template);
           const labText = await page.locator('#lesson-panel').innerText();
           assert.match(labText, /Wandbox/);
           assert.match(labText, /전송/);
@@ -275,7 +337,7 @@ async function main() {
         }
         const exercise = exercises.find(item => item.lessonId === lesson.id);
         assert.ok(exercise, `${lesson.id} has a coding task`);
-        assert.equal(await page.locator('#code-editor').inputValue(), exercise.template);
+        assert.equal(await readEditorSource(page), exercise.template);
       }
       assert.equal(api.requests.length, 0);
     });
@@ -392,28 +454,28 @@ async function main() {
       const api = await mockApi(context);
       await openLesson(page, first, 'lab');
       const draft = `${firstExercise.template}\n// QA draft: 한글과 <tag> 보존`;
-      await page.locator('#code-editor').fill(draft);
+      await editorInput(page).fill(draft);
       await stepTo(page, 'practice');
       await stepTo(page, 'lab');
-      assert.equal(await page.locator('#code-editor').inputValue(), draft);
+      assert.equal(await readEditorSource(page), draft);
       await page.locator(`#lesson-list [data-lesson-id="${other.id}"]`).click();
       await stepTo(page, 'lab');
-      assert.equal(await page.locator('#code-editor').inputValue(), exercises.find(item => item.lessonId === other.id).template, 'another lesson keeps its own source');
+      assert.equal(await readEditorSource(page), exercises.find(item => item.lessonId === other.id).template, 'another lesson keeps its own source');
       await page.locator(`#lesson-list [data-lesson-id="${first.id}"]`).click();
       await stepTo(page, 'lab');
-      assert.equal(await page.locator('#code-editor').inputValue(), draft);
+      assert.equal(await readEditorSource(page), draft);
       await page.reload();
-      await page.locator('#code-editor').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('#code-editor').inputValue(), draft, 'source survives reload');
+      await editorInput(page).waitFor({ state: 'visible' });
+      assert.equal(await readEditorSource(page), draft, 'source survives reload');
       await page.locator('#lab-reset').click();
-      assert.equal(await page.locator('#code-editor').inputValue(), firstExercise.template);
+      assert.equal(await readEditorSource(page), firstExercise.template);
       await page.locator('#lab-undo').click();
-      assert.equal(await page.locator('#code-editor').inputValue(), draft, 'undo restores the exact source');
+      assert.equal(await readEditorSource(page), draft, 'undo restores the exact source');
       const immediateDraft = `${draft}\n// immediate reload`;
-      await page.locator('#code-editor').fill(immediateDraft);
+      await editorInput(page).fill(immediateDraft);
       await page.reload();
-      await page.locator('#code-editor').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('#code-editor').inputValue(), immediateDraft, 'immediate reload flushes the latest edit');
+      await editorInput(page).waitFor({ state: 'visible' });
+      assert.equal(await readEditorSource(page), immediateDraft, 'immediate reload flushes the latest edit');
       assert.equal(api.requests.length, 0, 'editing or reset never sends source');
     });
 
@@ -423,7 +485,7 @@ async function main() {
       await completeQuiz(page, first);
       await stepTo(page, 'lab');
       const submitted = `${firstExercise.template}\n// QA source snapshot`;
-      await page.locator('#code-editor').fill(submitted);
+      await editorInput(page).fill(submitted);
       await page.locator('#run-code').click();
       await waitForOutput(page, 'passed');
       assert.equal(api.requests.at(-1).action, 'run');
@@ -447,11 +509,11 @@ async function main() {
       await page.locator('#execution-output').scrollIntoViewIfNeeded();
       await screenshot(page, 'desktop-submit-passed-result', false);
       await page.reload();
-      await page.locator('#code-editor').waitFor({ state: 'visible' });
+      await editorInput(page).waitFor({ state: 'visible' });
       assert.equal(await achievement(page, 'quiz'), 'true');
       assert.equal(await achievement(page, 'lab'), 'true');
       assert.equal(await page.locator('#overall-completed').textContent(), '1');
-      await page.locator('#code-editor').fill(`${submitted}\n// edited after passing`);
+      await editorInput(page).fill(`${submitted}\n// edited after passing`);
       await expectEventually(() => achievement(page, 'lab'), 'false', 'a changed draft is not the previously passed source');
       assert.equal(await achievement(page, 'quiz'), 'true');
       assert.equal(await page.locator('#overall-completed').textContent(), '0');
@@ -483,7 +545,7 @@ async function main() {
       await openLesson(page, first);
       await completeQuiz(page, first);
       await stepTo(page, 'lab');
-      const source = await page.locator('#code-editor').inputValue();
+      const source = await readEditorSource(page);
       for (const status of ['failed', 'compile_error', 'runtime_error', 'timeout']) {
         api.respond = request => ({ body: executionResult(request) });
         await page.locator('#submit-code').click();
@@ -493,13 +555,13 @@ async function main() {
         api.respond = request => ({ body: executionResult(request, { status, checks: [{ name: '재검증 실패', passed: false }], passed: 0, total: 1 }) });
         await page.locator('#submit-code').click();
         await waitForOutput(page, status);
-        assert.equal(await page.locator('#code-editor').inputValue(), source, 'same source is re-evaluated');
+        assert.equal(await readEditorSource(page), source, 'same source is re-evaluated');
         assert.equal(await achievement(page, 'lab'), 'false', `${status} revokes current code achievement`);
         assert.equal(await achievement(page, 'quiz'), 'true');
         assert.equal(await page.locator('#overall-completed').textContent(), '0');
       }
       await page.reload();
-      await page.locator('#code-editor').waitFor({ state: 'visible' });
+      await editorInput(page).waitFor({ state: 'visible' });
       assert.equal(await achievement(page, 'lab'), 'false', 'revocation survives reload');
     });
 
@@ -528,12 +590,12 @@ async function main() {
     await run(browser, 'empty-source-and-utf8-payload-limit', async ({ context, page }) => {
       const api = await mockApi(context);
       await openLesson(page, first, 'lab');
-      await page.locator('#code-editor').fill('');
+      await editorInput(page).fill('');
       await page.locator('#run-code').click();
       assert.match(await page.locator('#toast').textContent(), /코드를 입력/);
-      assert.equal(await page.locator('#code-editor').evaluate(element => document.activeElement === element), true, 'empty source returns focus to editor');
+      assert.equal(await editorInput(page).evaluate(element => document.activeElement === element), true, 'empty source returns focus to editor');
       assert.equal(api.requests.length, 0, 'empty source is rejected before network submission');
-      await page.locator('#code-editor').fill(`class Solution { /* ${'한'.repeat(12_000)} */ }`);
+      await editorInput(page).fill(`class Solution { /* ${'한'.repeat(12_000)} */ }`);
       await page.locator('#run-code').click();
       await waitForOutput(page, 'validation_error');
       assert.equal(api.requests.length, 0, 'oversized UTF-8 source is rejected before network submission');
@@ -569,14 +631,14 @@ async function main() {
       assert.equal(await page.locator('#run-code').isDisabled(), true);
       assert.equal(await page.locator('#submit-code').isDisabled(), true);
       const draft = `${firstExercise.template}\n// offline draft`;
-      await page.locator('#code-editor').fill(draft);
+      await editorInput(page).fill(draft);
       await stepTo(page, 'theory');
       await stepTo(page, 'lab');
-      assert.equal(await page.locator('#code-editor').inputValue(), draft);
+      assert.equal(await readEditorSource(page), draft);
       api.runtime = {};
       await page.locator('#runtime-retry').click();
       await expectEventually(() => page.locator('#run-code').isEnabled(), true, 'runtime retry restores execution capability');
-      assert.equal(await page.locator('#code-editor').inputValue(), draft);
+      assert.equal(await readEditorSource(page), draft);
       assert.equal(api.requests.length, 0, 'availability checks do not send the source');
     });
 
@@ -599,9 +661,8 @@ async function main() {
       assert.equal(await page.evaluate(() => window.getSelection().toString()), first.example.code, 'copy denial selects example text for manual copying');
       await stepTo(page, 'lab');
       await page.locator('#copy-code').click();
-      const selection = await page.locator('#code-editor').evaluate(element => ({ start: element.selectionStart, end: element.selectionEnd, value: element.value, focused: document.activeElement === element }));
-      assert.equal(selection.start, 0);
-      assert.equal(selection.end, selection.value.length);
+      const selection = await editorInput(page).evaluate(element => ({ text: window.getSelection().toString(), focused: document.activeElement === element }));
+      assert.equal(selection.text, firstExercise.template, 'copy denial selects the current document for manual copying');
       assert.equal(selection.focused, true);
       assert.match(await page.locator('#toast').textContent(), /직접 복사/);
     });
@@ -634,7 +695,7 @@ async function main() {
         assert.equal(await page.locator('#run-code').isDisabled(), true, 'duplicate execution is blocked');
         assert.equal(await page.locator('#submit-code').isDisabled(), true, 'duplicate submission is blocked');
         const edited = `${firstExercise.template}\n// edited during execution`;
-        if (interaction === 'edit') await page.locator('#code-editor').fill(edited);
+        if (interaction === 'edit') await editorInput(page).fill(edited);
         if (interaction === 'lesson') {
           await page.locator(`#lesson-list [data-lesson-id="${other.id}"]`).click();
           await stepTo(page, 'lab');
@@ -647,7 +708,7 @@ async function main() {
         assert.equal(await achievement(page, 'lab'), 'false', 'obsolete or cancelled response grants no achievement');
         assert.notEqual(await page.locator('#execution-output').getAttribute('data-status'), 'passed');
         if (interaction === 'edit') {
-          assert.equal(await page.locator('#code-editor').inputValue(), edited);
+          assert.equal(await readEditorSource(page), edited);
           assert.equal(await page.locator('#execution-output').getAttribute('data-status'), 'outdated');
         }
         if (interaction === 'lesson') {
@@ -665,7 +726,7 @@ async function main() {
       await openLesson(page, first, 'lab');
       assert.equal(await achievement(page, 'quiz'), 'false');
       assert.equal(await achievement(page, 'lab'), 'false');
-      assert.equal(await page.locator('#code-editor').inputValue(), firstExercise.template);
+      assert.equal(await readEditorSource(page), firstExercise.template);
       await stepTo(page, 'theory');
       await noViewportOverflow(page);
     });
@@ -678,10 +739,10 @@ async function main() {
       });
       await openLesson(page, first, 'lab');
       const source = `${firstExercise.template}\n// in-memory QA draft`;
-      await page.locator('#code-editor').fill(source);
+      await editorInput(page).fill(source);
       await stepTo(page, 'theory');
       await stepTo(page, 'lab');
-      assert.equal(await page.locator('#code-editor').inputValue(), source);
+      assert.equal(await readEditorSource(page), source);
       const storageLabel = await page.locator('#storage-label').textContent();
       assert.ok(storageLabel.trim().length > 0 && storageLabel !== '이 브라우저에 저장', 'storage limitation is disclosed');
       await completeQuiz(page, first);
@@ -692,7 +753,7 @@ async function main() {
       await mockApi(context);
       await openLesson(page, first, 'lab');
       const draft = `${firstExercise.template}\n// record-reset QA`;
-      await page.locator('#code-editor').fill(draft);
+      await editorInput(page).fill(draft);
       await completeQuiz(page, first);
       await stepTo(page, 'lab');
       await page.locator('#version-select').selectOption('11');
@@ -701,7 +762,7 @@ async function main() {
       await page.locator('#reset-dialog').waitFor({ state: 'visible' });
       await page.locator('#reset-dialog [data-close-dialog="reset-dialog"]').click();
       assert.deepEqual(await storedProgress(page), before, 'cancel leaves all records intact');
-      assert.equal(await page.locator('#code-editor').inputValue(), draft);
+      assert.equal(await readEditorSource(page), draft);
       await page.locator('#reset-progress-open').click();
       await page.locator('#confirm-reset-progress').click();
       assert.equal(await achievement(page, 'quiz'), 'false');
@@ -709,7 +770,7 @@ async function main() {
       assert.equal(await page.locator('#overall-completed').textContent(), '0');
       assert.equal(await page.locator('#version-select').inputValue(), '11', 'record reset retains selected version');
       await stepTo(page, 'lab');
-      assert.equal(await page.locator('#code-editor').inputValue(), firstExercise.template);
+      assert.equal(await readEditorSource(page), firstExercise.template);
       await page.reload();
       await page.locator('#workspace-grid').waitFor({ state: 'visible' });
       assert.equal(await achievement(page, 'quiz'), 'false');
@@ -736,12 +797,12 @@ async function main() {
       await page.keyboard.press('ArrowRight');
       assert.equal(await group.nth(1).isChecked(), true, 'native radio keyboard selection works');
       await stepTo(page, 'lab');
-      await page.locator('#code-editor').focus();
+      await editorInput(page).focus();
       await page.keyboard.press('ControlOrMeta+End');
       await page.keyboard.insertText('\n// 키보드 입력 QA');
-      assert.ok((await page.locator('#code-editor').inputValue()).endsWith('// 키보드 입력 QA'));
+      assert.ok((await readEditorSource(page)).endsWith('// 키보드 입력 QA'));
       await page.keyboard.press('Tab');
-      assert.notEqual(await page.evaluate(() => document.activeElement?.id), 'code-editor', 'plain textarea allows Tab to leave the editor');
+      assert.equal(await editorInput(page).evaluate(element => element.contains(document.activeElement)), false, 'Tab leaves the code editor instead of trapping keyboard users');
       await page.locator('#guide-open').click();
       await page.locator('#guide-dialog').waitFor({ state: 'visible' });
       assert.equal(await page.locator('#guide-dialog').evaluate(element => element.contains(document.activeElement)), true, 'dialog receives focus');
@@ -793,9 +854,9 @@ async function main() {
           await page.locator('#run-code').scrollIntoViewIfNeeded();
           await screenshot(page, `viewport-${viewport.width}x${viewport.height}-lab-controls`, false);
         }
-        await page.locator('#code-editor').fill(`${firstExercise.template}\n// ${'long_identifier_'.repeat(80)}`);
+        await editorInput(page).fill(`${firstExercise.template}\n// ${'long_identifier_'.repeat(80)}`);
         await noViewportOverflow(page);
-        const internalScroll = await page.locator('#code-editor').evaluate(element => {
+        const internalScroll = await editorScroller(page).evaluate(element => {
           element.scrollLeft = 150;
           return { width: element.clientWidth, scrollWidth: element.scrollWidth, left: element.scrollLeft };
         });
@@ -807,10 +868,10 @@ async function main() {
       await mockApi(context);
       await openLesson(page, first, 'lab');
       const draft = `${firstExercise.template}\n// resize persists input`;
-      await page.locator('#code-editor').fill(draft);
+      await editorInput(page).fill(draft);
       for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 390, height: 844 }, { width: 1440, height: 1000 }]) {
         await page.setViewportSize(viewport);
-        assert.equal(await page.locator('#code-editor').inputValue(), draft);
+        assert.equal(await readEditorSource(page), draft);
         await noViewportOverflow(page);
         await activeTabVisible(page);
       }
@@ -840,7 +901,7 @@ async function main() {
       await page.locator('#mobile-menu-toggle').click();
       await screenshot(page, 'mobile-text-200-drawer', false);
       await page.keyboard.press('Escape');
-      assert.equal(await page.locator('#code-editor').inputValue(), draft);
+      assert.equal(await readEditorSource(page), draft);
     });
 
     await run(browser, 'initial-text-enlargement-keeps-mobile-tabs-visible', async ({ context, page }) => {
@@ -858,6 +919,375 @@ async function main() {
       await activeTabVisible(page);
       await page.locator('.lesson-tabs').scrollIntoViewIfNeeded();
       await screenshot(page, 'mobile-text-200-tabs-selected-before-enlargement', false);
+    }, { viewport: { width: 390, height: 844 } });
+    await run(browser, 'editor-three-themes-and-syntax-colors', async ({ context, page }) => {
+      const api = await mockApi(context);
+      await openLesson(page, first, 'example');
+      const palettes = {};
+      for (const theme of ['dark', 'light', 'contrast']) {
+        await chooseTheme(page, theme);
+        assert.equal(await page.locator('.code-block code').textContent(), first.example.code, 'syntax highlighting preserves the exact example');
+        const colors = await tokenPalette(page, '.code-block');
+        for (const category of ['keyword', 'class', 'type', 'variable', 'method', 'string', 'number']) assert.ok(colors[category], `${theme} example has ${category} tokens`);
+        assert.equal(new Set(['keyword', 'class', 'type', 'variable'].map(category => colors[category])).size, 4, 'keyword, class, type, and variable colors are distinct');
+        palettes[theme] = colors;
+        await page.locator('.code-shell').scrollIntoViewIfNeeded();
+        await screenshot(page, `editor-${theme}-example`, false);
+        await noViewportOverflow(page);
+      }
+      const source = 'class Palette {\n    String label = "한글";\n    int count = 7;\n    // <img src=x onerror="window.qaCodeExecuted=true">\n    void run() { count++; }\n}\n';
+      await stepTo(page, 'lab');
+      assert.equal(await page.locator('#code-editor').getAttribute('data-editor-engine'), 'codemirror');
+      assert.equal(await page.locator('#code-editor textarea').count(), 0, 'normal editor has no hidden textarea proxy');
+      assert.equal(await editorInput(page).getAttribute('contenteditable'), 'true');
+      assert.equal(await editorInput(page).getAttribute('aria-multiline'), 'true');
+      await editorInput(page).fill(source);
+      for (const theme of ['dark', 'light', 'contrast']) {
+        await chooseTheme(page, theme);
+        const colors = await tokenPalette(page, '#code-editor');
+        for (const category of ['keyword', 'class', 'type', 'variable', 'method', 'string', 'comment', 'number']) assert.ok(colors[category], `${theme} editor has ${category} tokens`);
+        for (const category of ['keyword', 'class', 'type', 'variable']) assert.equal(colors[category], palettes[theme][category], 'example and editor use the same category palette');
+        await page.locator('.editor-shell').scrollIntoViewIfNeeded();
+        await screenshot(page, `editor-${theme}-ide`, false);
+      }
+      assert.notEqual(palettes.dark.class, palettes.light.class, 'theme switching changes the computed colors');
+      assert.notEqual(palettes.dark.class, palettes.contrast.class);
+      assert.equal(await page.locator('#code-editor img').count(), 0, 'code-looking HTML is rendered as text');
+      assert.equal(await page.evaluate(() => window.qaCodeExecuted), undefined);
+      assert.equal(await readEditorSource(page), source);
+      assert.equal(api.requests.length, 0, 'color changes do not submit source');
+    });
+
+    await run(browser, 'editor-theme-wrap-persist-across-navigation-and-reload', async ({ context, page }) => {
+      const api = await mockApi(context);
+      await openLesson(page, first, 'lab');
+      const source = `${firstExercise.template}\n// 테마와 이동 후에도 보존\n\n`;
+      await editorInput(page).fill(source);
+      await chooseTheme(page, 'light');
+      await page.locator('#code-wrap-toggle').click();
+      assert.equal(await page.locator('#code-wrap-toggle').getAttribute('aria-pressed'), 'true');
+      assert.deepEqual(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), editorPreferencesKey), { theme: 'light', wrap: true });
+      await page.locator('#lesson-search').fill('no-result-theme-regression');
+      await page.locator('#lesson-search').fill('');
+      await page.locator('[data-track="transition"]').click();
+      await page.locator('[data-track="all"]').click();
+      await page.locator('#version-select').selectOption('11');
+      await stepTo(page, 'lab');
+      assert.equal(await readEditorSource(page), source);
+      await stepTo(page, 'example');
+      assert.equal(await page.locator('.code-shell').getAttribute('data-editor-theme'), 'light');
+      await page.locator(`#lesson-list [data-lesson-id="${other.id}"]`).click();
+      await stepTo(page, 'lab');
+      assert.equal(await page.locator('#editor-theme-select').inputValue(), 'light');
+      assert.equal(await page.locator('#code-wrap-toggle').getAttribute('aria-pressed'), 'true');
+      await page.locator(`#lesson-list [data-lesson-id="${first.id}"]`).click();
+      await stepTo(page, 'lab');
+      assert.equal(await readEditorSource(page), source);
+      await page.reload();
+      await editorInput(page).waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#editor-theme-select').inputValue(), 'light');
+      assert.equal(await page.locator('#code-wrap-toggle').getAttribute('aria-pressed'), 'true');
+      assert.equal(await readEditorSource(page), source);
+      assert.equal(api.requests.length, 0);
+    });
+
+    await run(browser, 'editor-theme-preserves-selection-and-keyboard-undo', async ({ context, page }) => {
+      await mockApi(context);
+      await openLesson(page, first, 'lab');
+      const source = 'class Palette { int count = 7; }';
+      await editorInput(page).fill(source);
+      const editorNode = await editorInput(page).elementHandle();
+      await editorInput(page).focus();
+      await page.keyboard.press('ControlOrMeta+Home');
+      await page.keyboard.press('Shift+ArrowRight');
+      await page.keyboard.press('Shift+ArrowRight');
+      await page.keyboard.press('Shift+ArrowRight');
+      await page.keyboard.press('Shift+ArrowRight');
+      await page.keyboard.press('Shift+ArrowRight');
+      assert.equal(await page.evaluate(() => getSelection().toString()), 'class');
+      await chooseTheme(page, 'light');
+      await chooseTheme(page, 'contrast');
+      assert.equal(await editorNode.evaluate(element => element.isConnected), true, 'theme reconfiguration keeps the input DOM instance');
+      await editorInput(page).focus();
+      assert.equal(await page.evaluate(() => getSelection().toString()), 'class', 'theme changes preserve the selected source range');
+      await page.keyboard.insertText('interface');
+      const replaced = source.replace('class', 'interface');
+      assert.equal(await readEditorSource(page), replaced);
+      await chooseTheme(page, 'dark');
+      await editorInput(page).focus();
+      await page.keyboard.press('ControlOrMeta+z');
+      assert.equal(await readEditorSource(page), source, 'undo survives theme changes');
+      await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+z' : 'Control+y');
+      assert.equal(await readEditorSource(page), replaced, 'redo restores the typed replacement');
+      await editorNode.dispose();
+    });
+
+    await run(browser, 'editor-enter-indent-tab-and-reset-undo', async ({ context, page }) => {
+      await mockApi(context);
+      await openLesson(page, first, 'lab');
+      await editorInput(page).fill('class Demo {');
+      await page.keyboard.press('ControlOrMeta+End');
+      await page.keyboard.press('Enter');
+      await page.keyboard.insertText('int number = 1;');
+      const indented = 'class Demo {\n    int number = 1;';
+      assert.equal(await readEditorSource(page), indented, 'Enter applies a four-space Java block indentation');
+      await page.keyboard.press('Tab');
+      assert.equal(await editorInput(page).evaluate(element => element.contains(document.activeElement)), false, 'Tab is navigation');
+      await editorInput(page).focus();
+      await page.keyboard.press('ControlOrMeta+End');
+      await page.locator('#indent-code').click();
+      const moreIndented = 'class Demo {\n        int number = 1;';
+      assert.equal(await readEditorSource(page), moreIndented, 'indent toolbar adds four spaces to the selected line');
+      await page.keyboard.press('ControlOrMeta+z');
+      assert.equal(await readEditorSource(page), indented, 'indent action is undoable');
+      await chooseTheme(page, 'light');
+      await page.locator('#lab-reset').click();
+      assert.equal(await readEditorSource(page), firstExercise.template);
+      await page.locator('#lab-undo').click();
+      assert.equal(await readEditorSource(page), indented, 'public reset undo restores the entire previous source');
+      assert.equal(await page.locator('#editor-theme-select').inputValue(), 'light');
+    });
+
+    await run(browser, 'editor-mouse-selection-and-simulated-copy-event', async ({ context, page }) => {
+      await mockApi(context);
+      await openLesson(page, first, 'lab');
+      const source = 'class MouseSelection { int count = 7; }';
+      await editorInput(page).fill(source);
+      const token = page.locator('#code-editor .tok-class').filter({ hasText: 'MouseSelection' });
+      await token.scrollIntoViewIfNeeded();
+      const bounds = await token.boundingBox();
+      assert.ok(bounds && bounds.width > 0);
+      await page.mouse.move(bounds.x + 0.2, bounds.y + bounds.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(bounds.x + bounds.width + 0.2, bounds.y + bounds.height / 2, { steps: 14 });
+      await page.mouse.up();
+      assert.equal(await page.evaluate(() => getSelection().toString()), 'MouseSelection', 'pointer drag selects source text');
+      const copied = await editorInput(page).evaluate(element => {
+        const clipboardData = new DataTransfer();
+        const event = new ClipboardEvent('copy', { clipboardData, bubbles: true, cancelable: true });
+        element.dispatchEvent(event);
+        return { text: clipboardData.getData('text/plain'), prevented: event.defaultPrevented };
+      });
+      assert.equal(copied.text, 'MouseSelection', 'editor copy handler writes only the selection to the simulated clipboard');
+      assert.equal(copied.prevented, true);
+      assert.equal(await readEditorSource(page), source, 'toolbar copy remains a whole-document action');
+    });
+
+    await run(browser, 'editor-simulated-korean-composition-retains-source', async ({ context, page }) => {
+      const api = await mockApi(context);
+      await openLesson(page, first, 'lab');
+      const before = 'class 한글 { String value = ""; }\n// ';
+      await editorInput(page).fill(before);
+      await page.keyboard.press('ControlOrMeta+End');
+      await editorInput(page).dispatchEvent('compositionstart', { data: '' });
+      await editorInput(page).dispatchEvent('compositionupdate', { data: '한글 입력' });
+      await page.keyboard.insertText('한글 입력');
+      await editorInput(page).dispatchEvent('compositionend', { data: '한글 입력' });
+      const expected = `${before}한글 입력`;
+      assert.equal(await readEditorSource(page), expected, 'synthetic composition sequence does not duplicate committed Korean text');
+      await editorInput(page).dispatchEvent('compositionstart', { data: '' });
+      await editorInput(page).dispatchEvent('compositionend', { data: '' });
+      await page.locator('#run-code').click();
+      await expectEventually(() => api.requests.length, 1, 'composition result reaches the mock API');
+      assert.equal(api.requests[0].source, expected);
+      await waitForOutput(page, 'passed');
+      await assertDraft(page, firstExercise.id, expected);
+      // This is a synthetic browser event test, not validation of an OS IME,
+      // candidate window, physical keyboard, or mobile composition behavior.
+    });
+
+    await run(browser, 'editor-empty-trailing-newline-and-request-roundtrip', async ({ context, page }) => {
+      const api = await mockApi(context);
+      await openLesson(page, first, 'lab');
+      await editorInput(page).fill('');
+      assert.equal(await readEditorSource(page), '');
+      await page.locator('#run-code').click();
+      assert.equal(api.requests.length, 0, 'empty input is not submitted');
+      assert.equal(await editorInput(page).evaluate(element => document.activeElement === element), true);
+      const source = 'class Solution {\n    // 마지막 빈 줄도 원문의 일부\n}\n\n\n';
+      await editorInput(page).fill(source);
+      assert.equal(await readEditorSource(page), source);
+      await page.locator('#run-code').click();
+      await expectEventually(() => api.requests.length, 1, 'source is submitted once');
+      assert.equal(api.requests[0].source, source);
+      await waitForOutput(page, 'passed');
+      await assertDraft(page, firstExercise.id, source);
+      await page.reload();
+      await editorInput(page).waitFor({ state: 'visible' });
+      assert.equal(await readEditorSource(page), source, 'reload retains all trailing newlines');
+    });
+
+    await run(browser, 'editor-long-korean-document-wrap-scroll-and-resize', async ({ context, page }) => {
+      const api = await mockApi(context);
+      await openLesson(page, first, 'lab');
+      const source = `class Solution {\n${Array.from({ length: 100 }, (_, index) => `    // ${index}: ${'긴한글식별자와문자열 '.repeat(8)}`).join('\n')}\n}\n\n`;
+      await editorInput(page).fill(source);
+      assert.equal(await readEditorSource(page), source, 'virtualized long document is copied in full');
+      await page.locator('#run-code').click();
+      await expectEventually(() => api.requests.length, 1, 'long Unicode source reaches the mock API');
+      assert.equal(api.requests[0].source, source);
+      await waitForOutput(page, 'passed');
+      await assertDraft(page, firstExercise.id, source);
+      for (const viewport of [{ width: 320, height: 720 }, { width: 844, height: 390 }, { width: 390, height: 844 }]) {
+        await page.setViewportSize(viewport);
+        await noViewportOverflow(page);
+        const scroll = await editorScroller(page).evaluate(element => {
+          element.scrollTop = element.scrollHeight;
+          element.scrollLeft = 180;
+          return { left: element.scrollLeft, top: element.scrollTop, width: element.clientWidth, scrollWidth: element.scrollWidth };
+        });
+        assert.ok(scroll.top > 0 && scroll.left > 0 && scroll.scrollWidth > scroll.width, 'long document scrolls inside CodeMirror');
+        assert.equal(await readEditorSource(page), source);
+      }
+      await chooseTheme(page, 'light');
+      await page.locator('#code-wrap-toggle').click();
+      await expectEventually(() => editorScroller(page).evaluate(element => element.scrollWidth <= element.clientWidth + 1), true, 'wrap contains long lines inside the editor');
+      await page.locator('html').evaluate(element => { element.style.fontSize = '200%'; });
+      await noViewportOverflow(page);
+      await activeTabVisible(page);
+      await expectEventually(() => page.locator('#toast').evaluate(element => element.classList.contains('is-visible')), false, 'copy confirmation has dismissed before layout evidence');
+      await page.locator('#code-editor').scrollIntoViewIfNeeded();
+      await screenshot(page, 'editor-mobile-200-long-korean', false);
+      await page.setViewportSize({ width: 320, height: 720 });
+      await noViewportOverflow(page);
+      await page.locator('.code-settings').scrollIntoViewIfNeeded();
+      await screenshot(page, 'editor-320-200-controls', false);
+      await page.locator('#code-wrap-toggle').click();
+      assert.equal(await readEditorSource(page), source);
+      await page.reload();
+      await editorInput(page).waitFor({ state: 'visible' });
+      assert.equal(await readEditorSource(page), source);
+    });
+
+    await run(browser, 'editor-document-character-limit-is-atomic', async ({ context, page }) => {
+      const api = await mockApi(context);
+      await openLesson(page, first, 'lab');
+      const accepted = `//${'가'.repeat(49_998)}`;
+      await editorInput(page).fill(accepted);
+      assert.equal(await readEditorSource(page), accepted, 'exactly 50,000 characters are accepted');
+      await page.keyboard.press('ControlOrMeta+End');
+      await page.keyboard.insertText('나');
+      assert.match(await page.locator('#toast').textContent(), /50,000/);
+      assert.equal(await readEditorSource(page), accepted, 'an over-limit insertion leaves the prior document intact');
+      await assertDraft(page, firstExercise.id, accepted);
+      await page.locator('#run-code').click();
+      await waitForOutput(page, 'validation_error');
+      assert.equal(api.requests.length, 0, 'the independent UTF-8 request limit is enforced before transmission');
+      await page.locator('#lab-reset').click();
+      await page.locator('#lab-undo').click();
+      assert.equal(await readEditorSource(page), accepted, 'reset undo preserves a boundary-size document');
+    });
+
+    await run(browser, 'editor-theme-during-request-preserves-execution-snapshot', async ({ context, page }) => {
+      const gate = deferred();
+      context.once('close', () => gate.resolve());
+      const api = await mockApi(context, { respond: async request => { await gate.promise; return { body: executionResult(request) }; } });
+      await openLesson(page, first, 'lab');
+      const source = `${firstExercise.template}\n// immutable request snapshot`;
+      await editorInput(page).fill(source);
+      await page.locator('#submit-code').click();
+      await expectEventually(() => api.requests.length, 1, 'pending snapshot is captured');
+      await chooseTheme(page, 'contrast');
+      await page.locator('#code-wrap-toggle').click();
+      assert.equal(api.requests[0].source, source);
+      gate.resolve();
+      await waitForOutput(page, 'passed');
+      assert.equal(await achievement(page, 'lab'), 'true', 'presentation-only changes do not invalidate matching source');
+      assert.equal(await readEditorSource(page), source);
+      assert.equal(api.requests.length, 1, 'theme change sends no additional execution request');
+    });
+
+    await run(browser, 'editor-invalid-and-denied-preferences-keep-learning-usable', async ({ context, page }) => {
+      const api = await mockApi(context);
+      await context.addInitScript(key => localStorage.setItem(key, '{ invalid-json'), editorPreferencesKey);
+      await openLesson(page, first, 'lab');
+      assert.equal(await page.locator('#editor-theme-select').inputValue(), 'dark');
+      await page.evaluate(() => { Storage.prototype.setItem = function () { throw new DOMException('QA blocked preferences', 'SecurityError'); }; });
+      await chooseTheme(page, 'light');
+      assert.match(await page.locator('#storage-label').textContent(), /이번 방문/);
+      const source = `${firstExercise.template}\n// memory-only preferences`;
+      await editorInput(page).fill(source);
+      await stepTo(page, 'example');
+      assert.equal(await page.locator('.code-shell').getAttribute('data-editor-theme'), 'light');
+      await stepTo(page, 'lab');
+      assert.equal(await readEditorSource(page), source);
+      await page.locator('#run-code').click();
+      await waitForOutput(page, 'passed');
+      assert.equal(api.requests[0].source, source);
+    });
+
+    await run(browser, 'editor-bundle-failure-keeps-plain-source-editing-and-execution', async ({ context, page }) => {
+      const api = await mockApi(context);
+      await context.route('**/assets/editor.bundle.js', route => route.abort('failed'));
+      await openLesson(page, first, 'example');
+      assert.equal(await page.locator('.code-block code').textContent(), first.example.code);
+      assert.match(await page.locator('.syntax-note').textContent(), /원문/);
+      await stepTo(page, 'lab');
+      assert.equal(await page.locator('#code-editor').getAttribute('data-editor-engine'), 'textarea-fallback');
+      const fallback = page.locator('#code-editor [data-testid="code-editor-input"]');
+      assert.equal(await fallback.evaluate(element => element.tagName), 'TEXTAREA');
+      assert.match(await page.locator('#editor-hint').textContent(), /기본 텍스트 편집기/);
+      const source = `${firstExercise.template}\n// fallback source\n\n`;
+      await fallback.fill(source);
+      await chooseTheme(page, 'light');
+      await page.locator('#code-wrap-toggle').click();
+      assert.equal(await fallback.inputValue(), source);
+      assert.equal(await fallback.getAttribute('wrap'), 'soft');
+      await page.locator('#run-code').click();
+      await waitForOutput(page, 'passed');
+      assert.equal(api.requests[0].source, source);
+      await page.locator('#lab-reset').click();
+      await page.locator('#lab-undo').click();
+      assert.equal(await fallback.inputValue(), source);
+      await page.setViewportSize({ width: 320, height: 720 });
+      await noViewportOverflow(page);
+      await fallback.scrollIntoViewIfNeeded();
+      await screenshot(page, 'editor-fallback-320', false);
+    });
+
+    await run(browser, 'editor-selection-and-caret-visual-states', async ({ context, page }) => {
+      await mockApi(context);
+      await openLesson(page, first, 'lab');
+      const source = 'class Palette {\n    String label = "한글 문자열";\n    int count = 7;\n    // 선택 영역과 커서 가독성\n    void run() { count++; }\n}';
+      await editorInput(page).fill(source);
+      const selectionContrasts = [];
+      for (const theme of ['dark', 'light', 'contrast']) {
+        await chooseTheme(page, theme);
+        await editorInput(page).focus();
+        await page.keyboard.press('ControlOrMeta+a');
+        assert.equal(await page.evaluate(() => getSelection().toString()), source);
+        await page.locator('.editor-shell').scrollIntoViewIfNeeded();
+        await screenshot(page, `editor-${theme}-selection`, false, { caret: 'initial' });
+        const background = await page.locator('#code-editor .cm-selectionBackground').first().evaluate(element => getComputedStyle(element).backgroundColor);
+        const palette = await tokenPalette(page, '#code-editor');
+        for (const [category, foreground] of Object.entries(palette)) selectionContrasts.push({ theme, category, ratio: contrastRatio(foreground, background) });
+        await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('ArrowRight');
+        assert.equal(await page.evaluate(() => getSelection().isCollapsed), true);
+        await expectEventually(() => page.locator('#code-editor .cm-cursor').first().evaluate(element => getComputedStyle(element).visibility), 'visible', 'focused editor caret is visible');
+        await screenshot(page, `editor-${theme}-caret`, false, { caret: 'initial' });
+      }
+      console.log('SELECTION_CONTRAST', JSON.stringify(selectionContrasts));
+      for (const { theme, category, ratio } of selectionContrasts) assert.ok(ratio >= 4.5, `${theme}/${category} selected text contrast ${ratio.toFixed(2)}:1 is below 4.5:1`);
+      await noViewportOverflow(page);
+    });
+
+    await run(browser, 'editor-mobile-theme-palette-and-controls', async ({ context, page }) => {
+      await mockApi(context);
+      await openLesson(page, first, 'lab');
+      for (const theme of ['dark', 'light', 'contrast']) {
+        await chooseTheme(page, theme);
+        await noViewportOverflow(page);
+        await page.locator('.code-settings').scrollIntoViewIfNeeded();
+        await screenshot(page, `editor-mobile-${theme}`, false);
+      }
+      await page.locator('html').evaluate(element => { element.style.fontSize = '200%'; });
+      await noViewportOverflow(page);
+      await activeTabVisible(page);
+      await page.locator('.code-settings').scrollIntoViewIfNeeded();
+      await screenshot(page, 'editor-mobile-200-theme', false);
+      await page.locator('#run-code').scrollIntoViewIfNeeded();
+      await screenshot(page, 'editor-mobile-200-execution-controls', false);
     }, { viewport: { width: 390, height: 844 } });
   } finally {
     await browser.close();

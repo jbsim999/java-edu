@@ -4,8 +4,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+await import('./build-editor.mjs');
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
-const files = ['index.html', 'styles.css', 'app.js', 'data/curriculum.js', 'data/exercises.js', 'data/job-evidence.js'];
+const files = ['index.html', 'styles.css', 'app.js', 'assets/editor.bundle.js', 'data/curriculum.js', 'data/exercises.js', 'data/job-evidence.js'];
 const assets = {};
 for (const file of files) assets[`/${file}`] = { body: await readFile(path.join(root, 'dist', file), 'utf8'), type: types[path.extname(file)] };
 await mkdir(path.join(root, 'worker'), { recursive: true });

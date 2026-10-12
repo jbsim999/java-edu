@@ -1,4 +1,6 @@
 const STORAGE_KEY = 'java-edu:progress:v1';
+const EDITOR_PREFERENCES_KEY = 'java-edu:editor-preferences:v1';
+const EDITOR_THEMES = ['dark', 'light', 'contrast'];
 const VERSIONS = [8, 11, 17, 21];
 const STEPS = ['theory', 'example', 'quiz', 'practice', 'lab'];
 const STEP_LABELS = { theory: '이론', example: '예제', quiz: '문제', practice: '실무', lab: '코드 실습' };
@@ -14,6 +16,8 @@ let jobEvidence = [];
 let saveTimer;
 let toastTimer;
 let runtimeSequence = 0;
+let editorLibrary = null;
+let activeEditor = null;
 
 const state = {
   version: 21, track: 'all', search: '', lessonId: '', step: 'theory',
@@ -21,6 +25,7 @@ const state = {
   quizAnswers: new Map(), quizResults: new Map(), labResults: new Map(), undo: new Map(),
   storage: 'ready', runtime: null, runtimeStatus: 'checking', runtimeMessage: '',
   pending: null, menuOpen: false,
+  editorTheme: 'dark', editorWrap: false,
 };
 
 const dom = Object.fromEntries([
@@ -149,6 +154,65 @@ function restoreStorage() {
   } catch {
     state.storage = 'invalid';
   }
+}
+
+function restoreEditorPreferences() {
+  try {
+    const preferences = JSON.parse(window.localStorage.getItem(EDITOR_PREFERENCES_KEY));
+    if (!preferences || typeof preferences !== 'object') return;
+    if (EDITOR_THEMES.includes(preferences.theme)) state.editorTheme = preferences.theme;
+    if (typeof preferences.wrap === 'boolean') state.editorWrap = preferences.wrap;
+  } catch { /* Preferences are optional; the default theme also works without storage. */ }
+}
+
+function saveEditorPreferences() {
+  try {
+    window.localStorage.setItem(EDITOR_PREFERENCES_KEY, JSON.stringify({ theme: state.editorTheme, wrap: state.editorWrap }));
+  } catch {
+    state.storage = 'unavailable';
+    updateStorageIndicator();
+    toast('코드 테마는 이번 방문 동안 적용됩니다. 브라우저 저장을 사용할 수 없습니다.');
+  }
+}
+
+function setEditorTheme(theme) {
+  if (!EDITOR_THEMES.includes(theme)) return;
+  state.editorTheme = theme;
+  document.querySelectorAll('[data-editor-theme]').forEach((node) => { node.dataset.editorTheme = theme; });
+  document.querySelectorAll('.editor-theme-select').forEach((select) => { select.value = theme; });
+  activeEditor?.setTheme(theme);
+  saveEditorPreferences();
+  announce(`코드 테마를 ${theme === 'dark' ? '다크' : theme === 'light' ? '라이트' : '고대비'}로 변경했습니다.`);
+}
+
+function codePreferences() {
+  const settings = el('div', 'code-settings');
+  const label = el('label', 'code-theme-label', '코드 테마');
+  label.htmlFor = 'editor-theme-select';
+  const select = el('select', 'editor-theme-select');
+  select.id = 'editor-theme-select';
+  select.dataset.testid = 'editor-theme-select';
+  for (const [value, name] of [['dark', '다크'], ['light', '라이트'], ['contrast', '고대비']]) {
+    const option = el('option', '', name); option.value = value; select.append(option);
+  }
+  select.value = state.editorTheme;
+  select.addEventListener('change', () => setEditorTheme(select.value));
+  settings.append(label, select);
+  return settings;
+}
+
+function syntaxLegend() {
+  const legend = el('div', 'syntax-legend');
+  legend.setAttribute('aria-label', '코드 색상 안내');
+  for (const [category, label] of [['keyword', '키워드'], ['class', '클래스'], ['type', '타입'], ['variable', '변수'], ['method', '메서드'], ['string', '문자열'], ['comment', '주석'], ['number', '숫자']]) {
+    legend.append(el('span', `syntax-legend-item tok-${category}`, label));
+  }
+  return legend;
+}
+
+function destroyCodeEditor() {
+  activeEditor?.destroy();
+  activeEditor = null;
 }
 
 function updateStorageIndicator() {
@@ -318,6 +382,7 @@ function renderAchievements(lesson = currentLesson()) {
 function renderLesson() {
   const lesson = currentLesson();
   const tabs = document.querySelector('.lesson-tabs');
+  destroyCodeEditor();
   dom['lesson-panel'].replaceChildren();
   dom['lesson-meta'].replaceChildren();
   dom['lesson-footer'].replaceChildren();
@@ -465,7 +530,9 @@ async function copyText(text, selectableNode) {
     await navigator.clipboard.writeText(text);
     toast('코드를 복사했습니다.');
   } catch {
-    if (selectableNode instanceof HTMLTextAreaElement) {
+    if (typeof selectableNode?.selectAll === 'function') {
+      selectableNode.selectAll();
+    } else if (selectableNode instanceof HTMLTextAreaElement) {
       selectableNode.focus();
       selectableNode.select();
     } else if (selectableNode) {
@@ -484,19 +551,23 @@ function renderExample(lesson) {
   if (!example) return;
   dom['lesson-panel'].append(sectionTitle(example.title || '코드로 개념 살펴보기'), el('p', 'section-caption', '아래는 학습용 예제와 예상 출력입니다. 실제 실행은 코드 실습에서 확인하세요.'));
   const shell = el('div', 'code-shell');
+  shell.dataset.editorTheme = state.editorTheme;
   const heading = el('div', 'code-heading');
   const filename = el('span'); filename.append(icon('code'), document.createTextNode('Main.java'));
   const pre = el('pre', 'code-block');
   pre.tabIndex = 0;
   pre.setAttribute('aria-label', '학습 예제 소스 코드');
-  pre.append(el('code', '', example.code));
+  const code = el('code');
+  if (editorLibrary) editorLibrary.highlightJavaCode(code, example.code);
+  else code.textContent = example.code;
+  pre.append(code);
   const copy = actionButton('코드 복사', 'copy-button', () => copyText(example.code, pre), 'copy-example');
   copy.prepend(icon('copy'));
   heading.append(filename, copy);
-  shell.append(heading, pre);
+  shell.append(heading, codePreferences(), syntaxLegend(), pre);
   const output = el('div', 'expected-output');
   output.append(el('p', 'small-label', '예상 출력 · 실행 결과가 아닙니다'), el('pre', '', example.output || '(표준 출력 없음)'));
-  dom['lesson-panel'].append(shell, output, el('p', 'explanation', example.explanation), nextStepButton('quiz', '문제로 이해 확인하기'));
+  dom['lesson-panel'].append(shell, el('p', 'inline-note syntax-note', editorLibrary ? '색상은 코드의 구문을 구분하며, 컴파일 결과를 대신하지 않습니다.' : '문법 강조를 불러오지 못해 원문으로 표시합니다.'), output, el('p', 'explanation', example.explanation), nextStepButton('quiz', '문제로 이해 확인하기'));
 }
 
 function renderQuiz(lesson) {
@@ -659,43 +730,34 @@ function renderLab(lesson) {
     dom['lesson-panel'].append(rubric);
   }
   const editorShell = el('div', 'editor-shell');
+  editorShell.dataset.editorTheme = state.editorTheme;
   const toolbar = el('div', 'editor-toolbar');
   const filename = el('span', 'editor-filename');
   filename.append(icon('code'), document.createTextNode('Solution · Java'));
   const editorTools = el('div', 'editor-tools');
-  const editor = el('textarea', 'code-editor');
+  const editor = el('div', 'code-editor');
   editor.id = 'code-editor';
   editor.dataset.testid = 'code-editor';
-  editor.value = sourceFor(exercise);
-  editor.spellcheck = false;
-  editor.autocomplete = 'off';
-  editor.setAttribute('autocapitalize', 'off');
-  editor.setAttribute('autocorrect', 'off');
-  editor.setAttribute('wrap', 'off');
-  editor.setAttribute('aria-label', `${exercise.title} Java 코드 편집기`);
-  editor.setAttribute('aria-describedby', 'editor-hint editor-save-state');
-  editor.maxLength = SOURCE_LIMIT;
-  editor.addEventListener('input', () => {
-    state.drafts.set(exercise.id, editor.value);
-    state.undo.delete(exercise.id);
-    renderUndo(exercise);
-    refreshDraftDependentUi(exercise);
-    scheduleSave();
-  });
-  editor.addEventListener('blur', saveStorage);
+  const wrapToggle = actionButton('줄바꿈', '', () => {
+    state.editorWrap = !state.editorWrap;
+    activeEditor?.setWrap(state.editorWrap);
+    wrapToggle.setAttribute('aria-pressed', String(state.editorWrap));
+    saveEditorPreferences();
+  }, 'code-wrap-toggle');
+  wrapToggle.setAttribute('aria-pressed', String(state.editorWrap));
+  wrapToggle.setAttribute('aria-label', '긴 코드 줄 자동 줄바꿈');
   editorTools.append(
     actionButton('들여쓰기', '', () => {
-      editor.setRangeText('    ', editor.selectionStart, editor.selectionEnd, 'end');
-      editor.dispatchEvent(new Event('input', { bubbles: true }));
-      editor.focus();
+      activeEditor?.indent();
     }, 'indent-code'),
-    actionButton('복사', '', () => copyText(editor.value, editor), 'copy-code'),
+    wrapToggle,
+    actionButton('복사', '', () => copyText(activeEditor?.getValue() ?? sourceFor(exercise), activeEditor), 'copy-code'),
     actionButton('초기 코드', '', () => {
-      const previous = sourceFor(exercise);
+      const previous = activeEditor?.getValue() ?? sourceFor(exercise);
       if (previous === exercise.template) { toast('이미 초기 코드입니다.'); return; }
       state.undo.set(exercise.id, previous);
       state.drafts.set(exercise.id, exercise.template);
-      editor.value = exercise.template;
+      activeEditor?.setValue(exercise.template);
       refreshDraftDependentUi(exercise);
       renderUndo(exercise);
       saveStorage();
@@ -707,8 +769,8 @@ function renderLab(lesson) {
   const lines = el('span'); lines.id = 'editor-line-count';
   const save = el('span'); save.id = 'editor-save-state';
   editorStatus.append(lines, save);
-  editorShell.append(toolbar, editor, editorStatus);
-  const hint = el('p', 'editor-hint', '일반 텍스트 편집기 · 자동 완성 없음 · Tab은 다음 항목으로 이동합니다. 들여쓰기는 공백 4칸입니다. class Solution 골격을 유지하고 최상위 public class·package·Main 선언은 추가하지 마세요. 실행 요청은 UTF-8 32 KiB까지 전송할 수 있습니다.');
+  editorShell.append(toolbar, codePreferences(), syntaxLegend(), editor, editorStatus);
+  const hint = el('p', 'editor-hint', '문법 강조 · 줄 번호 · 괄호 짝 표시 · Tab은 다음 항목으로 이동합니다. 들여쓰기 버튼은 선택한 줄에 공백 4칸을 넣습니다. 색상은 구문을 구분하며 컴파일 결과를 대신하지 않습니다. class Solution 골격을 유지하고 최상위 public class·package·Main 선언은 추가하지 마세요. 실행 요청은 UTF-8 32 KiB까지 전송할 수 있습니다.');
   hint.id = 'editor-hint';
   const undo = el('div', 'reset-undo'); undo.id = 'lab-reset-undo'; undo.hidden = true;
   const disclosure = el('p', 'execution-disclosure', '실행·제출을 누르면 작성 코드가 외부 서비스 Wandbox로 전송됩니다. 운영 로그에 코드가 남을 수 있으니 비밀정보를 입력하지 마세요. ');
@@ -732,11 +794,62 @@ function renderLab(lesson) {
   output.setAttribute('aria-busy', 'false');
   output.tabIndex = -1;
   dom['lesson-panel'].append(editorShell, hint, undo, disclosure, actions, output);
+  mountCodeEditor(editor, exercise);
+  if (!editorLibrary) hint.prepend(document.createTextNode('편집기 확장을 불러오지 못해 기본 텍스트 편집기를 사용합니다. '));
   renderRuntime();
   renderUndo(exercise);
   refreshEditorCounter(exercise);
   renderExecution(exercise);
   updateLabControls();
+}
+
+function mountCodeEditor(parent, exercise) {
+  const onChange = (value) => {
+    state.drafts.set(exercise.id, value);
+    state.undo.delete(exercise.id);
+    renderUndo(exercise);
+    refreshDraftDependentUi(exercise);
+    scheduleSave();
+  };
+  const options = {
+    parent, source: sourceFor(exercise), theme: state.editorTheme, wrap: state.editorWrap,
+    label: `${exercise.title} Java 코드 편집기`, descriptionId: 'editor-hint editor-save-state',
+    maxLength: SOURCE_LIMIT, onChange, onBlur: saveStorage,
+    onLimit: () => toast(`코드는 ${SOURCE_LIMIT.toLocaleString('ko-KR')}자까지 작성할 수 있습니다.`),
+  };
+  if (editorLibrary) {
+    activeEditor = editorLibrary.createJavaEditor(options);
+    return;
+  }
+  const textarea = el('textarea', 'code-editor-fallback');
+  textarea.value = options.source;
+  textarea.maxLength = SOURCE_LIMIT;
+  textarea.spellcheck = false;
+  textarea.setAttribute('aria-label', options.label);
+  textarea.setAttribute('aria-describedby', options.descriptionId);
+  textarea.dataset.testid = 'code-editor-input';
+  textarea.setAttribute('autocapitalize', 'off');
+  textarea.setAttribute('autocorrect', 'off');
+  textarea.setAttribute('autocomplete', 'off');
+  textarea.setAttribute('wrap', state.editorWrap ? 'soft' : 'off');
+  textarea.addEventListener('input', () => onChange(textarea.value));
+  textarea.addEventListener('blur', saveStorage);
+  parent.dataset.editorEngine = 'textarea-fallback';
+  parent.append(textarea);
+  activeEditor = {
+    getValue: () => textarea.value,
+    setValue: (value) => { textarea.value = value; },
+    focus: () => textarea.focus(),
+    selectAll: () => { textarea.focus(); textarea.select(); },
+    indent: () => {
+      textarea.setRangeText('    ', textarea.selectionStart, textarea.selectionEnd, 'end');
+      onChange(textarea.value);
+      textarea.focus();
+    },
+    setTheme: () => {},
+    setWrap: (wrap) => textarea.setAttribute('wrap', wrap ? 'soft' : 'off'),
+    destroy: () => {},
+  };
 }
 
 function refreshEditorCounter(exercise) {
@@ -755,12 +868,11 @@ function renderUndo(exercise) {
     const source = state.undo.get(exercise.id);
     state.undo.delete(exercise.id);
     state.drafts.set(exercise.id, source);
-    const editor = document.getElementById('code-editor');
-    if (editor) editor.value = source;
+    activeEditor?.setValue(source);
     refreshDraftDependentUi(exercise);
     renderUndo(exercise);
     saveStorage();
-    editor?.focus();
+    activeEditor?.focus();
     announce('이전 작성 코드를 복구했습니다.');
   }, 'lab-undo'));
 }
@@ -944,7 +1056,7 @@ async function executeCode(exercise, action) {
   const source = sourceFor(exercise);
   if (!source.trim()) {
     toast('실행할 Java 코드를 입력해 주세요.');
-    document.getElementById('code-editor')?.focus();
+    activeEditor?.focus();
     return;
   }
   saveStorage();
@@ -1170,14 +1282,17 @@ function bindEvents() {
 
 async function boot() {
   try {
-    const [curriculumModule, exerciseModule, evidenceModule] = await Promise.all([
+    const [curriculumModule, exerciseModule, evidenceModule, editorModule] = await Promise.all([
       import('./data/curriculum.js'), import('./data/exercises.js'), import('./data/job-evidence.js'),
+      import('./assets/editor.bundle.js').catch(() => null),
     ]);
     lessons = curriculumModule.lessons;
     exercises = exerciseModule.exercises;
     jobEvidence = evidenceModule.jobEvidence;
+    editorLibrary = editorModule;
     if (!Array.isArray(lessons) || !lessons.length || !Array.isArray(exercises) || !Array.isArray(jobEvidence)) throw new Error('Content data unavailable');
     restoreStorage();
+    restoreEditorPreferences();
     readHash();
     ensureSelection();
     bindEvents();

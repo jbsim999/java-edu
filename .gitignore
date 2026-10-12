@@ -9,3 +9,5 @@ test-results/
 worker/assets.generated.mjs
 dist/server/
 dist/.openai/
+dist/assets/editor.bundle.js
+desktop-release/

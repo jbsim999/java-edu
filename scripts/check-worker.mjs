@@ -10,6 +10,12 @@ assert.ok((await html.text()).includes('javaedu'));
 const head = await worker.fetch(new Request(origin, { method: 'HEAD' }), {});
 assert.equal(head.status, 200);
 assert.equal(await head.text(), '');
+const editor = await worker.fetch(new Request(origin + '/assets/editor.bundle.js'), {});
+assert.equal(editor.status, 200);
+assert.match(editor.headers.get('content-type'), /javascript/);
+const editorSource = await editor.text();
+assert.match(editorSource, /Copyright/);
+assert.ok(editorSource.length > 100000, 'self-hosted editor bundle must be included');
 for (const file of ['/server/exercises.mjs', '/examples/solutions.json', '/.openai/hosting.json', '/missing']) {
   assert.equal((await worker.fetch(new Request(origin + file), {})).status, 404);
 }
