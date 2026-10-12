@@ -25,4 +25,22 @@
 
 M4.1 GitHub 소스 `a4d277e10f6c9e03b6a14f4fb6a11a2672987b54`, CI38204310833 전체6작업 성공. Sites source SHA `de02f178b7e236805e4e1594b7f7f4634ff0dd1e`, 버전 `appgprj_6acc4fec8bb48191a296197d2d55c1e3~appgver_91e1ae45c3f88191b32bc7c994e34ad2`, 배포 `appgdep_6acc654d2f788191b0fcec1f82f8738a`가 2026-10-12 04:43:08 UTC에 succeeded를 반환했다. 같은 개인 전용 URL에 코어12수업과 문법 강조·3테마를 제공한다.
 
-Windows v0.2.0 설치 파일은 로컬 빌드가 완료됐지만 GitHub Release에는 아직 게시하지 않았다. 34수업 웹도 아직 배포하지 않았다. 미완료 설치·시각 gate 및 새 CI 결과를 확인한 뒤 동일 검증 소스를 게시한다. 실제 최신 상태는 [개발 인계](development-handoff.md)를 따른다.
+M4.1 당시에는 Windows v0.2.0 설치 파일의 로컬 빌드만 완료됐고 GitHub Release와 34수업 웹 배포는 남아 있었다. 이후 웹 배포 결과는 아래 M7.1 기록을 따른다. Windows 설치형의 최신 검증 상태는 [개발 인계](development-handoff.md)를 따른다.
+
+## M7.1 34수업·이론 도식 배포
+
+2026-10-12 06:29:47 UTC에 같은 소유자 전용 URL로 웹 교재 배포가 성공했다. Java 코어12+실무22수업과 검수한 이론 도식12개를 제공한다. Windows 설치 파일 출시는 별도이며 이 웹 배포를 설치 앱 검증으로 표현하지 않는다.
+
+| 항목 | 확인 값 |
+| --- | --- |
+| GitHub 검증 소스 | `a0d12571dcca5574d19b6ffdc35cd1a1093790d4` |
+| CI | [38212145793](https://github.com/jbsim999/java-edu/actions/runs/38212145793): 콘텐츠·브라우저(도식 포함)·Java4·실무2 성공, Windows4 실패 |
+| Sites source SHA | `88e92c4a6889c621f710027f924450d540040460` |
+| 저장된 버전 | `appgprj_6acc4fec8bb48191a296197d2d55c1e3~appgver_776dd5662690819188b347b7a7be2b14` |
+| 배포 ID | `appgdep_6acc7e4ad0c88191a5c9c2e721d984a1` |
+| 결과 | `succeeded`, `failure_message: null` |
+| 배포 파일 SHA256 | `e11b37024706fc81ffe2fbe5f2ee2e3f0ffacd129f524e57b1a6e3cabae54bc4` |
+
+공식 Sites helper로 연 기존 체크아웃에 GitHub 검증 커밋의 파일260개를 복사하고 Git blob SHA를 전부 대조했다. 정확히 같은 소스를 `npm ci`(audit0)→Worker 빌드→Worker 정적·인증 검사→source commit/push→archive 순서로 준비했다. 이전 opening result의 SHA는 체크아웃 기준 정보이며, 배포에는 helper가 새로 반환한 pushed source SHA만 전달했다. 자동 승인 검토가 초기 패키징 입력을 오래된 SHA·만료 가능 인증정보로 판단해 거절했으나, 260파일 일치 확인·공식 helper 계약 확인·새 인증정보 후 재검토에서 진행됐다. 토큰은 저장·출력하지 않았다.
+
+웹 관련 8개 CI 작업과 내용·기능·시각 검수는 PASS다. 전체 CI의 Windows4 실패는 감독 PowerShell의 .NET CodeDom 임시 경로 초기화에서 발생하며 Windows 설치형 수정·검증에서 추적한다. 실무 웹은 교재·파일 편집·ZIP 다운로드를 제공하고 Spring을 호스팅에서 실행하지 않는다. 실제 인증 세션 Java 제출·실기기·학습 효과는 이번 배포 검증에 포함하지 않는다.
