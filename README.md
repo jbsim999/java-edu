@@ -8,6 +8,7 @@
 - [교육 로드맵](docs/education-roadmap.md)
 - [마일스톤](docs/milestones.md)
 - [실행 아키텍처](docs/architecture.md)
+- [실행 API 계약과 제한](docs/execution-contract.md)
 - [공식 Java 호환 기준](docs/java-version-matrix.md)
 - [채용 근거](docs/job-evidence.md)
 - [구현된 코어 과정](docs/curriculum.md)
@@ -20,3 +21,5 @@
 Node22+로 `npm ci`, `npm run dev`를 실행하면 `http://127.0.0.1:4173`에서 학습실을 사용할 수 있습니다. 진도·코드·메모는 이 브라우저에 저장됩니다. 편집기는 일반 텍스트 편집기이며 자동 완성을 제공하지 않습니다.
 
 `npm run check`는 콘텐츠와 실행 API 검사, `npm run test:java`는 설치된 JDK의 예제·기준 답안 검증입니다. `npm run test:browser`는 서버가 실행 중일 때 모의 API로 기능을 검사합니다. 로컬 Edge는 `PLAYWRIGHT_CHANNEL=msedge`를 지정하고 CI는 Chromium을 사용합니다. 검사 정의와 실제 결과를 구분해 기록합니다.
+
+`npm run build`는 정적 UI와 실행 API를 하나의 Worker로 묶습니다. `npm run test:worker`는 빌드 산출물의 경로·CSP·개인 파일 제외·인증 필수 동작을 검사합니다. 네트워크 실행 테스트는 별도 명시적 모드에서만 호출하며 기본 테스트는 외부로 코드를 보내지 않습니다.

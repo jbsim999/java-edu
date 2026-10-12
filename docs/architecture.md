@@ -8,7 +8,9 @@
 
 실제 JVM은21(`openjdk-jdk-21+35`). `--release`로8/11/17/21의 언어/API 대상 컴파일을 검사해도 실행 JVM은21이다. 8/11/17의 실제 런타임 검증은 별도 CI와 후속 실행 서버에서 분리한다. 2026-10-12 실제 확인용 코드는 `--release\n8`과 package-private `class Main`으로 컴파일하고 `JAVA_EDU_OK`·`21-internal`을 출력했다. Java8 obsolete 경고와 종료0을 함께 확인했다. 이 결과는 전체 과제 검증을 대신하지 않는다.
 
-주 파일은prog.java이므로 template의 Solution과 Main은 package-private다. 사용자 Solution과 trusted Main harness를 합쳐 실행한다. 호출·반환 타입·과제 개정판·컴파일 대상·샘플/제출 검사를 고정한다. 결과는 실행ID·작성 코드 snapshot에 연결한다. 단순 stdout 문구만으로 정답을 판정하지 않는다. 교육용 행동 검증은 악의적 제출에 대한 완전한 부정행위 방지 시스템을 뜻하지 않는다.
+주 파일은prog.java이므로 template의 Solution과 Main은 package-private다. 사용자 Solution과 trusted Main harness를 합쳐 실행한다. 호출·반환 타입·컴파일 대상·샘플/제출 검사는 배포 소스에서 고정한다. 결과는 실행ID·작성 코드 snapshot에 연결한다. 단순 stdout 문구만으로 정답을 판정하지 않는다. 교육용 행동 검증은 악의적 제출에 대한 완전한 부정행위 방지 시스템을 뜻하지 않는다.
+
+초판의 완료 기록에는 과제 ID와 코드 snapshot을 사용하고 개정판을 별도 연결하지 않는다. 같은 ID의 검사·계약을 바꾸면 이전 성취가 복원될 수 있다. 후속 콘텐츠 개정 전에 revision 또는 계약 fingerprint를 추가하고 과거 성취를 재검증해야 한다.
 
 ## 데이터와 접근
 
