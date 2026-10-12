@@ -1,5 +1,6 @@
 param([Parameter(Mandatory = $true)][string]$SpecPath)
 $ErrorActionPreference = 'Stop'
+$PSModuleAutoLoadingPreference = 'None'
 $source = @'
 using System;
 using System.Collections.Generic;
@@ -97,7 +98,9 @@ public static class JavaEduJob {
 }
 '@
 try {
-  $spec = Get-Content -LiteralPath $SpecPath -Raw -Encoding UTF8 | ConvertFrom-Json
+  # Avoid scanning user/third-party modules on clean Windows hosts. Only the OS utility module is needed.
+  Import-Module -Name ([System.IO.Path]::Combine($PSHOME, 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1')) -ErrorAction Stop
+  $spec = [System.IO.File]::ReadAllText($SpecPath, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
   Add-Type -TypeDefinition $source -Language CSharp
   $result = [JavaEduJob]::Run([string]$spec.executable, [string[]]$spec.args, [string]$spec.cwd, [int]$spec.timeoutMs, [int]$spec.memoryMiB, [int]$spec.maxProcesses, [uint32]$spec.parentPid)
   $report = @{ exitCode = [long]$result[0]; reason = $result[1] } | ConvertTo-Json -Compress

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, realpath, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,7 +21,8 @@ test('Windows Job supervisor preserves Unicode/metacharacter argv and stops time
   let diagnosticSource = supervisorSource;
   for (const [needle, stage] of [
     ["$ErrorActionPreference = 'Stop'", 'helper-entered'],
-    ['  $spec = Get-Content', 'reading-spec'],
+    ['  Import-Module -Name', 'loading-fixed-utility-module'],
+    ['  $spec = [System.IO.File]::ReadAllText', 'reading-spec'],
     ['  Add-Type -TypeDefinition', 'compiling-supervisor'],
     ['  $result = [JavaEduJob]::Run', 'supervisor-compiled'],
     ['  $report = @{', 'supervisor-returned'],
@@ -29,6 +30,7 @@ test('Windows Job supervisor preserves Unicode/metacharacter argv and stops time
     assert.ok(diagnosticSource.includes(needle), `Missing PowerShell diagnostic point: ${stage}`);
     diagnosticSource = diagnosticSource.replace(needle, `[Console]::Error.WriteLine('Java Edu CI stage: ${stage} ' + [DateTime]::UtcNow.ToString('o'))\n${needle}`);
   }
+  diagnosticSource = diagnosticSource.replace(" + $_.Exception.Message)", " + $_.Exception.ToString())");
   for (const [needle, stage] of [
     ['      parent = OpenProcess', 'opening-parent'],
     ['      job = CreateJobObject', 'creating-job'],
@@ -55,6 +57,14 @@ test('Windows Job supervisor preserves Unicode/metacharacter argv and stops time
   assert.equal(echo.exitCode, 0, `Node ${process.version}; supervisor echo result: ${JSON.stringify(echo)}`);
   t.diagnostic(`Node ${process.version}; supervisor echo completed in ${echo.durationMs}ms`);
   assert.deepEqual(JSON.parse(echo.stdout), argv);
+  const foreignModules = path.join(root, 'foreign-modules');
+  const foreignUtility = path.join(foreignModules, 'Microsoft.PowerShell.Utility');
+  await mkdir(foreignUtility, { recursive: true });
+  await writeFile(path.join(foreignUtility, 'Microsoft.PowerShell.Utility.psd1'), "@{ RootModule = 'Microsoft.PowerShell.Utility.psm1'; ModuleVersion = '99.0'; FunctionsToExport = @('ConvertFrom-Json', 'Add-Type') }");
+  await writeFile(path.join(foreignUtility, 'Microsoft.PowerShell.Utility.psm1'), "function ConvertFrom-Json { throw 'Unexpected third-party module discovery' }; function Add-Type { throw 'Unexpected third-party module discovery' }");
+  const fixedModule = await runProcess(process.execPath, [fixedFixture, 'echo', 'fixed-os-module'], { cwd: root, env: { ...env, PSModulePath: foreignModules } });
+  assert.equal(fixedModule.exitCode, 0, JSON.stringify(fixedModule));
+  assert.deepEqual(JSON.parse(fixedModule.stdout), ['fixed-os-module']);
   const pidfile = path.join(root, 'child.pid');
   const tree = await runProcess(process.execPath, [fixedFixture, 'tree', pidfile], { cwd: root, env, timeoutMs: 1200 });
   assert.equal(tree.reason, 'timeout', tree.stderr);
