@@ -13,6 +13,8 @@
 - [채용 근거](docs/job-evidence.md)
 - [구현된 코어 과정](docs/curriculum.md)
 - [협업 규칙](CONTRIBUTING.md)
+- [실제 검증과 미확인 범위](docs/verification.md)
+- [독립 브라우저 QA](docs/qa-report.md)
 
 수업은 이론 → 예시 → 문제풀이 → 실무 심화 → 웹 IDE 직접 코딩의 5단계입니다. 객관식 성취·코드 행동 검증·설계 평가를 구분합니다.
 

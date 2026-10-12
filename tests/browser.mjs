@@ -50,6 +50,18 @@ async function noViewportOverflow(page) {
   assert.ok(dimensions.scroll <= dimensions.client + 1, `viewport overflow: ${JSON.stringify(dimensions)}`);
 }
 
+async function activeTabVisible(page) {
+  const geometry = await page.evaluate(() => {
+    const strip = document.querySelector('.lesson-tabs');
+    const tab = strip.querySelector('[aria-selected="true"]');
+    const container = strip.getBoundingClientRect();
+    const selected = tab.getBoundingClientRect();
+    return { viewport: innerWidth, scrollLeft: strip.scrollLeft, clientWidth: strip.clientWidth, scrollWidth: strip.scrollWidth, containerLeft: container.left, containerRight: container.right, containerTop: container.top, containerBottom: container.bottom, tabLeft: selected.left, tabRight: selected.right, tabTop: selected.top, tabBottom: selected.bottom };
+  });
+  if (process.env.QA_TRACE_SCREENSHOTS === '1') console.log('ACTIVE_TAB', JSON.stringify(geometry));
+  assert.ok(geometry.tabLeft >= geometry.containerLeft - 1 && geometry.tabRight <= geometry.containerRight + 1 && geometry.tabTop >= geometry.containerTop - 1 && geometry.tabBottom <= geometry.containerBottom + 1, `selected tab is clipped: ${JSON.stringify(geometry)}`);
+}
+
 async function screenshot(page, name, fullPage = true) {
   const position = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
   if (fullPage) await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
@@ -431,6 +443,9 @@ async function main() {
       await expectEventually(() => achievement(page, 'lab'), 'true', 'all submit checks grant code achievement');
       assert.equal(await page.locator('#overall-completed').textContent(), '1');
       assert.equal(await page.locator(`#lesson-list [data-lesson-id="${first.id}"]`).getAttribute('data-complete'), 'true');
+      await screenshot(page, 'desktop-submit-passed');
+      await page.locator('#execution-output').scrollIntoViewIfNeeded();
+      await screenshot(page, 'desktop-submit-passed-result', false);
       await page.reload();
       await page.locator('#code-editor').waitFor({ state: 'visible' });
       assert.equal(await achievement(page, 'quiz'), 'true');
@@ -487,6 +502,28 @@ async function main() {
       await page.locator('#code-editor').waitFor({ state: 'visible' });
       assert.equal(await achievement(page, 'lab'), 'false', 'revocation survives reload');
     });
+
+    await run(browser, 'mobile-long-diagnostic-output-stays-internal', async ({ context, page }) => {
+      const diagnostic = `Solution.java:3: error: cannot find symbol\n${'long_identifier_'.repeat(120)}\n  location: class Solution\n1 error`;
+      await mockApi(context, { respond: request => ({ body: executionResult(request, { status: 'compile_error', stdout: '', stderr: '', compilerOutput: diagnostic, checks: [], passed: 0, total: 0 }) }) });
+      await openLesson(page, first, 'lab');
+      await page.locator('#submit-code').click();
+      await waitForOutput(page, 'compile_error');
+      await noViewportOverflow(page);
+      const output = page.locator('#execution-output pre');
+      const scroll = await output.evaluate(element => {
+        const width = element.clientWidth;
+        element.scrollLeft = 120;
+        const result = { width, scrollWidth: element.scrollWidth, left: element.scrollLeft };
+        element.scrollLeft = 0;
+        return result;
+      });
+      assert.ok(scroll.scrollWidth > scroll.width && scroll.left > 0, 'long compiler diagnostics have their own horizontal scroll');
+      assert.equal(await achievement(page, 'lab'), 'false');
+      await screenshot(page, 'mobile-compile-error');
+      await page.locator('#execution-output').scrollIntoViewIfNeeded();
+      await screenshot(page, 'mobile-compile-error-result', false);
+    }, { viewport: { width: 390, height: 844 } });
 
     await run(browser, 'empty-source-and-utf8-payload-limit', async ({ context, page }) => {
       const api = await mockApi(context);
@@ -775,6 +812,7 @@ async function main() {
         await page.setViewportSize(viewport);
         assert.equal(await page.locator('#code-editor').inputValue(), draft);
         await noViewportOverflow(page);
+        await activeTabVisible(page);
       }
       const before = await page.locator('html').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
       await page.locator('html').evaluate(element => { element.style.fontSize = '200%'; });
@@ -791,6 +829,7 @@ async function main() {
       await screenshot(page, 'desktop-text-200-version', false);
       await page.setViewportSize({ width: 390, height: 844 });
       await noViewportOverflow(page);
+      await activeTabVisible(page);
       await screenshot(page, 'mobile-text-200-percent');
       await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
       await screenshot(page, 'mobile-text-200-top', false);
@@ -803,6 +842,23 @@ async function main() {
       await page.keyboard.press('Escape');
       assert.equal(await page.locator('#code-editor').inputValue(), draft);
     });
+
+    await run(browser, 'initial-text-enlargement-keeps-mobile-tabs-visible', async ({ context, page }) => {
+      await mockApi(context);
+      await openLesson(page, first);
+      await page.locator('html').evaluate(element => { element.style.fontSize = '200%'; });
+      for (const step of ['theory', 'example', 'quiz', 'practice', 'lab']) {
+        await stepTo(page, step);
+        await activeTabVisible(page);
+        await noViewportOverflow(page);
+      }
+      await page.locator('html').evaluate(element => { element.style.fontSize = '100%'; });
+      await activeTabVisible(page);
+      await page.locator('html').evaluate(element => { element.style.fontSize = '200%'; });
+      await activeTabVisible(page);
+      await page.locator('.lesson-tabs').scrollIntoViewIfNeeded();
+      await screenshot(page, 'mobile-text-200-tabs-selected-before-enlargement', false);
+    }, { viewport: { width: 390, height: 844 } });
   } finally {
     await browser.close();
   }

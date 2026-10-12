@@ -153,7 +153,7 @@ ul, ol { padding-left: 1.35rem; }
 .lesson-panel { min-height: 330px; padding: 1.9rem 2rem 2rem; overflow-wrap: anywhere; }
 .lesson-panel h3 { font-size: 1.0625rem; letter-spacing: -.025em; line-height: 1.6; }
 .section-heading { display: flex; align-items: center; gap: .65rem; margin-bottom: .9rem; }
-.section-heading .section-number { font: .6875rem/1.5 var(--mono); color: #8da078; }
+.section-heading .section-number { flex-shrink: 0; white-space: nowrap; font: .6875rem/1.5 var(--mono); color: #8da078; }
 .section-caption { font-size: .875rem; color: var(--muted); margin: .45rem 0 1.25rem; line-height: 1.85; }
 .learning-goals { background: #f1f4ed; border: 1px solid #e0e6d6; border-radius: 10px; padding: 1.1rem 1.15rem; margin-bottom: 1.8rem; }
 .learning-goals .small-label { color: #617455; margin-bottom: .55rem; font-size: .6875rem; }
@@ -406,7 +406,7 @@ ul, ol { padding-left: 1.35rem; }
   .lesson-header h2 { font-size: 1.5rem; }
   .lesson-description { font-size: .875rem; }
   .lesson-meta { margin-top: .9rem; }
-  .lesson-tabs { padding: 0 .8rem; gap: .15rem; }
+  .lesson-tabs { flex-wrap: wrap; padding: 0 .8rem; gap: .15rem; overflow-x: visible; }
   .lesson-tabs button { padding: .9rem .5rem; font-size: .75rem; }
   .tab-number { display: none; }
   .lesson-panel { padding: 1.35rem 1.25rem 1.5rem; }
