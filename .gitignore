@@ -1,0 +1,8 @@
+node_modules/
+work/
+*.class
+.DS_Store
+.env
+.env.*
+.openai/
+test-results/
