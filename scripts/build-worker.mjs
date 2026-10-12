@@ -7,7 +7,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 await import('./build-editor.mjs');
 await import('./build-professional.mjs');
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
-const files = ['index.html', 'styles.css', 'app.js', 'assets/editor.bundle.js', 'data/curriculum.js', 'data/exercises.js', 'data/job-evidence.js', 'data/professional.js'];
+const files = ['index.html', 'styles.css', 'app.js', 'assets/editor.bundle.js', 'data/curriculum.js', 'data/exercises.js', 'data/job-evidence.js', 'data/professional.js', 'data/lesson-visuals.js'];
 const assets = {};
 for (const file of files) assets[`/${file}`] = { body: await readFile(path.join(root, 'dist', file), 'utf8'), type: types[path.extname(file)] };
 for (const file of await readdir(path.join(root, 'dist/downloads'))) {

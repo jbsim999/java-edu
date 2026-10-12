@@ -34,6 +34,7 @@ Java Edu는 **Windows에서 코드를 직접 실행하는 학습 앱과 웹 교�
 | --- | --- |
 | 공식 문서 기반 과정 | Java 8·11·17·21의 언어·API 차이와 공식 출처 확인 |
 | 깊이 있는 OOP | 객체의 책임·불변식, 다형성·합성, 동등성·변경 계약 탐구 |
+| 검수한 이론 도식 | 참조·상태·호출·보안 조건을 설명하는 12개 도식과 공식 참고자료 |
 | 직접 코딩 | 클래스 골격, 메서드 본문, 다중 파일 프로젝트에 코드 작성 |
 | 읽기 쉬운 편집기 | 클래스·타입·변수·메서드 문법 색상, 다크·라이트·고대비 테마 |
 | 로컬 Java 실행 | Windows 앱에서 등록한 JDK로 컴파일·실행·제출·취소 |
@@ -113,6 +114,7 @@ npm run build:desktop
 | `npm run test:local` | 로컬 실행·Windows 프로세스 종료 계약 검사 |
 | `npm run test:professional` | JDK/Maven에서 실무 기준 구현과 미완성 코드 비교 |
 | `npm run test:browser` | 실행 중인 로컬 서버의 모의 API 브라우저 검사 |
+| `npm run test:theory` | 이론 도식·원문 보존·키보드·반응형 검사 |
 | `npm run build` / `npm run test:worker` | 웹 Worker 빌드·산출물 검사 |
 
 실무 검사는 `JAVA_HOME`·`MAVEN_HOME` 설정이 필요합니다. 기본 검사는 Redis/Kafka를 제외합니다. 브라우저 검사는 실행 제공자의 실제 동작 검증과 구분합니다.
@@ -126,6 +128,7 @@ npm run build:desktop
 | 서비스의 목표와 학습 대상 | [기획안](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/product-plan.md) |
 | 학습 순서와 Java 버전 | [교육 로드맵](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/education-roadmap.md) · [호환 기준](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/java-version-matrix.md) |
 | 코어·실무 교재 | [Java 코어](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/curriculum.md) · [실무 22단원](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/professional-curriculum.md) |
+| 이론 도식의 선정과 검수 | [34수업 평가·12개 채택 근거](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/theory-visuals.md) · [독립 QA](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/theory-visual-qa-report.md) |
 | 채용 공고 조사 근거 | [출처·표본·조사 범위](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/job-evidence.md) |
 | 구조와 실행 경계 | [아키텍처](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/architecture.md) |
 | 현재 작업·출시 상태 | [마일스톤](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/milestones.md) · [개발 인계](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/development-handoff.md) |
@@ -134,6 +137,7 @@ npm run build:desktop
 - [x] Java 문법 강조·3테마·다중 파일 편집
 - [x] Windows 로컬 JDK/Maven 실행과 진도 저장 구현
 - [x] 실무 22수업과 기본 20프로젝트의 기준 검증
+- [x] 이론 도식 12개와 공식 출처·텍스트 설명
 - [ ] Windows CI 실패 해결·설치/제거 검증·최종 시각 검수
 - [ ] Windows v0.2 릴리스와 34수업 웹 배포
 - [ ] 선택 과정의 Redis/Kafka 실제 연동 검증

@@ -17,6 +17,7 @@ const mobileMedia = window.matchMedia('(max-width: 899px)');
 let lessons = [];
 let exercises = [];
 let jobEvidence = [];
+let lessonVisuals = {};
 let saveTimer;
 let toastTimer;
 let runtimeSequence = 0;
@@ -552,6 +553,124 @@ function sectionTitle(text, number) {
   return heading;
 }
 
+function validLessonVisual(value) {
+  if (!value || !['flow', 'comparison', 'state', 'relationship'].includes(value.kind)) return null;
+  if (!['id', 'title', 'caption', 'altText', 'readingOrder'].every((key) => typeof value[key] === 'string' && value[key].trim())) return null;
+  if (!Array.isArray(value.panels) || !value.panels.length || value.panels.length > 6) return null;
+  for (const panel of value.panels) {
+    if (!panel || typeof panel.title !== 'string' || !Array.isArray(panel.nodes) || !panel.nodes.length || panel.nodes.length > 12 || !Array.isArray(panel.edges) || panel.edges.length > 30) return null;
+    if (!panel.nodes.every((node) => node && typeof node.id === 'string' && node.id && typeof node.label === 'string' && node.label.trim() && typeof node.detail === 'string')) return null;
+    const ids = new Set(panel.nodes.map((node) => node.id));
+    if (ids.size !== panel.nodes.length || !panel.edges.every((edge) => edge && ids.has(edge.from) && ids.has(edge.to) && typeof edge.label === 'string' && edge.label.trim())) return null;
+  }
+  if (!Array.isArray(value.sources) || !value.sources.length || !value.sources.every((source) => {
+    if (!source || typeof source.title !== 'string' || !source.title.trim()) return false;
+    try { return ['http:', 'https:'].includes(new URL(source.url).protocol); } catch { return false; }
+  })) return null;
+  return value;
+}
+
+function visualNode(node) {
+  const tone = ['accent', 'warning'].includes(node.tone) ? node.tone : 'neutral';
+  const card = el('div', `visual-node is-${tone}`);
+  card.dataset.nodeId = node.id;
+  card.append(el('strong', 'visual-node-label', node.label));
+  if (node.detail) card.append(el('p', 'visual-node-detail', node.detail));
+  return card;
+}
+
+function visualConnection(edge, nodes, standalone = false) {
+  const from = nodes.find((node) => node.id === edge.from);
+  const to = nodes.find((node) => node.id === edge.to);
+  const connection = el('div', standalone ? 'visual-relationship' : 'visual-transition');
+  connection.dataset.from = edge.from;
+  connection.dataset.to = edge.to;
+  if (standalone) connection.append(el('span', 'visual-endpoint', from.label));
+  const arrow = el('span', 'visual-arrow');
+  arrow.append(icon('arrow'));
+  const label = el('span', 'visual-edge-label');
+  label.append(el('span', 'sr-only', `${from.label}에서 ${to.label}로: `), document.createTextNode(edge.label));
+  arrow.append(label);
+  connection.append(arrow);
+  if (standalone) connection.append(el('span', 'visual-endpoint', to.label));
+  return connection;
+}
+
+function renderTheoryVisual(lesson, visual) {
+  const figure = el('figure', 'theory-visual');
+  const prefix = `theory-visual-${lessons.indexOf(lesson)}`;
+  figure.dataset.visualId = visual.id;
+  figure.dataset.visualKind = visual.kind;
+  figure.setAttribute('aria-labelledby', `${prefix}-title`);
+  figure.setAttribute('aria-describedby', `${prefix}-caption`);
+  const caption = el('figcaption', 'visual-caption');
+  const kinds = { flow: '실행 순서', comparison: '나란히 비교하기', state: '상태와 전이', relationship: '요소 사이의 관계' };
+  const label = el('p', 'visual-kicker', kinds[visual.kind]);
+  const title = el('h3', 'visual-title', visual.title); title.id = `${prefix}-title`;
+  const description = el('p', 'visual-description', visual.caption); description.id = `${prefix}-caption`;
+  caption.append(label, title, description);
+  figure.append(caption);
+  const order = el('p', 'visual-reading-order');
+  order.append(el('strong', '', '읽는 순서'), document.createTextNode(` ${visual.readingOrder}`));
+  figure.append(order);
+  const panels = el('div', 'visual-panels');
+  visual.panels.forEach((panel, panelIndex) => {
+    const section = el('section', 'visual-panel');
+    const heading = el('h4', 'visual-panel-title', panel.title); heading.id = `${prefix}-panel-${panelIndex}`;
+    section.setAttribute('aria-labelledby', heading.id);
+    section.append(heading);
+    const nodes = el(visual.kind === 'flow' || visual.kind === 'state' ? 'ol' : 'ul', visual.kind === 'relationship' ? 'visual-nodes is-catalog' : 'visual-nodes');
+    const used = new Set();
+    panel.nodes.forEach((node, index) => {
+      const row = el('li', 'visual-node-row');
+      row.append(visualNode(node));
+      if (visual.kind !== 'relationship' && index < panel.nodes.length - 1) {
+        const edge = panel.edges.find((item) => item.from === node.id && item.to === panel.nodes[index + 1].id);
+        if (edge) { row.append(visualConnection(edge, panel.nodes)); used.add(edge); }
+      }
+      nodes.append(row);
+    });
+    section.append(nodes);
+    const additional = panel.edges.filter((edge) => !used.has(edge));
+    if (additional.length) {
+      const connections = el('div', 'visual-connections');
+      connections.append(el('p', 'visual-connections-label', visual.kind === 'relationship' ? '연결 관계 · 화살표의 양 끝과 라벨을 함께 읽으세요' : '함께 볼 연결 관계'));
+      for (const edge of additional) connections.append(visualConnection(edge, panel.nodes, true));
+      section.append(connections);
+    }
+    panels.append(section);
+  });
+  figure.append(panels);
+  if (typeof visual.takeaway === 'string' && visual.takeaway) {
+    const takeaway = el('p', 'visual-takeaway');
+    takeaway.append(el('strong', '', '핵심 판단'), document.createTextNode(` ${visual.takeaway}`));
+    figure.append(takeaway);
+  }
+  const details = el('details', 'visual-text-description');
+  details.append(el('summary', '', '도식의 텍스트 설명과 범위'));
+  const alternative = el('p', 'visual-alt-text', visual.altText); alternative.id = `${prefix}-description`;
+  details.append(alternative);
+  if (Array.isArray(visual.limits) && visual.limits.length) {
+    const limits = el('ul', 'visual-limits');
+    visual.limits.filter((item) => typeof item === 'string').forEach((item) => limits.append(el('li', '', item)));
+    details.append(limits);
+  }
+  figure.append(details);
+  const sources = el('div', 'visual-sources');
+  sources.append(el('p', 'visual-sources-label', '공식 문서에서 확인'));
+  const sourceList = el('ul');
+  for (const source of visual.sources) {
+    const item = el('li');
+    const link = safeLink(source.title, source.url, 'visual-source-link'); link.append(icon('external'));
+    const facts = [source.edition, source.checkedAt ? `확인 ${source.checkedAt}` : ''].filter(Boolean);
+    item.append(link);
+    if (facts.length) item.append(el('span', 'visual-source-meta', facts.join(' · ')));
+    sourceList.append(item);
+  }
+  sources.append(sourceList); figure.append(sources);
+  return figure;
+}
+
 function renderTheory(lesson) {
   const goals = el('div', 'learning-goals');
   goals.append(el('p', 'small-label', 'AFTER THIS LESSON'));
@@ -559,11 +678,16 @@ function renderTheory(lesson) {
   (lesson.goals || []).forEach((goal) => { const item = el('li'); item.append(icon('check'), el('span', '', goal)); list.append(item); });
   goals.append(list);
   dom['lesson-panel'].append(goals);
-  (lesson.theory || []).forEach((part, index) => {
+  const parts = lesson.theory || [];
+  const visual = validLessonVisual(lessonVisuals[lesson.id]);
+  const afterSection = visual && Number.isInteger(visual.afterSection) ? Math.min(Math.max(visual.afterSection, 0), Math.max(parts.length - 1, 0)) : 0;
+  parts.forEach((part, index) => {
     const section = el('section', 'theory-section');
     section.append(sectionTitle(part.heading, String(index + 1).padStart(2, '0')), el('p', '', part.text));
     dom['lesson-panel'].append(section);
+    if (visual && index === afterSection) dom['lesson-panel'].append(renderTheoryVisual(lesson, visual));
   });
+  if (visual && !parts.length) dom['lesson-panel'].append(renderTheoryVisual(lesson, visual));
   dom['lesson-panel'].append(nextStepButton('example', '예제로 개념 확인하기'));
 }
 
@@ -1649,16 +1773,18 @@ function bindEvents() {
 
 async function boot() {
   try {
-    const [curriculumModule, exerciseModule, evidenceModule, editorModule, professionalModule] = await Promise.all([
+    const [curriculumModule, exerciseModule, evidenceModule, editorModule, professionalModule, visualModule] = await Promise.all([
       import('./data/curriculum.js'), import('./data/exercises.js'), import('./data/job-evidence.js'),
       import('./assets/editor.bundle.js').catch(() => null),
       import('./data/professional.js'),
+      import('./data/lesson-visuals.js').catch(() => null),
     ]);
     if (!Array.isArray(professionalModule.professionalLessons) || !Array.isArray(professionalModule.professionalExercises)) throw new Error('Professional content data unavailable');
     lessons = [...curriculumModule.lessons, ...professionalModule.professionalLessons];
     exercises = [...exerciseModule.exercises, ...professionalModule.professionalExercises];
     jobEvidence = evidenceModule.jobEvidence;
     editorLibrary = editorModule;
+    lessonVisuals = visualModule?.lessonVisuals && typeof visualModule.lessonVisuals === 'object' && !Array.isArray(visualModule.lessonVisuals) ? visualModule.lessonVisuals : {};
     if (!Array.isArray(lessons) || !lessons.length || !Array.isArray(exercises) || !Array.isArray(jobEvidence)) throw new Error('Content data unavailable');
     restoreStorage();
     restoreEditorPreferences();

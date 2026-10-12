@@ -55,6 +55,9 @@ jobs:
       - run: npm run test:browser
         env:
           QA_ARTIFACT_DIR: work/java-edu-qa
+      - run: npm run test:theory
+        env:
+          QA_ARTIFACT_DIR: work/theory-independent-qa
   professional:
     name: Professional projects (${{ matrix.java }})
     runs-on: ubuntu-latest

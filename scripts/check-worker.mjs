@@ -20,6 +20,10 @@ assert.ok(editorSource.length > 100000, 'self-hosted editor bundle must be inclu
 const professional = await worker.fetch(new Request(origin + '/data/professional.js'), {});
 assert.equal(professional.status, 200);
 assert.ok((await professional.text()).includes('professionalLessons'));
+const visuals = await worker.fetch(new Request(origin + '/data/lesson-visuals.js'), {});
+assert.equal(visuals.status, 200);
+assert.match(visuals.headers.get('content-type'), /javascript/);
+assert.ok((await visuals.text()).includes('lessonVisuals'));
 const projectZip = await worker.fetch(new Request(origin + '/downloads/build-maven.zip'), {});
 assert.equal(projectZip.status, 200);
 assert.equal(projectZip.headers.get('content-type'), 'application/zip');

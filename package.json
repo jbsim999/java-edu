@@ -19,7 +19,8 @@
     "test:worker": "node scripts/check-worker.mjs",
     "test:java": "node scripts/check-java.mjs",
     "test:browser": "node tests/browser.mjs",
-    "check": "node --check dist/app.js && node --check dist/data/curriculum.js && node --check dist/data/job-evidence.js && npm test"
+    "test:theory": "node tests/theory-visuals.mjs",
+    "check": "node --check dist/app.js && node --check dist/data/curriculum.js && node --check dist/data/job-evidence.js && node --check dist/data/lesson-visuals.js && npm test"
   },
   "engines": {
     "node": ">=22"
