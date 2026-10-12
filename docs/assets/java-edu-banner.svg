@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="440" viewBox="0 0 1400 440" role="img" aria-labelledby="title desc">
+  <title id="title">Java Edu</title>
+  <desc id="desc">공식 Java 문서 기반 학습. Java 8, 11, 17, 21. Windows 로컬 실습과 웹 교재.</desc>
+  <rect width="1400" height="440" rx="24" fill="#14372d"/>
+  <path d="M970 0h406q24 0 24 24v392q0 24-24 24h-406z" fill="#1d4639"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="76" y="72" font-size="15" font-weight="600" letter-spacing="4" fill="#c1d4c6">OFFICIAL DOCS. HANDS-ON JAVA.</text>
+    <text x="72" y="179" font-size="94" font-weight="700" letter-spacing="-3" fill="#fcf8ed">Java Edu<tspan fill="#edc77e">.</tspan></text>
+    <text x="77" y="226" font-size="24" fill="#e0e8dc">Understand the contract. Write the code.</text>
+    <g font-size="17" font-weight="600" text-anchor="middle">
+      <rect x="77" y="268" width="249" height="44" rx="22" fill="#fcf8ed"/>
+      <text x="201" y="296" fill="#14372d">JAVA 8 · 11 · 17 · 21</text>
+      <rect x="338" y="268" width="211" height="44" rx="22" fill="none" stroke="#9eb7a5"/>
+      <text x="443" y="296" fill="#fcf8ed">WINDOWS + WEB</text>
+    </g>
+    <text x="77" y="378" font-size="15" letter-spacing="1.3" fill="#c1d4c6">THEORY → EXAMPLES → QUIZ → PRACTICE → CODE</text>
+  </g>
+  <rect x="787" y="55" width="538" height="328" rx="14" fill="#0c221c" stroke="#567b67"/>
+  <path d="M801 55h510q14 0 14 14v35H787V69q0-14 14-14z" fill="#234d3f"/>
+  <circle cx="812" cy="80" r="5" fill="#edc77e"/>
+  <circle cx="832" cy="80" r="5" fill="#a4c39c"/>
+  <circle cx="852" cy="80" r="5" fill="#6aa49b"/>
+  <text x="883" y="85" font-family="Consolas, monospace" font-size="14" fill="#e0e8dc">JavaEdu.java</text>
+  <g font-family="Consolas, monospace" font-size="21">
+    <text x="817" y="153" fill="#ddbcf3">final class <tspan fill="#edc77e">JavaEdu</tspan><tspan fill="#e0e8dc"> {</tspan></text>
+    <text x="840" y="198" fill="#8bbdcc">String <tspan fill="#9fd9b0">topic</tspan><tspan fill="#e0e8dc"> = </tspan><tspan fill="#d7d9a4">"OOP"</tspan><tspan fill="#e0e8dc">;</tspan></text>
+    <text x="840" y="243" fill="#ddbcf3">int[] <tspan fill="#9fd9b0">versions</tspan><tspan fill="#e0e8dc"> = {</tspan><tspan fill="#edc77e">8,11,17,21</tspan><tspan fill="#e0e8dc">};</tspan></text>
+    <text x="840" y="288" fill="#9fb7a8">// Read. Reason. Run.</text>
+    <text x="817" y="333" fill="#e0e8dc">}</text>
+  </g>
+</svg>
