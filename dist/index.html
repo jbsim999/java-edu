@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#173d35" />
+    <meta name="description" content="Java 8·11·17·21 공식 문서를 바탕으로 개념, 예제, 문제와 코드 실습을 연결하는 Java 학습실." />
+    <title>Java Edu — 이해에서 설계까지</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#lesson-title">수업 본문으로 이동</a>
+    <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6" /></symbol>
+      <symbol id="icon-book" viewBox="0 0 24 24"><path d="M12 6v15M3 4h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5v15h-5a4 4 0 0 0-4 2 4 4 0 0 0-4-2H3z" /></symbol>
+      <symbol id="icon-code" viewBox="0 0 24 24"><path d="m7 7-5 5 5 5m10-10 5 5-5 5m-3-14-4 18" /></symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></symbol>
+      <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2" /><path d="M16 8V3H3v13h5" /></symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></symbol>
+      <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6" /></symbol>
+      <symbol id="icon-external" viewBox="0 0 24 24"><path d="M14 3h7v7m0-7L10 14m0-11H3v18h18v-7" /></symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24"><path d="m8 4 12 8-12 8z" /></symbol>
+      <symbol id="icon-terminal" viewBox="0 0 24 24"><path d="m4 6 6 6-6 6m9 0h7" /></symbol>
+      <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></symbol>
+    </svg>
+
+    <header class="site-header" id="site-header">
+      <a class="brand" href="./" aria-label="Java Edu 학습실 처음으로"><span class="brand-mark" aria-hidden="true">j<span>.</span></span><span>java<span class="brand-light">edu.</span></span></a>
+      <nav class="header-navigation" aria-label="서비스 메뉴"><a class="header-link is-current" href="#learning-workspace">학습실</a><button class="header-link" id="guide-open" type="button">학습 안내</button></nav>
+      <div class="header-tools"><span class="storage-indicator" id="storage-indicator"><span class="status-dot"></span><span id="storage-label">이 브라우저에 저장</span></span><button class="icon-button mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="curriculum-sidebar" aria-label="수업 목차 열기"><svg class="icon"><use href="#icon-menu"></use></svg><span>목차</span></button></div>
+    </header>
+
+    <div class="page-shell" id="app-shell">
+      <section class="intro" id="intro" aria-labelledby="page-title">
+        <div class="intro-copy"><p class="eyebrow"><span class="eyebrow-line"></span> THE JAVA LEARNING WORKBENCH</p><h1 id="page-title">이해에서 한 걸음 더,<br /><span>설계하는 Java로.</span></h1><p class="intro-description">다른 언어에서 Java로, 익숙한 코드에서 깊은 설계로.<br class="desktop-break" /> 공식 문서를 읽고 직접 구현하며 판단의 근거를 쌓습니다.</p><div class="intro-facts"><span><strong>2</strong> 학습 트랙</span><span><strong>4</strong> 기준 버전</span><span><strong id="lesson-total">12</strong> 코어 수업</span></div></div>
+        <div class="journey-card"><div class="journey-top"><span class="small-label">MY LEARNING</span><span class="local-badge">브라우저 기록</span></div><div class="journey-progress-heading"><span>나의 학습 여정</span><span class="journey-count"><strong id="overall-completed">0</strong><span id="overall-denominator"> / 12</span></span></div><div class="progress-track" id="overall-progress" role="progressbar" aria-label="전체 수업 완료" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0"><span id="overall-progress-fill"></span></div><p class="journey-caption">객관식 성취 + 코드 제출 통과 시 수업 완료</p><button class="continue-button" id="continue-button" type="button"><span><span class="continue-label" id="continue-label">학습 시작하기</span><strong id="continue-title">첫 수업을 준비하고 있습니다</strong></span><svg class="icon"><use href="#icon-arrow"></use></svg></button></div>
+      </section>
+
+      <main id="learning-workspace" class="learning-workspace">
+        <div class="workspace-heading"><div><span class="workspace-kicker">WORKSPACE 01</span><span class="workspace-divider"></span><span>Java 학습실</span></div><span class="official-note"><span class="status-dot"></span> Java 공식 문서 기반</span></div>
+        <div id="loading-state" class="loading-state" role="status">학습 콘텐츠를 불러오고 있습니다…</div>
+        <div class="workspace-grid" id="workspace-grid" hidden>
+          <aside class="curriculum-sidebar" id="curriculum-sidebar" aria-label="수업 목차">
+            <div class="sidebar-heading"><div><p class="small-label">CURRICULUM</p><h2>학습 로드맵</h2></div><button type="button" class="icon-button mobile-menu-close" id="mobile-menu-close" aria-label="수업 목차 닫기"><svg class="icon"><use href="#icon-close"></use></svg></button></div>
+            <div class="version-control"><label for="version-select">학습 기준 버전</label><select id="version-select" data-testid="version-select"><option value="8">Java 8</option><option value="11">Java 11</option><option value="17">Java 17</option><option value="21" selected>Java 21</option></select><p>선택 버전에서 사용할 수 있는 수업</p></div>
+            <div class="track-filter" role="group" aria-label="학습 트랙"><button type="button" data-track="all" aria-pressed="true">전체</button><button type="button" data-track="transition" aria-pressed="false">Java 전환</button><button type="button" data-track="advanced" aria-pressed="false">실무 심화</button></div>
+            <label class="search-field" for="lesson-search"><svg class="icon"><use href="#icon-search"></use></svg><input id="lesson-search" type="search" placeholder="수업·키워드 검색" autocomplete="off" aria-label="수업과 키워드 검색" /></label>
+            <div class="filtered-progress"><span id="filtered-count">현재 조건의 수업</span><span id="filtered-completed">0 / 12 완료</span></div>
+            <nav id="lesson-list" class="lesson-list" aria-label="수업 목록"></nav>
+            <div class="sidebar-footnote"><svg class="icon"><use href="#icon-book"></use></svg><p>기본 문법 경험이 있는 학습자를 위한 과정입니다. 개념과 설계의 연결에 집중합니다.</p></div>
+            <button type="button" class="text-button reset-records" id="reset-progress-open">학습 기록 초기화</button>
+          </aside>
+
+          <article class="lesson-card" id="lesson-card" aria-labelledby="lesson-title">
+            <header class="lesson-header"><div class="lesson-topline"><p class="eyebrow" id="lesson-category">JAVA CORE</p><span class="lesson-position" id="lesson-position">01 / 12</span></div><h2 id="lesson-title" tabindex="-1">학습을 준비하고 있습니다</h2><p id="lesson-description" class="lesson-description"></p><div id="lesson-meta" class="lesson-meta"></div><div class="achievement-row" id="lesson-achievements"></div></header>
+            <div class="lesson-tabs" role="tablist" aria-label="수업 학습 단계"><button type="button" id="tab-theory" role="tab" data-step="theory" aria-controls="lesson-panel" aria-selected="true" tabindex="0"><span class="tab-number">01</span> 이론</button><button type="button" id="tab-example" role="tab" data-step="example" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">02</span> 예제</button><button type="button" id="tab-quiz" role="tab" data-step="quiz" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">03</span> 문제</button><button type="button" id="tab-practice" role="tab" data-step="practice" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">04</span> 실무</button><button type="button" id="tab-lab" role="tab" data-step="lab" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">05</span> 코드 실습</button></div>
+            <section class="lesson-panel" id="lesson-panel" role="tabpanel" aria-labelledby="tab-theory" tabindex="0"></section>
+            <footer class="lesson-footer" id="lesson-footer"></footer>
+          </article>
+
+          <aside class="reference-column" id="reference-column" aria-label="학습 참고 자료"><section class="reference-card source-card"><div class="reference-card-heading"><svg class="icon"><use href="#icon-book"></use></svg><h2>원문에서 확인하기</h2></div><p class="reference-description">개념의 기준은 공식 문서입니다.</p><div id="source-list" class="source-list"></div></section><section class="reference-card evidence-card"><p class="small-label">IN THE REAL WORLD</p><h2>실무와 연결하기</h2><p class="reference-description">공고 원문에서 관찰한 기술과 역할</p><div id="evidence-list"></div><p class="evidence-disclaimer">선별한 공고 사례이며 채용시장 통계가 아닙니다. 확인일은 게시일·현재 채용 여부를 의미하지 않습니다.</p></section><div class="next-chapter"><span class="small-label">NEXT CHAPTER</span><h3>Java 다음의 백엔드</h3><p>Spring · MyBatis · Lombok</p><span class="planned-badge">후속 과정 기획 중</span></div></aside>
+        </div>
+      </main>
+      <footer class="site-footer"><span class="footer-brand">javaedu.</span><p>공식 문서로 이해하고, 코드로 확인하는 시간.</p><button class="text-button" id="footer-guide-open" type="button">학습 기준과 기록 안내 <span aria-hidden="true">↗</span></button></footer>
+    </div>
+
+    <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div class="sr-only" id="announcer" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><div class="dialog-heading"><p class="small-label">LEARNING GUIDE</p><button class="icon-button" type="button" data-close-dialog="guide-dialog" aria-label="학습 안내 닫기"><svg class="icon"><use href="#icon-close"></use></svg></button></div><h2 id="guide-title">이 학습실을 사용하는 방법</h2><p>다른 언어 경험자의 Java 전환과 현직 개발자의 심화 학습을 함께 지원합니다. 이론 → 예제 → 문제 → 실무 → 코드 실습 순서로 진행해 보세요.</p><ul><li><strong>학습 기준:</strong> Java 8·11·17·21. 선택 버전에 맞는 수업을 표시합니다.</li><li><strong>객관식 성취:</strong> 한 수업의 모든 문제에 정답을 제출하면 기록됩니다.</li><li><strong>실습 통과:</strong> 현재 작성 코드로 제출한 테스트가 모두 통과하면 기록됩니다. 두 조건을 모두 충족하면 수업 완료입니다.</li><li><strong>설계 기록:</strong> 나의 판단을 정리하는 메모입니다. 자동 평가나 정답 판정이 아닙니다.</li><li><strong>실행 환경:</strong> 실제 JVM은 Java 21이며, 실습별 최소 버전을 컴파일 대상으로 사용합니다. 다른 JVM 버전에서 실행한 결과는 아닙니다.</li><li><strong>저장:</strong> 코드, 메모, 진도는 이 브라우저에 저장됩니다. 기기 간 동기화·계정 백업을 제공하지 않습니다.</li></ul><p class="dialog-note">초기 프로토타입의 편집기는 일반 텍스트 입력 방식입니다. 자동 완성이나 실시간 문법 진단은 제공하지 않습니다.</p><button class="button button-primary" type="button" data-close-dialog="guide-dialog">학습실로 돌아가기</button></dialog>
+    <dialog id="reset-dialog" class="app-dialog compact-dialog" aria-labelledby="reset-title"><p class="small-label">BROWSER RECORDS</p><h2 id="reset-title">학습 기록을 초기화할까요?</h2><p>이 브라우저의 진도, 작성 코드와 설계 메모를 모두 지웁니다. 현재 학습 기준 버전은 유지됩니다.</p><div class="dialog-actions"><button class="button button-secondary" type="button" data-close-dialog="reset-dialog" autofocus>기록 유지</button><button class="button button-danger" id="confirm-reset-progress" type="button">모든 학습 기록 지우기</button></div></dialog>
+    <noscript><div class="noscript-note">수업 탐색과 코드 실습을 사용하려면 JavaScript를 켜 주세요.</div></noscript>
+  </body>
+</html>

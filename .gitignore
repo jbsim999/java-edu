@@ -6,3 +6,6 @@ work/
 .env.*
 .openai/
 test-results/
+worker/assets.generated.mjs
+dist/server/
+dist/.openai/

@@ -1,0 +1,23 @@
+{
+  "name": "java-edu",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Java 공식 문서 기반 전환 학습과 버전별 실무 심화",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "build": "node scripts/build-worker.mjs",
+    "test:worker": "node scripts/check-worker.mjs",
+    "test:java": "node scripts/check-java.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "check": "node --check dist/app.js && node --check dist/data/curriculum.js && node --check dist/data/job-evidence.js && npm test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.62.1"
+  }
+}
