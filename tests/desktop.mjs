@@ -11,7 +11,7 @@ import { professionalLessons, professionalExercises } from '../dist/data/profess
 // Web APIs are mocked. Electron uses its actual authenticated local server and
 // registered JDKs. No test sends learner source to a remote execution provider.
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
-const artifactRoot = path.resolve(process.env.QA_ARTIFACT_DIR || path.join(projectRoot, '../../work/java-edu-desktop-qa'));
+const artifactRoot = path.resolve(process.env.QA_ARTIFACT_DIR || path.join(projectRoot, 'work/java-edu-desktop-qa'));
 const baseUrl = process.env.QA_BASE_URL || 'http://127.0.0.1:4173';
 const mode = process.env.JAVA_EDU_QA_MODE || 'all';
 const results = [];

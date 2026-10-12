@@ -40,14 +40,22 @@
 
 출시 판정: **PASS — 코어 프로토타입 범위**. private Sites 배포가 `succeeded`와 운영 URL을 반환했다. 모든 GitHub 출시 파일과 Sites source tree의 Git blob을 비교해 호스팅 manifest/ignore 설정 외 동일함을 확인했다. [배포 기록](deployment.md)에 소스·버전·배포 ID를 기록했다. 배포된 인증 세션에서의 Java 제출은 미검증이며 위 제한은 유지한다.
 
-## M5–M7 현재 구현·검증과 미완료 gate
+## M5–M7 구현·검증 기록
 
 코어12+실무22, 총34수업의 Windows 앱·웹 공용 교재를 구현했다. 독립 기능 QA의 개발 Electron9/9, 모의API 웹4/4, 기존 브라우저49개 PASS. Node35 PASS/제공자1 SKIP, Worker 정적 모듈·ZIP 검사 PASS, 로컬 계약16/16 PASS. 실제 JDK8/21 core와 Spring/H2 UI 실행은 [설치형 QA 기록](desktop-qa-report.md)을 따른다.
 
 JDK21·컴파일 대상17·Maven3.10.0에서 기본20실무프로젝트를 실제 실행해 reference54개 JUnit PASS와20개 미완성 starter 실패를 확인했다. 독립 리뷰는129소스 및 부모POM 해시·Surefire XML·메타데이터를 대조했다. Redis/Kafka는 reference/starter 컴파일만 확인했으며 실제 서비스 실행은 미검증이다. 독립 코드·교재 리뷰에는 미해결 P1/P2가 없다.
 
-최종 Windows x64 NSIS 빌드 성공은 설치·제거 또는 설치된 바이너리 실행 성공과 다르다. 최종 시각 검수와 설치 패키지 QA는 담당 에이전트의 서비스 사용량 한도로 끝내지 못했다. 새로운 Windows8/11/17/21·실무17/21 CI는 정의를 추가했으며 원격 결과를 별도 확인한다. 최종 출시 판정은 **미완료**다. [개발 인계](development-handoff.md)에 설치 파일 해시와 재개 절차를 남겼다.
+최초 통합 당시에는 설치·제거 및 최종 시각 게이트가 서비스 한도로 미완료였다. 이후 실제 설치 QA와 CI 수정 결과는 아래 Windows v0.2 게이트 기록을 따른다. [개발 인계](development-handoff.md)는 최신 작업 상태를 제공한다.
 
 ## M7.1 이론 시각 자료
 
 34수업을 평가해 12개 도식·25패널·80노드·54관계·26개 공식 출처를 채택하고 22수업은 중복·범위·설명 이점 기준으로 보류했다. 독립 내용·코드·시각 검수 PASS, Edge 도식19/19·기존 회귀49/49·산출물 기본 경로 영향1/1 PASS. 320/360/390/768/1440px와 100/200%의 120개 조합에서 넘침을 확인했다. Worker 경로/JavaScript MIME 및 Node35 PASS/제공자1 SKIP도 확인했다. [선정 근거](theory-visuals.md)와 [독립 QA·한계](theory-visual-qa-report.md)를 따른다. 교육 효과 측정·실기기·스크린리더 음성·설치 패키지 검증은 이 판정에 포함하지 않는다.
+
+## Windows v0.2 출시 게이트
+
+검증 소스 `6ba4b8aa124f5ce78e79240253946c9fdac3e770`, [CI38213755330](https://github.com/jbsim999/java-edu/actions/runs/38213755330) **12작업 모두 성공**. 관리자·코드페이지1252의 Windows8/11/17/21에서 각각 로컬16/16, 실제 JVM56/61/67/73검사 및 한글 컴파일 진단 PASS. 실무17/21의 기본20프로젝트·54JUnit 및 미완성 starter 실패 확인도 성공했다. 감독 모듈 탐색·CodeDom 임시 경로 문제를 수정했고 경계 제약은 [로컬 실행](local-execution.md)에 기록했다.
+
+최종 NSIS 설치 파일 SHA256 `6d4354e0b4a5c8b471591f0ee29c106f9ec65c2561847416555c38e623fd2f74`. 실제 사용자용 설치·설치 앱8/8·제거·Windows 시각 PASS. ASAR에 포함된 검토 파일195개+생성2개 및 unpacked helper를 비교했다. package.json은 builder가 개발 명령·개발 의존성을 제거하므로 나머지 런타임 필드로 비교하고, 다른 소스는 원본 바이트로 비교했다. 설치된 ASAR/helper/exe는 빌드 산출물과 동일하다. 첫 검사 스크립트의 Maven 제공자 기대값 오류는 고친 후 전체8개를 재실행했으며 실패 기록을 보존했다. 기존 사용자 데이터 부재를 사전 확인한 뒤 테스트 데이터는 작업 폴더에 보관하고 환경을 복원했다. [설치 QA](installed-desktop-qa-report.md)를 따른다. 출시 게이트 판정은 **PASS — 프리뷰 범위**다. 실제 릴리스 게시 결과는 [배포 기록](deployment.md)에 기록한다.
+
+프로젝트 이동 후 브라우저·개발 앱 검사의 기본 산출물 경로를 저장소 내부 work/로 정리했다. 경로 영향 검사 브라우저1/1·웹 실무4/4 PASS. 제한 환경의 최초 브라우저 시작 실패 후 허용된 실행 환경에서 재검사한 결과이며, 설치 앱8/8 검증과는 별개다.

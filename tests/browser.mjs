@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 // They do not submit source code to the real execution provider.
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 const baseUrl = process.env.QA_BASE_URL || 'http://127.0.0.1:4173';
-const artifactRoot = process.env.QA_ARTIFACT_DIR || path.resolve(projectRoot, '../../work/java-edu-qa');
+const artifactRoot = process.env.QA_ARTIFACT_DIR || path.resolve(projectRoot, 'work/java-edu-qa');
 const storageKey = 'java-edu:progress:v1';
 const editorPreferencesKey = 'java-edu:editor-preferences:v1';
 const filter = process.env.QA_FILTER ? new RegExp(process.env.QA_FILTER) : null;
