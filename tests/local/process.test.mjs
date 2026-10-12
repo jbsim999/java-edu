@@ -15,9 +15,45 @@ test('Windows Job supervisor preserves Unicode/metacharacter argv and stops time
   const root = await mkdtemp(path.join(parent, 'java-edu-local-test-공백 & %-'));
   t.after(async () => { const resolved = await realpath(root); assert.equal(path.dirname(resolved), parent); assert.ok(path.basename(resolved).startsWith('java-edu-local-test-')); await rm(resolved, { recursive: true, force: true }); });
   const env = processEnvironment(undefined, root);
+  // Diagnose cold-host failures without adding logging or test hooks to the product helper.
+  const supervisorSource = await readFile(new URL('../../desktop/job-runner.ps1', import.meta.url), 'utf8');
+  const diagnosticHelper = path.join(root, 'diagnostic-helper.ps1');
+  let diagnosticSource = supervisorSource;
+  for (const [needle, stage] of [
+    ["$ErrorActionPreference = 'Stop'", 'helper-entered'],
+    ['  $spec = Get-Content', 'reading-spec'],
+    ['  Add-Type -TypeDefinition', 'compiling-supervisor'],
+    ['  $result = [JavaEduJob]::Run', 'supervisor-compiled'],
+    ['  $report = @{', 'supervisor-returned'],
+  ]) {
+    assert.ok(diagnosticSource.includes(needle), `Missing PowerShell diagnostic point: ${stage}`);
+    diagnosticSource = diagnosticSource.replace(needle, `[Console]::Error.WriteLine('Java Edu CI stage: ${stage} ' + [DateTime]::UtcNow.ToString('o'))\n${needle}`);
+  }
+  for (const [needle, stage] of [
+    ['      parent = OpenProcess', 'opening-parent'],
+    ['      job = CreateJobObject', 'creating-job'],
+    ['      Check(CreateProcess', 'creating-child'],
+    ['      if (ResumeThread', 'resuming-child'],
+    ['      var reason = "exited";', 'waiting-child'],
+    ['      uint code; Check(GetExitCodeProcess', 'child-wait-finished'],
+  ]) {
+    assert.ok(diagnosticSource.includes(needle), `Missing native diagnostic point: ${stage}`);
+    diagnosticSource = diagnosticSource.replace(needle, `      Console.Error.WriteLine("Java Edu CI stage: ${stage} " + DateTime.UtcNow.ToString("o"));\n${needle}`);
+  }
+  await writeFile(diagnosticHelper, `\ufeff${diagnosticSource}`);
   const argv = ['공백 포함', 'a&b%PATH%', 'a"quoted"', 'trailing\\', ''];
-  const echo = await runProcess(process.execPath, [fixedFixture, 'echo', ...argv], { cwd: root, env });
-  assert.equal(echo.exitCode, 0, echo.stderr);
+  const echo = await runProcess(process.execPath, [fixedFixture, 'echo', ...argv], {
+    cwd: root, env,
+    spawnImpl: (command, args, options) => {
+      const fileIndex = args.indexOf('-File');
+      assert.ok(fileIndex >= 0, 'Windows supervisor must execute its fixed script.');
+      const diagnosticArgs = [...args];
+      diagnosticArgs[fileIndex + 1] = diagnosticHelper;
+      return spawn(command, diagnosticArgs, options);
+    },
+  });
+  assert.equal(echo.exitCode, 0, `Node ${process.version}; supervisor echo result: ${JSON.stringify(echo)}`);
+  t.diagnostic(`Node ${process.version}; supervisor echo completed in ${echo.durationMs}ms`);
   assert.deepEqual(JSON.parse(echo.stdout), argv);
   const pidfile = path.join(root, 'child.pid');
   const tree = await runProcess(process.execPath, [fixedFixture, 'tree', pidfile], { cwd: root, env, timeoutMs: 1200 });
@@ -38,7 +74,6 @@ test('Windows Job supervisor preserves Unicode/metacharacter argv and stops time
   for (let retry = 0; retry < 30 && alive; retry++) { await delay(100); try { process.kill(orphanPid, 0); } catch (error) { if (error.code === 'ESRCH') alive = false; else throw error; } }
   assert.equal(alive, false, 'Opened parent-process handle must trigger descendant cleanup after app termination.');
   // Instrument only a private test copy to pause exactly after creation and before ResumeThread.
-  const supervisorSource = await readFile(new URL('../../desktop/job-runner.ps1', import.meta.url), 'utf8');
   const createdPidfile = path.join(root, 'suspended.pid');
   const escapedPidfile = createdPidfile.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
   const instrumented = supervisorSource.replace(/(Check\(CreateProcess\(executable,[^\r\n]+\);\r?\n)/, `$1      System.IO.File.WriteAllText("${escapedPidfile}", pi.pid.ToString()); System.Threading.Thread.Sleep(30000);\n`);
