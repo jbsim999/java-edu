@@ -52,3 +52,21 @@ M4.1 당시에는 Windows v0.2.0 설치 파일의 로컬 빌드만 완료됐고 
 설치 EXE와 SHA256SUMS가 모두 uploaded 상태다. EXE 크기는111753633바이트, GitHub asset digest는 `sha256:6d4354e0b4a5c8b471591f0ee29c106f9ec65c2561847416555c38e623fd2f74`로 로컬 검증 파일과 일치한다. SHA256SUMS 파일의 digest도 `sha256:54694a213fadad9a0414c805d7346aa1f930f6ebb7380afbc9808ccf0edd0ffe`로 일치한다.
 
 실제 NSIS 설치·설치 앱8/8·정상 제거·데이터 보존 및 독립 시각 검수 PASS. 설치 ASAR/helper/exe와 빌드본 동일성, 검토 소스·생성 파일 대조를 확인했다. [설치 QA](installed-desktop-qa-report.md)에 검사 경계·초기 스크립트 오류·실제 사용 도구·미검증을 기록했다. 설치 파일은 코드 서명되지 않은 프리뷰다. Redis/Kafka 실제 연동·SmartScreen·실기기·스크린리더는 이번 출시 검증에 포함하지 않는다. 기존 웹의 소유자 전용 접근과 구현 PR의 미병합 상태를 유지한다.
+
+## M8 Windows v0.3 통합 패키지와 웹 안내 배포
+
+2026-10-12T09:10:19Z에 [v0.3.0 통합 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.3.0)를 게시했다. 태그의 실제 commit과 릴리스 target은 `0e1ff5eb38484d1594d4fd1c231d4dbe229b44e8`로 일치한다. 후속 문서·QA 기록 커밋3a745cb와 구분한다. [CI38223955175](https://github.com/jbsim999/java-edu/actions/runs/38223955175)12작업, 최종 실제 ZIP10/10·NSIS10/10, 원본604도구·197소스/2생성물 대조, 코드·시각 독립 검수와 설치/제거·데이터 보존 PASS. package.json은 builder가 제거한 개발 필드를 제외한 런타임 필드로 비교했다. [통합 QA](bundled-desktop-qa-report.md)를 따른다.
+
+초안에서 다섯 첨부의 uploaded·크기·GitHub SHA256 digest를 로컬 파일과 대조한 뒤 공개하고, 공개 상태·태그·첨부를 다시 확인했다. EXE·ZIP과 대응 JDK·제3자 소스가 같은 릴리스에 함께 있다. 기존v0.2 파일은 교체하지 않았다.
+
+| 파일 | 바이트 | SHA256 |
+| --- | ---: | --- |
+| Java-Edu-0.3.0-x64.zip | 362369704 | `478889a5ab413349cc98f80801fb1f9a190ba6b1791f2c47de0d5fefcc0aa8bf` |
+| Java-Edu-Setup-0.3.0-x64.exe | 362799820 | `b3e0a56b339fc3946cd80c194b9b5a544fdb3d5044277fc00acd6a9a11e8eeb8` |
+| OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz | 115126841 | `573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234` |
+| SHA256SUMS-0.3.0 | 388 | `b2490cb98bdd9d731a267354c8fd47e03aa29afe4cd16ec94f76fa4def603934` |
+| Third-Party-Sources-0.3.0.zip | 4860928 | `4acbde9bafea55ab2334d20b69257c893cbb9b40aa084159d6e35cba2681756c` |
+
+웹 통합 설치 안내는 기존 소유자 전용 URL에 2026-10-12 08:25:24 UTC succeeded로 배포했다. Sites source `199443b5e185acdcd83bb3d4ca0a4ca43eefc3d8`, 버전 `appgprj_6acc4fec8bb48191a296197d2d55c1e3~appgver_60be210ba2a48191b036dc7530cad71f`, 배포 `appgdep_6acc996c9de48191a896c90d291afd9f`, archiveSHA256 `dd25ad4a14f440d3d4ad956b3332669ef0531724b74bf2cb7ea9cb38fa73e0c9`다. 공식 helper로 연 체크아웃에 GitHub ffb77751의268개 파일을 복사하고 Git blob을 전부 대조했다. npm ci(audit0)·Worker 빌드·Worker 검사 후 공식 source commit/push·package 결과의 SHA만 배포에 사용했다. Windows helper의 npm 실행 경로·Git Bash PATH·GNU tar Windows colon 처리를 확인한 뒤 같은 소스로 패키징했으며 도구를 수정하거나 TLS 검사를 해제하지 않았다.
+
+후속0e1ff5는 desktop 설치 압축 설정만 수정했고 웹 UI·Worker는 동일하다. 호스팅에서 Spring/JVM을 실행하는 기능은 추가하지 않았다. 배포 완료를 인증된 실제 웹 제출·실기기 검사로 표현하지 않는다. Windows 기본 실제 JVM21, 실무 첫 의존성 준비의 인터넷 필요, 선택 Redis/Kafka 미검증과 코드 서명되지 않은 프리뷰 범위를 유지한다. 구현 PR은 미병합이며 GitHub 공개와 웹 소유자 전용 접근을 구분한다.
