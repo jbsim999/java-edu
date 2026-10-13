@@ -1,71 +1,108 @@
 # 교재 읽기 안내 독립 QA
 
-2026-10-13. 현재 판정은 **FAIL — 재현 결함 수정·재검사 대기**다. 정적 검사는 5/5 PASS다. 반복 정보 정리·본문 폭 확대 뒤 검사에서 좁은 확대 화면의 학습 목표 잘림과 최소창의 선택 탭 잘림을 확인해 구현자에게 전달했다. 수정본의 최종 검사 전까지 이전 통과 결과를 최신 화면의 통과로 사용하지 않는다.
+2026-10-13 KST. **웹 교재·레이아웃·기존 브라우저 기능 판정: PASS.** 최종 동결본에서 정적 5/5, 읽기 안내 24/24, 기존 기능 49/49, 기존 도식 19/19가 통과했다. 발견한 가로 잘림과 활성 탭 문제를 수정본에서 재검증했으며, 이 검사 범위에 남은 재현 결함은 없다.
 
-## 범위와 소유권
+**새 설치 패키지 실행 판정: BLOCKED·미실행.** 총괄 preflight에서 기존 앱과 학습 데이터를 확인했다. 사용자가 기존 앱을 이용 중이라 학습 데이터 보존 조건을 충족할 수 없어 총괄이 이번 신규 설치·앱 실행 검사를 보류했다. 이는 기존 앱과 기록을 보존하기 위한 조치이며 사용자에게 새 승인을 요청하는 상태가 아니다. QA는 기존 앱·AppData를 실행·변경·이동·삭제하지 않았다. 아래 최소창 검사는 웹 브라우저의 viewport 에뮬레이션이다.
 
-요구사항은 Java 경력자가 실제 상황과 기존 코드의 값을 따라가며 추상 개념을 이해하도록 34개 수업에 읽기 안내를 추가하고, README 소개 다음에 설치와 직접 다운로드를 배치하는 것이다.
+## 수행 범위와 환경
 
-QA는 `tests/readability.test.mjs`, `tests/readability.mjs`, 이 보고서 및 `work/readability-qa/`만 작성한다. 교재·화면·README·실행기 구현을 수정하지 않는다. 프리뷰 서버는 총괄이 소유하고, QA는 별도의 임시 브라우저 컨텍스트를 사용한다.
+목표는 Java 경력자가 34개 수업의 실제 상황·용어 정의·기존 코드·변수/값 추적·예측과 이유·실무 정리를 따라 읽도록 보완하고, 반복 정보를 정리해 본문 폭을 확보하는 것이다. README 소개 다음의 설치 절차와 직접 다운로드도 검증했다.
 
-총괄이 추가로 승인한 `tests/bundled-desktop.mjs`에는 package.json 기준 버전 검사, 34개 실제 패키지 안내 렌더링과 정답 열람의 성취 불변 검사, 독립 산출물 경로 환경변수를 준비했다. 설치·패키지 실행은 별도 preflight와 실행 신호 전까지 수행하지 않는다.
+실제 부모 소유 HTTP 프리뷰 `http://127.0.0.1:4173`에 접속했다. Windows의 Edge 155.0.4283.45, Node v22.17.0, Playwright 1.62.1을 사용했고 매 시나리오마다 별도 임시 브라우저 컨텍스트를 만들었다. 기본 샌드박스의 localhost/브라우저 접근 제한은 허용된 확장 권한으로 해결했다.
 
-후속 총괄 preflight에서 기존 AppData가 발견되어 실제 패키지 실행은 현재 **BLOCKED·미실행**이다. 기존 absence 보호 검사를 유지하며 QA는 해당 데이터를 수정·이동·삭제하거나 앱을 실행하지 않았다. 소스·구문 검사나 ASAR 비교는 실제 설치 앱 실행을 대신하는 결과로 기록하지 않는다.
+외부 요청과 실행 API는 가로챘다. 읽기 안내의 성취 보존 검사에서 제출 1건은 명시적인 모의 응답이다. 기존 기능 검사도 실행 API를 모의 처리한다. 공식 링크는 키보드로 새 창을 여는 동작·정확한 URL·opener 분리를 검사하고 응답은 로컬에서 대신 제공했다. 원격 문서나 코드 실행 제공자에 학습 코드를 보내지 않았다.
 
-## 검증 매트릭스
+## 실제 검사와 결과
 
-| 요구사항·위험 | 검사 방법 | 초기 상태 |
+| 명령 | 최종 결과 | 근거 |
 | --- | --- | --- |
-| 34개 안내 누락·빈 설명 | 상황·질문·풀어쓴 용어 정의·코드·순서 설명·예측/답/이유·실무 정리의 필수 구조 | 실행 대기 |
-| 코드와 설명의 어긋남 | 표시 파일명에 해당하는 기존 example의 연속 원문인지 검증; 핵심 수업의 값·흐름 수동 대조 | 실행 대기 |
-| 기존 성취 계약의 변경 | 예제·퀴즈·과제 ID·대상 버전·실무 실행 계약·trusted checks의 변경 전 SHA-256 비교 | 기준 확보 |
-| 생성 데이터 누락 | 22개 원본 JSON과 professional 배포 모듈의 안내를 정확히 비교 | 실행 대기 |
-| 5단 수업 회귀 | 34개 이론·예제·문제·실무·코드 실습 렌더링 | 실행 대기 |
-| 답 펼치기와 성취 혼동 | Enter/Space 반복 열기·닫기 뒤 quizPassed/labPassed·완료 수 불변 | 실행 대기 |
-| 입력 손실 | 기존 퀴즈·모의 제출 성취·코어/프로젝트 초안·메모를 만든 뒤 안내 탐색·재로드 | 실행 대기 |
-| 코드 표시·복사 접근성 | 다크/라이트/고대비, 실제 계산 색 대비, 키보드 초점·가로 스크롤, 복사 성공·거절 시 원문 선택 | 실행 대기 |
-| 선택 자료 장애 | 안내 없음·잘못된 값·문법 모듈 실패의 원문과 다음 단계 유지, HTML처럼 생긴 텍스트 주입 | 실행 대기 |
-| 반응형 | 34수업 × 320/360/390/768/1440 CSS px × 100/200% 문서 글자 크기, 실제 캡처 | 실행 대기 |
-| 이동·짧은 높이 | 390×844 ↔ 844×390, 1280×600에서 펼친 답 유지·터치 에뮬레이션 | 실행 대기 |
-| 관련 회귀 | 기존 tests/browser.mjs 실행; 정상·오류·취소·반복·저장 실패·키보드·편집기 | 실행 대기 |
-| 설치 접근성 | README 소개→설치 순서와 EXE/ZIP 직접 자산 링크; 총괄의 GitHub 자산 메타데이터 근거와 대조 | 실행 대기 |
-| 추가 요청: 본문 폭·중복 정리 | 1280/1440 실제 본문 폭, 반복 정보 제거·접기, 열기/닫기와 키보드 초점·초안 유지 | 새 명세 대기 |
-| 추가 요청: 원문 접근성 | 접힌 원문과 공식 출처 접근, 기존 12개 도식 유지, guide→기존 목표와 이론→도식 경계의 실제 viewport | 새 명세 대기 |
+| `node --test tests/readability.test.mjs` | 5/5 PASS | final-verified/static-readability.log |
+| `node tests/readability.mjs` | 24/24 PASS | final-verified/results-1791860453905.json |
+| `node work/readability-qa/run-baseline.mjs` | 49/49 PASS | final-verified/baseline/results.json |
+| `node tests/theory-visuals.mjs` | 19/19 PASS | final-verified/theory/results-1791859939453.json |
+| 담당 테스트 3개 `node --check` | PASS | readability.test.mjs, readability.mjs, bundled-desktop.mjs 구문 검사 |
 
-## 새 레이아웃에서 확인한 재현 결함
+위 산출물 경로의 기준은 `work/readability-qa/`다. 브라우저 실행 환경변수는 `PLAYWRIGHT_CHANNEL=msedge`, `QA_BASE_URL=http://127.0.0.1:4173`이며, `QA_ARTIFACT_DIR`를 각 표의 디렉터리로 분리했다. 기존 기능 49개는 원본 tests/browser.mjs를 수정하지 않고 외부 요청 차단 wrapper로 실행했다. 기존 tests/theory-visuals.mjs도 수정 없이 실행했다.
 
-- **P2: 펼친 학습 목표 잘림.** `build-maven`을 320×844·문서 글자 200%에서 열고 수업 정보를 펼치면 목표 LI가 left 25/right 379.46875로 카드 밖에 배치된다. `lesson-card`의 clip 때문에 문서 scrollWidth는 320이어도 오른쪽 글자가 잘린다. 360/390px·200%에서도 검사에 걸렸다. `work/readability-qa/final/build-maven-320-200-visibility-probe.json`과 `build-maven-320-200-info-open-probe.png`로 열린 상태를 독립 재현했다.
-- **P2: 최소창의 선택된 마지막 탭 잘림.** 704×521·200%에서 이론 탭에 초점을 놓고 ArrowRight 4회로 코드 실습을 선택하면 tab right 764.14가 strip right 688.92를 넘는다. 각 입력 뒤 600ms 기다려도 scrollLeft=0이었다. 689px에서도 재현했다. `work/readability-qa/minimum-probe/704-200-keyboard-tabs.json`과 `704-200-keyboard-tabs-viewport.png`가 증거다. 실제 Electron 실행이 아닌 웹 viewport 에뮬레이션이다.
+`final-verified/final-summary.json`은 결과 개수, 실행 환경, 소스 해시, 실제 본문 폭 및 설치형 미실행 상태를 모은 파일이다. 최종 24개 실행 전후의 모든 기록 대상 해시가 같고, 종료 후 현재 파일과도 다시 일치했다.
 
-최신 완료 실행 `work/readability-qa/final/results-1791858691475.json`은 24개 중 19 PASS·5 FAIL이며 소스 전후 해시는 같았다. 3개 실패는 같은 목표 잘림이고, 최소창 2개는 처음에는 450ms 저장 지연 전에 읽은 QA 조건 때문에 중단됐다. 저장 완료를 기다리도록 보정한 별도 최소창 검사에서 위 탭 결함을 발견했다. 닫힌 native details가 잔존 layout rect를 반환하는 점도 `checkVisibility`로 보정했다. 펼친 내용의 경계 검사와 원문·성취 검증은 그대로 유지한다.
+| 요구사항·위험 | 실제 검증 | 판정 |
+| --- | --- | --- |
+| 34개 교재 안내 | 상황·질문·용어/정의·기존 코드·순서 추적·예측/답/이유·실무 정리 필수 구조, 34개 실제 DOM과 원본 데이터의 일치 | PASS |
+| 기존 예제와의 연결 | 파일명이 가리키는 기존 example 원문의 연속 발췌인지 검사; 22개 작성 JSON과 배포 모듈의 안내 일치 | PASS |
+| 성취·실행 계약 | 이전 예제 코드/출력, 퀴즈 ID/질문/선지/정답, 과제 ID/대상 버전·실행 필드·trusted checks 해시 보존 | PASS |
+| 단계와 fallback | 34개 수업의 5단계, 안내가 없는 34개 수업, 잘못된 안내 값, 문법 모듈 장애, HTML처럼 생긴 텍스트 | PASS |
+| 읽기 정보의 중복 | 학습 목표는 정보 영역에 1회만 존재; 수업 정보·출처·색상 안내는 기본 닫힘; 상세 이론과 12개 도식은 기본 노출·기존 순서 유지 | PASS |
+| 접기·성취·입력 보존 | Enter/Space 반복, 초점 표시/복귀, 예상 답 열람의 성취 불변, 기존 퀴즈·모의 제출 성취·코어/파일별 초안·설계 메모·재로드 | PASS |
+| 코드 표시와 조작 | 3개 테마의 실제 계산 색 대비 4.5:1 이상, 구문 강조, 키보드 가로 스크롤, 모의 복사와 권한 거절 시 전체 원문 선택 | PASS |
+| 좁은 화면·확대 | 34수업 × 320/360/390/768/1440 CSS px × 100/200% 문서 글자. 안내·예상 답과 학습 정보/출처/있는 경우 색상 안내를 모두 펼쳐 경계 검사 | PASS |
+| 도식 회귀 | 12도식 × 같은 5개 폭·2개 글자 크기, 원문/접근성 연결/공식 출처/afterSection 위치/오류 fallback | PASS |
+| 최소창 | 704×521·689×521 각각 100/200%에서 목차 열기·Escape·초점 복귀, 5탭 방향키, 직접 hash, 정보 접기, 긴 코드 내부 스크롤, resize·재로드 후 선택 탭과 초안 유지 | PASS |
+| 이동·작은 높이 | 390×844↔844×390, 1280×600, 펼친 답 유지·터치 에뮬레이션·실제 viewport 캡처 | PASS |
+| 관련 기능 | 정상/오류/취소/반복/늦은 응답·저장 장애·초안/되돌리기·버전/검색/히스토리·편집기 회귀 | PASS |
+| README 설치 접근 | 소개 바로 다음 설치, EXE/ZIP 직접 URL, 전체 압축 해제와 환경 준비 안내, 게시 메타데이터 대조 | PASS |
 
-`final/interrupted-before-last-css.log`는 마지막 320px 제목 규칙 제거 전 중단한 검사다. 그 실행의 `failure-wide-reading-layout-*`는 실제 한 줄 문장 높이 28.5px에 40px을 요구한 QA 조건 오류였다. 조건을 전체 문장 또는 한 줄 노출로 보정한 후 넓은 본문·12개 도식 검사는 통과했다. 이 파일을 제품 결함으로 집계하지 않는다.
+34개 안내를 직접 읽어 입력값·분기·변경 후 상태·반환값과 예측을 대조했다. Redis/Kafka·Docker·OIDC의 코드 읽기와 실제 서비스 검증 범위를 구분했다. 이 검토는 실제 학습자의 이해도 개선을 측정한 연구가 아니다.
 
-## 최초 동결본의 실제 결과
+이전 계약은 Git 기준 `b2dda6d4f2225e5f2d9b31a5287539bd1b0685b6`의 원문과 대조했다. 테스트에는 정규화한 계약 해시만 고정해 CI의 얕은 checkout에서도 실행할 수 있다. example/quiz의 설명 문구는 보존 대상에서 제외했다.
 
-`node --test tests/readability.test.mjs`: **5/5 PASS**. 원문 발췌·34개 구조·배포 생성물 동기화·기존 실행 계약·README 순서를 검증했다. 실행 계약의 해시는 설명 문구를 제외하고 코드·출력·퀴즈 ID/질문/선지/정답과 실행 필드를 비교한다. 테스트 런타임에 과거 Git 이력이나 work baseline 파일을 요구하지 않는다.
+## 본문 폭과 실제 합성 화면
 
-`PLAYWRIGHT_CHANNEL=msedge node tests/readability.mjs`: **19 PASS, 1 FAIL**, 종료 코드 1. `work/readability-qa/results-1791856409669.json`과 `browser-readability.log`에 실제 결과와 검사 전후 동일한 소스 해시를 남겼다.
+| viewport | 코드·도식 실제 폭 | 상주 목차 폭 |
+| --- | ---: | ---: |
+| 1280px | 938.8px | 220px |
+| 1440px | 1092.4px | 220px |
+| 1920px | 1554px | 228px |
 
-재현 결함 **P2 — 320px·200% 글자 확대에서 공고 카드 가로 넘침**:
+1280→1250→1280 전환에서 코드 폭은 938.8→910→938.8px로 복원됐다. 1280×600 첫 진입에 실제 상황 문장이 노출됐다. 일반 문장과 코드·도식의 폭을 따로 확인했다.
 
-1. Edge에서 실제 로컬 프리뷰의 `#lesson=exceptions&step=theory&version=21`을 연다.
-2. viewport를 320×844 CSS px로 설정하고 문서 기본 글자를 200%로 확대한다.
-3. 예상 답을 펼친 상태에서 전체 페이지 너비를 읽는다.
+QA가 직접 본 최종 viewport에는 데스크톱 첫 화면, 320px·200% 상단, 390px·200% 예상 답/이유, guide→상세 이론→도식 경계, 펼친 목차, 라이트 테마와 선택, 강조 모듈 실패의 원문 코드, 최소창 실행 버튼이 포함된다. 200%에서는 세로 스크롤로 긴 내용을 읽으며 코드의 내부 가로 스크롤을 유지한다.
 
-기대는 코드 영역 내부의 가로 스크롤만 허용하는 것이다. 실제 `document.clientWidth=320`, `scrollWidth=337`이었다. `#reference-column`은 left 24/right 296인데 `.reference-card.evidence-card`는 right 337.015625로 커졌다. 구현자에게 수치와 재현 단계를 전달했다. 독립 재검증 전이므로 구현자의 자체 검사 통과를 QA 완료로 기록하지 않는다.
+대표 산출물:
 
-증거: `failure-all34-layout-320px-200percent-text.png`, `overflow-exceptions-320-200.json`. 다른 9개 너비·글자 크기 조합은 각각 34개 수업에서 통과했다. 정답 반복 열람·3개 테마의 구문 색 대비·복사/거절 선택·성취/초안/메모 보존·34수업 5단계와 안내 없는 fallback·잘못된 자료·문법 모듈 실패 검사는 통과했다.
+- `final-verified/reading-layout-1280-top.png`, `reading-layout-1440-top.png`, `reading-layout-1920-top.png`
+- `final-verified/reading-layout-320-200-top.png`
+- `final-verified/java-basics-1440-guide-to-theory-boundary.png`, `java-basics-1440-theory-to-visual-boundary.png`
+- `final-verified/jpa-state-390-guide-to-theory-boundary.png`, `jpa-state-390-theory-to-visual-boundary.png`
+- `final-verified/jpa-state-390-open-curriculum-drawer.png`
+- `final-verified/java-basics-1440-expanded-lesson-info.png`, `java-basics-1440-expanded-references.png`, `java-basics-1440-expanded-syntax-legend.png`
+- `final-verified/theory/*-desktop-figure.png`: 원래 도식 12종의 실제 요소 캡처
+- `final-verified/*-desktop-guide.png`: 안내 34개 전체 요소 캡처
 
-34개 안내를 직접 읽어 입력값·실행 분기·변경 후 상태·반환값과 예측을 대조했다. Redis/Kafka·Docker·OIDC는 코드 읽기와 실환경 검증 범위를 구분한다. 이 검토를 실제 학습자 이해도 향상 측정으로 표현하지 않는다.
+별도 visual_director에게 위 캡처와 12개 도식을 전달했다. 전체 시각적 조화의 최종 승인은 그 독립 검수 결과를 따른다. 요소 전체 캡처와 실제 viewport 캡처를 구분하며, 순간적으로 나타나는 복사 토스트는 원래 UI 상태 그대로 기록했다.
 
-## 현재 확보한 근거
+## 발견·수정·재검증
 
-- `node --check tests/readability.mjs`, `node --check tests/readability.test.mjs`: 실제 실행 PASS.
-- Git 기준 `b2dda6d4f2225e5f2d9b31a5287539bd1b0685b6` 원문과 이번 독립 수집의 기존 교재·실행 계약 해시가 일치했다. guide가 추가되기 전 수집했으며 중간 변경이 기준에 섞이지 않았음을 확인했다.
-- 기본 샌드박스에서 Edge 실행이 프로필 접근 오류로 실패했다. 허용된 `require_escalated` 실행으로 부모 소유 `http://127.0.0.1:4173`에 접속해 HTTP 200, 학습 workspace 표시, Edge `155.0.4283.45`를 확인했다. 이 접속 확인을 전체 QA 통과로 확대하지 않는다.
-- 브라우저 검사에서 외부 요청과 실행 API를 모두 가로챈다. 진도 보존 검사의 명시적인 제출 1건은 모의 응답이며 실제 Java 실행이 아니다.
+| 결함 | 재현 근거 | 최종 상태 |
+| --- | --- | --- |
+| P2: 기존 공고 카드 가로 넘침 | 최초 320px·200% exceptions에서 문서 337px/viewport 320px. 최초 results-1791856409669.json, overflow-exceptions-320-200.json | 34수업의 닫힘/펼침 행렬에서 재검증 PASS |
+| P2: 새 정보 영역의 목표 잘림 | build-maven, 320/360/390px·200%. LI right 379.47px, 카드 clip으로 오른쪽 글자 손실. final/build-maven-320-200-visibility-probe.json, info-open-probe.png | 펼친 실제 요소·텍스트 경계를 포함해 재검증 PASS |
+| P2: 최소창의 선택 탭 잘림 | 704/689×521·200%, ArrowRight로 lab 선택. 600ms 뒤도 tab right 764.14 > strip right 688.92, scrollLeft 0. minimum-probe/704-200-keyboard-tabs.json와 viewport.png | 키보드·직접 hash·resize·재로드에서 재검증 PASS |
 
-## 미확인 범위
+수정 확인 실행 `fix-verification/results-1791859832771.json`의 3/3 PASS 뒤 전체 최종 검사를 실행했다. 이전 실패 산출물은 삭제하지 않고 유지하며 최신 PASS 근거는 `final-verified/`로 분리했다.
 
-물리 휴대전화, 실제 한글 IME, NVDA/JAWS/VoiceOver 음성 출력, OS 배율과 실제 브라우저 페이지 줌, 학습자의 이해도 개선은 검사하지 않는다. 200%는 문서 기본 글자 확대이며, 터치는 브라우저 에뮬레이션이다. 이번 UI 검사는 설치 패키지 실행, JVM 실행, Redis/Kafka 연동, 원격 배포 검증을 대신하지 않는다. 시각적 조화는 별도 visual_director의 실제 합성 화면 검수를 따른다.
+QA 조건도 근거에 맞춰 보정했다. 첫 문장의 높이가 28.5px인 경우 전체가 보여도 40px을 요구하던 조건을 수정했고, 닫힌 native details가 남기는 레이아웃 rect는 실제 가시성으로 제외했다. 초안은 기존 450ms 저장 지연이 끝나 저장값이 나타난 뒤 보존을 검사한다. 원문·성취·펼친 내용의 경계 조건은 유지했다.
+
+## README와 변경 파일
+
+검사 시점의 README 직접 링크는 v0.3.0 EXE 362,799,820바이트와 ZIP 362,369,704바이트였다. 총괄이 확보한 `work/bundled-desktop-qa/release-published.json`의 릴리스 ID 410409363, uploaded 상태, URL·크기·SHA-256과 일치했다. 대용량 파일은 재다운로드하지 않았다. 대조 기록은 `work/readability-qa/readme-assets-audit.json`이다. 후속 v0.3.1 공개/다운로드 검증은 총괄의 새 릴리스 기록으로 관리한다.
+
+QA 변경 파일은 `tests/readability.test.mjs`, `tests/readability.mjs`, `tests/bundled-desktop.mjs`, 이 보고서와 `work/readability-qa/` 산출물이다. 교재·UI·README·실행기·Git·배포는 QA가 수정하지 않았다.
+
+추가 승인된 bundled-desktop 테스트에는 package.json의 버전 비교, 독립 산출물 디렉터리 환경변수, 실제 패키지의 34개 안내와 예상 답 열람 시 성취 불변 검사를 준비했다. 기존 사용자 데이터 부재를 요구하는 preflight를 보존했으며 실제 패키지 테스트는 실행하지 않았다.
+
+## 검증한 소스와 미확인 범위
+
+| 파일 | SHA-256 |
+| --- | --- |
+| dist/index.html | 4300648bde32c51c134d4d0d9d12659b5149630995041c7b588cd121a4105269 |
+| dist/app.js | 1f0d9746ee94a8d0a4e51f7c2b798e797026303bad179119680ea7d129258a0b |
+| dist/styles.css | 8baf9bf900bdbcb2f8a7ab82fb0a17b1fada55dc7e94532c144c2ee3e911816d |
+| dist/data/curriculum.js | e61c9547892d3df1b9709a3191699026f608b806e57be04d1b1cc88057fa1e20 |
+| dist/data/professional.js | fdd4c80e335c941ea936afbc14f75be18ddcc15d3b72088cad9c35c5fa582ce0 |
+| dist/data/lesson-visuals.js | 6a1a2085a55b9e41ca33f972052953adf4445fd7c49dd738f6b6ed4cc67cc442 |
+| tests/readability.mjs | 06190fa7911ad97929c8cc1ab94a69fa79776bcb1b13c10a7eaa20c96e8d3b12 |
+
+물리 휴대전화, 실제 Windows 한글 IME, OS 클립보드, 화면 읽기 프로그램의 음성 출력, OS 배율·실제 브라우저 페이지 줌, 학습자의 이해도 개선은 미검증이다. 200%는 문서 기본 글자 확대이고 터치와 최소창은 브라우저 에뮬레이션이다. 기존 기능 검사의 한글 composition 이벤트 모의 검증은 실제 IME 검증과 구분한다.
+
+이번 웹 QA는 JVM 실행, Redis/Kafka 연동, 설치형 실행, 배포/다운로드 후 설치 검증을 대신하지 않는다. 새 설치 패키지는 기존 사용자 데이터 보호 때문에 **BLOCKED·미실행** 상태로 남긴다. 웹·정적 검사 범위의 최종 판정은 **PASS**다.
