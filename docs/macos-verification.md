@@ -24,6 +24,8 @@
 
 현재 사용자는 검증용 `codex/macos-packaging` 브랜치의 선행 커밋·푸시와 GitHub Actions의 Intel·Apple Silicon 검증을 명시적으로 승인했다. 이전 선행 푸시 보류는 해제됐다. 두 환경의 실제 최종 패키지 실행 검증을 확인한 뒤 README에 결과와 근거를 반영한다. README 설치 위치·기존 Windows 다운로드 안내 회귀 검사는 1 PASS, 문서 diff 검사 PASS다. 병합·릴리스 게시는 이 승인에 포함되지 않는다.
 
+소스 `e6a8479afe1fbb19c2164467e9c61b0852b7fabb`의 [첫 Mac CI](https://github.com/jbsim999/java-edu/actions/runs/38405962108)는 Windows 회귀 PASS, Intel·Apple Silicon의 콘텐츠/로컬 검사 PASS 후 공급자 아카이브 구조 확인 단계에서 FAIL이었다. SHA256 다운로드 검사는 통과했으며 패키징·최종 앱 실행은 이 실행에서 미실행이다. 실제 공식 JDK 아카이브의 최상위 폴더는 `.jdk` 확장자 없는 `jdk-21.0.12.1+1`이었다. 세 아카이브를 직접 내려받아 전체 목록·고정 SHA256을 확인한 근거는 `work/archive-layout-inspection/observed-layout.json`이다. 준비 스크립트를 정확한 공급자 폴더명·필수 Contents 구조 검사로 수정했으며 파일 이름·내용은 변경하지 않는다. 구조 회귀 검사는 Windows Node24에서 3/3 PASS다. 다운로드 직후부터 단계별 검증 자료를 보존하여 준비 단계 실패도 CI 산출물에 남긴다.
+
 ## JDK 서명과 매니페스트 불일치 점검
 
 사용자는 별도 Mac이 없음을 확인하고 `distribution integrity mismatch` 사례의 발생 가능성을 점검하도록 요청했다. 첨부 문구의 570개 중 72개 파일 불일치 수치는 실제 설치 파일·매니페스트·검사 로그를 제공받지 않았으므로 확인된 재현 결과가 아니다. JDK 네이티브 실행 파일과 dylib만 크기가 달라지고 Maven이 정상인 패턴은 재서명 가설과 부합하지만 원인 확정 근거는 아니다. [Apple 코드 서명 문서](https://developer.apple.com/library/archive/technotes/tn2206/)에 따르면 서명은 실행 파일을 변경한다.

@@ -3,6 +3,7 @@ name: Package and verify macOS
 on:
   push:
     branches: ['codex/macos-packaging']
+    paths-ignore: ['README.md', 'docs/**', 'AGENTS.md', 'CONTRIBUTING.md']
   workflow_dispatch:
 
 permissions:
