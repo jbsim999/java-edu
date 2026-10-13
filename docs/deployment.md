@@ -74,3 +74,20 @@ M4.1 당시에는 Windows v0.2.0 설치 파일의 로컬 빌드만 완료됐고 
 ## M9 — v0.3.1 프리뷰 릴리스
 
 2026-10-13 03:14:44UTC에 [v0.3.1](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1)을 공개했다. Release ID411215208, 태그·대상 커밋 `6ce0428a802be7a8a757a27a40853996a5b7fa04`, CI38338837092의12작업 PASS. EXE362890668바이트·ZIP362460548바이트·대응 소스2개·SHA256SUMS 총5첨부의 업로드 상태·크기·SHA256을 로컬 원본과 대조했다. 릴리스 태그도 대상 커밋과 일치한다. 전체 payload 정합성은 [이번 QA](readability-release-qa-report.md)를 따른다. 새 실제 설치·앱 기동은 미실행이며 과거 패키지의 실행 결과를 대신 사용하지 않는다.
+
+### M9 웹·GitHub 첫 화면 반영
+
+2026-10-13 03:20:24UTC에 기존 소유자 전용 [웹 교재](https://java-edu-lab-jbsim999.junbo1218.chatgpt.site)의 배포가 `succeeded`를 반환했다. 후속 조회에서도 owner/custom, 허용 사용자1·그룹0·외부0으로 접근 범위를 유지했다.
+
+| 구분 | 확인값 |
+| --- | --- |
+| GitHub 웹·문서 원본 | `236ce0d3e461fdfea11929669981999110e1b0cf` |
+| Git blob 대조 | 원본275파일 전체 일치, 복사 완료 후 빌드·Worker·Node40 PASS/1 SKIP |
+| 공식 helper pushed SHA | `24cd85352707112c5875a120169a9e61e3108331` |
+| Site ID | `appgprj_6acc4fec8bb48191a296197d2d55c1e3` |
+| 저장 버전 | 5, `appgprj_6acc4fec8bb48191a296197d2d55c1e3~appgver_353fa8d7d06c819186e53ef29eb955e1` |
+| 배포 ID | `appgdep_6acda3692ce48191840e4117a0011131` |
+| 저장 아카이브 | 34파일, 3266560바이트, `sha256:8e789ec0b37028713897522ce8cdc1ebee754e997657f563d7c111d48564ae0a` |
+| main 소개 문서 커밋 | `39ad4a8dfbe1548d672e4bc01bb2f3518efbb5e9` |
+
+공식 helper에 일치 확인한 소스·완료한 빌드의 배포 묶음을 전달했고, 반환된 새 pushed SHA를 저장·배포에 사용했다. 저장 버전 조회의 SHA도 일치한다. main에는 README와 미리보기 이미지 두 변경 파일만 반영했으며 구현 PR은 병합하지 않았다. GitHub GFM1280/390 독립 시각 PASS 및 실제 공개 첫 화면의 소개·이미지·라이선스 상태 PASS를 확인했다. 이 배포 완료 응답을 인증 세션의 실제 Java 제출 검증으로 표현하지 않는다.

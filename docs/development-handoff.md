@@ -2,6 +2,8 @@
 
 최신 앱·릴리스 소스는 `6ce0428a802be7a8a757a27a40853996a5b7fa04`다. [v0.3.1 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1)는 2026-10-13 03:14:44UTC에 공개했다. 34수업에 상황·용어·실제 코드·값 추적·예측 해설을 넣고, 반복 안내를 펼침 항목으로 정리했다. 1440px 화면의 본문 폭은 약762px에서1092px로 넓어졌다. CI38338837092의12작업과 독립 정적5/5·읽기24/24·기존49/49·도식19/19 PASS, 새 EXE·ZIP 전체 payload 및 도구604파일 대조 PASS다. 사용 중인 기존 앱과 데이터를 보존하여 새 설치·기동 검사는 미실행이다. [이번 QA](readability-release-qa-report.md)·[설치 안내](installation.md)를 따른다. 문서 후속 커밋은 앱 패키징 소스와 구분한다.
 
+웹은 같은 소유자 전용 URL에 34수업의 새 읽기 안내와 넓은 본문을 배포했다. 원본275파일 Git blob 대조 후 같은 소스로 빌드·Worker·Node40 PASS/1 SKIP를 확인했다. 저장 버전5의 source SHA는 `24cd85352707112c5875a120169a9e61e3108331`, 배포 `appgdep_6acda3692ce48191840e4117a0011131`은 2026-10-13 03:20:24UTC succeeded다. main에는 README와 미리보기 이미지의 문서 커밋 `39ad4a8d`만 반영했으며 PR1은 미병합이다. 이후 기록 문서 커밋은 배포된 앱·웹 소스와 구분한다.
+
 ## 이전 v0.3.0 통합 패키지 기록
 
 당시 앱 소스는 `0e1ff5eb38484d1594d4fd1c231d4dbe229b44e8`, 원격은 jbsim999/java-edu, 구현 브랜치는 feat/java-learning-mvp이며 PR1은 미병합이다. [v0.3 통합 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.3.0)는 Windows x64 EXE·전체 ZIP에 Temurin21.0.12.1+1·Maven3.10.0·Electron/Node를 포함한다. 학습자의 별도 도구 설치·폴더 등록은 필요 없다. 기본 실제 JVM은21이며 컴파일 대상8·11·17·21과 구분한다. 다른 실제 JDK 등록은 고급 설정의 선택 기능이고 기존 외부 설정을 보존한다. 기본20실무 첫 준비에는 인터넷이 필요하며 Redis/Kafka 서버는 포함하지 않는다.
