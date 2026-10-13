@@ -4,7 +4,7 @@
 
 macOS 13 Ventura 이상, Intel x64 또는 Apple Silicon arm64. Electron44는 macOS12를 지원하지 않는다. Apple 메뉴 → 이 Mac에 관하여에서 **칩**이 Apple M 계열이면 arm64, **프로세서**가 Intel이면 x64를 선택한다. 두 CPU의 JDK를 섞거나 Windows EXE를 Mac에서 실행하지 않는다.
 
-패키지는 `Java-Edu-0.4.0-mac-arm64.dmg` / `Java-Edu-0.4.0-mac-x64.dmg`와 같은 CPU별 DMG·ZIP이다. 현재 실제 출시 여부와 검사 결과는 [Mac 검증 기록](macos-verification.md)을 따른다. 빌드 명령이 존재하는 것만으로 다운로드 가능·설치 성공을 뜻하지 않는다.
+패키지는 `Java-Edu-0.4.0-mac-arm64.dmg` / `Java-Edu-0.4.0-mac-x64.dmg`와 같은 CPU별 DMG·ZIP이다. [실제 Mac CI](https://github.com/jbsim999/java-edu/actions/runs/38406992540)에서 두 CPU의 최종 DMG·ZIP 앱 실행이 통과했다. 실제 검사 환경은 macOS 15이며 다른 지원 OS 버전을 모두 검사한 것은 아니다. 현재 파일은 14일간 보존되는 CI 산출물이며 정식 릴리스로 게시하지 않았다. [Apple Silicon 파일](https://github.com/jbsim999/java-edu/actions/runs/38406992540/artifacts/11818354876) · [Intel 파일](https://github.com/jbsim999/java-edu/actions/runs/38406992540/artifacts/11819915823) · [체크섬·검증 범위](macos-verification.md). 산출물 ZIP을 먼저 풀고 `desktop-release/`에서 자신의 CPU에 맞는 DMG 또는 앱 ZIP을 선택한다.
 
 ## 설치와 첫 실행
 
@@ -18,7 +18,7 @@ macOS 13 Ventura 이상, Intel x64 또는 Apple Silicon arm64. Electron44는 mac
 
 ## Mac에서 직접 빌드
 
-Node22.12 이상에서 저장소 의존성을 설치한 후 해당 CPU의 Mac에서 아래 순서로 실행한다. 원본 아카이브·스테이징이 이미 존재하면 덮어쓰지 않고 중단한다. 재빌드는 기존 결과를 먼저 별도로 보존한다.
+Node22.12 이상에서 `codex/macos-packaging` 브랜치의 저장소 의존성을 설치한 후 해당 CPU의 Mac에서 아래 순서로 실행한다. 원본 아카이브·스테이징이 이미 존재하면 덮어쓰지 않고 중단한다. 재빌드는 기존 결과를 먼저 별도로 보존한다.
 
 ```sh
 npm ci
@@ -30,7 +30,7 @@ npm run build:desktop:mac -- --arm64
 
 최종 패키지 자동 검사는 개인 Mac의 기본 학습 기록을 보호하기 위해 **GitHub Actions의 일회용 macOS 러너에서만** 실행한다. 로컬 빌드 뒤 기존 개인 데이터로 검사 스크립트를 실행하거나 CI 전용 보호 조건을 우회하지 않는다. CI에서는 `node scripts/verify-macos-packages.mjs --arch arm64` 또는 `--arch x64`를 사용한다.
 
-`prepare:mac`은 공식 Temurin21.0.12.1+1 macOS 아카이브와 Maven3.10.0 ZIP의 고정 SHA256을 대조한다. `.jdk/Contents` 전체와 원본 공급자 서명을 보존한다. 런타임 경로는 앱 내부 `Contents/Resources/toolchains/jdks/21/Contents/Home`이다. 공급자 고지·대응 소스 위치는 포함된 `THIRD-PARTY-NOTICES.txt`와 기존 [번들 계약](bundled-runtime.md)을 따른다.
+`prepare:mac`은 공식 Temurin21.0.12.1+1 macOS 아카이브와 Maven3.10.0 ZIP의 고정 SHA256을 대조한다. 공급자의 `jdk-21.0.12.1+1/Contents` 전체와 원본 공급자 서명을 보존한다. 런타임 경로는 앱 내부 `Contents/Resources/toolchains/jdks/21/Contents/Home`이다. 공급자 고지·대응 소스 위치는 포함된 `THIRD-PARTY-NOTICES.txt`와 기존 [번들 계약](bundled-runtime.md)을 따른다.
 
 macOS 프로세스 취소는 프로세스 그룹·시간·출력 한도와 JVM heap 제한을 사용한다. Windows Job Object의 전체 메모리·프로세스 수 제한 또는 강제 앱 종료 뒤 정리를 macOS에도 보장하지 않는다. 개인 학습 IDE이며 OS 보안 샌드박스가 아니다.
 

@@ -16,9 +16,9 @@
 
 ## 소개
 
-Java Edu는 **Windows에서 코드를 직접 실행하는 학습 앱과 웹 교재**를 함께 만드는 한국어 교육 프로젝트입니다. 다른 언어 경험자와 현직 Java 개발자가 “메서드에 객체를 넘겼는데 왜 결과가 달라질까?”, “트랜잭션을 붙였는데 왜 데이터가 남을까?” 같은 질문을 실제 코드로 확인하도록 돕습니다.
+Java Edu는 **Windows·macOS에서 코드를 직접 실행하는 학습 앱과 웹 교재**를 함께 만드는 한국어 교육 프로젝트입니다. 다른 언어 경험자와 현직 Java 개발자가 “메서드에 객체를 넘겼는데 왜 결과가 달라질까?”, “트랜잭션을 붙였는데 왜 데이터가 남을까?” 같은 질문을 실제 코드로 확인하도록 돕습니다.
 
-**macOS도 확장 중입니다.** macOS 13 Ventura 이상에서 Intel x64·Apple Silicon arm64용 DMG와 ZIP에 Java·Maven을 포함하도록 구성했습니다. 실제 Mac의 최종 패키지 실행 검증은 아직 진행 전이며, 통과 전에는 설치 가능·출시 완료로 표시하지 않습니다. [Mac 설치·빌드 안내](docs/macos-installation.md) · [현재 Mac 검증 상태](docs/macos-verification.md)
+**macOS Intel·Apple Silicon 검증을 통과했습니다.** v0.4.0 검증용 DMG·ZIP에는 Java·Maven이 포함됩니다. macOS 13 Ventura 이상을 대상으로 하며, 실제 검증은 GitHub Actions의 macOS 15 Intel x64·Apple Silicon arm64에서 수행했습니다. [Mac 설치·빌드 안내](docs/macos-installation.md) · [실제 검증 결과](https://github.com/jbsim999/java-edu/actions/runs/38406992540)
 
 수업은 **이론 → 예시 → 문제풀이 → 실무 심화 → 직접 코딩** 순서로 진행합니다. Java 언어·표준 API는 Oracle/OpenJDK 공식 문서를, 프레임워크·라이브러리는 각 프로젝트의 공식 문서를 기준으로 합니다. 실무 주제에는 출처를 기록한 채용 공고의 기술 요건도 연결합니다.
 
@@ -38,9 +38,16 @@ Java·Maven·Node.js가 포함돼 있어 따로 설치하거나 폴더를 등록
 
 [자세한 설치 안내](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/installation.md) · [릴리스와 체크섬](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1)
 
-### macOS 설치 안내 — 검증 대기
+### macOS 설치 안내 — v0.4.0 검증용 빌드
 
-Mac용 설치 파일은 실제 Intel·Apple Silicon 환경 검증을 통과한 뒤 제공합니다. 아직 다운로드 링크를 게시하지 않았습니다. Apple 메뉴 → 이 Mac에 관하여에서 **칩**이 Apple M 계열이면 `arm64`, **프로세서**가 Intel이면 `x64` 파일을 선택합니다.
+Intel·Apple Silicon에서 DMG·ZIP 최종 앱 실행 검증을 모두 통과했습니다. Apple 메뉴 → 이 Mac에 관하여에서 **칩**이 Apple M 계열이면 `arm64`, **프로세서**가 Intel이면 `x64` 파일을 선택합니다.
+
+| Mac | 검증용 파일 |
+| --- | --- |
+| Apple Silicon | [arm64 CI 산출물](https://github.com/jbsim999/java-edu/actions/runs/38406992540/artifacts/11818354876) |
+| Intel | [x64 CI 산출물](https://github.com/jbsim999/java-edu/actions/runs/38406992540/artifacts/11819915823) |
+
+CI 산출물 ZIP을 먼저 해제하면 `desktop-release/`에 해당 CPU의 DMG와 앱 ZIP이 있습니다. 검증 기록도 함께 포함되며 보존 기간은 생성 후 14일입니다. 정식 GitHub Release로 게시한 파일은 아닙니다. [패키지 SHA256·검증 범위](docs/macos-verification.md)
 
 1. 자신의 CPU에 맞는 **DMG**를 열고 **Java Edu**를 **Applications**로 끌어 놓습니다.
 2. 복사가 끝나면 디스크 이미지를 추출하고, 응용 프로그램에서 **Java Edu**를 엽니다. **ZIP**은 전체 `Java Edu.app`을 해제해 응용 프로그램으로 옮깁니다.
@@ -101,7 +108,7 @@ npm ci
 npm run dev
 ```
 
-브라우저에서 `http://127.0.0.1:4173`을 엽니다. 실무 코드는 웹에서 편집하고 프로젝트 ZIP을 내려받을 수 있습니다. Spring 프로젝트 실행은 Windows 앱 또는 로컬 IDE에서 진행합니다.
+브라우저에서 `http://127.0.0.1:4173`을 엽니다. 실무 코드는 웹에서 편집하고 프로젝트 ZIP을 내려받을 수 있습니다. Spring 프로젝트 실행은 Windows·macOS 앱 또는 로컬 IDE에서 진행합니다.
 
 **Windows 학습 앱 실행**
 
@@ -127,9 +134,10 @@ npm run build:desktop
 <details>
 <summary><strong>macOS 설치 파일 직접 빌드</strong></summary>
 
-macOS 13 이상, Node.js 22.12 이상에서 해당 CPU의 Mac으로 빌드합니다. Mac 패키징 변경이 포함된 소스를 사용합니다.
+macOS 13 이상, Node.js 22.12 이상에서 해당 CPU의 Mac으로 빌드합니다. Mac 구현은 `codex/macos-packaging` 브랜치에 있습니다. 위에서 저장소를 내려받았다면 먼저 브랜치를 전환합니다.
 
 ```sh
+git switch codex/macos-packaging
 npm ci
 npm run prepare:mac
 npm run check:bundle
@@ -143,7 +151,7 @@ npm run build:desktop:mac -- --arm64
 
 ### 실행 방식과 버전
 
-| 구분 | Windows 앱 | 웹 교재 |
+| 구분 | Windows·macOS 앱 | 웹 교재 |
 | --- | --- | --- |
 | Java 코어 | 기본 포함 JVM 21, 컴파일 대상 8·11·17·21; 다른 실제 JDK는 선택 등록 | Wandbox의 JVM 21, 과제별 최소 지원 버전으로 컴파일 |
 | Spring 프로젝트 | 컴파일 대상 17, 포함 JDK 21·Maven 3.10.0 사용 | 교재·파일 편집·ZIP 다운로드 |
@@ -170,7 +178,7 @@ npm run build:desktop:mac -- --arm64
 
 2026-10-13 기준, v0.3.1 앱 소스 `6ce0428`의 [CI 12작업](https://github.com/jbsim999/java-edu/actions/runs/38338837092)이 모두 성공했습니다. 독립 검수에서 읽기 안내 **24/24**, 기존 기능 **49/49**, 도식 **19/19**, 정적 검사 **5/5**가 통과했고 새 EXE·ZIP의 전체 파일과 포함 도구 604개를 대조했습니다. 사용 중인 앱과 학습 기록을 보존하기 위해 **신버전의 실제 설치·기동 검사는 미실행**입니다. 이전 v0.3.0 설치·제거 검증과 구분합니다. [이번 검증 범위](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/readability-release-qa-report.md) · [검증 기록](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/verification.md)
 
-Mac 패키징 변경의 로컬 검사에서는 콘텐츠40 PASS/실제 원격 제공자1 SKIP, Windows 실행24 PASS/Mac·Unix4 SKIP와 독립 코드 검토가 통과했습니다. **실제 Mac의 DMG·ZIP 실행 결과는 아직 없습니다.** 두 CPU의 실제 패키지에서 포함 도구·Java8/21 대상 제출·Spring/H2 정답/미완성 판정·재시작 저장을 확인한 뒤 실행 결과와 설치 파일 링크를 갱신합니다. [Mac 검증 기록](docs/macos-verification.md)
+2026-10-13, 소스 `1f93d9e`의 [Mac 패키지 CI](https://github.com/jbsim999/java-edu/actions/runs/38406992540)가 **Intel·Apple Silicon·Windows 회귀 3작업 모두 성공**했습니다. 두 Mac에서 콘텐츠40 PASS/원격 제공자1 SKIP, 로컬32 PASS/Windows 전용1 SKIP를 확인했습니다. CPU별 DMG·ZIP 총 4개의 포함 도구 무결성·서명·소스 동일성과 실제 앱의 Java8/21 대상 제출·Spring/H2 환경 준비·정답/미완성 판정·재시작 저장이 통과했습니다. 포함 JVM은 21이며 실제 JDK8 실행 검증과 구분합니다. Apple Developer ID 공증·다운로드 후 Gatekeeper·개인 Mac 사용 검증은 미실행입니다. [Mac 검증 기록과 체크섬](docs/macos-verification.md)
 
 ## 문서와 로드맵
 
@@ -196,7 +204,7 @@ Mac 패키징 변경의 로컬 검사에서는 콘텐츠40 PASS/실제 원격 �
 - [x] Java·Maven 포함 Windows EXE와 전체 ZIP 패키징
 - [x] [Windows v0.3.1 통합 프리뷰 릴리스](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1)
 - [ ] 선택 과정의 Redis/Kafka 실제 연동 검증
-- [ ] macOS Intel·Apple Silicon 최종 DMG/ZIP 빌드와 실제 앱 실행 검증
+- [x] macOS Intel·Apple Silicon 최종 DMG/ZIP 빌드와 실제 앱 실행 검증
 
 ## 기여와 문의
 
