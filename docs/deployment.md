@@ -70,3 +70,7 @@ M4.1 당시에는 Windows v0.2.0 설치 파일의 로컬 빌드만 완료됐고 
 웹 통합 설치 안내는 기존 소유자 전용 URL에 2026-10-12 08:25:24 UTC succeeded로 배포했다. Sites source `199443b5e185acdcd83bb3d4ca0a4ca43eefc3d8`, 버전 `appgprj_6acc4fec8bb48191a296197d2d55c1e3~appgver_60be210ba2a48191b036dc7530cad71f`, 배포 `appgdep_6acc996c9de48191a896c90d291afd9f`, archiveSHA256 `dd25ad4a14f440d3d4ad956b3332669ef0531724b74bf2cb7ea9cb38fa73e0c9`다. 공식 helper로 연 체크아웃에 GitHub ffb77751의268개 파일을 복사하고 Git blob을 전부 대조했다. npm ci(audit0)·Worker 빌드·Worker 검사 후 공식 source commit/push·package 결과의 SHA만 배포에 사용했다. Windows helper의 npm 실행 경로·Git Bash PATH·GNU tar Windows colon 처리를 확인한 뒤 같은 소스로 패키징했으며 도구를 수정하거나 TLS 검사를 해제하지 않았다.
 
 후속0e1ff5는 desktop 설치 압축 설정만 수정했고 웹 UI·Worker는 동일하다. 호스팅에서 Spring/JVM을 실행하는 기능은 추가하지 않았다. 배포 완료를 인증된 실제 웹 제출·실기기 검사로 표현하지 않는다. Windows 기본 실제 JVM21, 실무 첫 의존성 준비의 인터넷 필요, 선택 Redis/Kafka 미검증과 코드 서명되지 않은 프리뷰 범위를 유지한다. 구현 PR은 미병합이며 GitHub 공개와 웹 소유자 전용 접근을 구분한다.
+
+## M9 — v0.3.1 프리뷰 릴리스
+
+2026-10-13 03:14:44UTC에 [v0.3.1](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1)을 공개했다. Release ID411215208, 태그·대상 커밋 `6ce0428a802be7a8a757a27a40853996a5b7fa04`, CI38338837092의12작업 PASS. EXE362890668바이트·ZIP362460548바이트·대응 소스2개·SHA256SUMS 총5첨부의 업로드 상태·크기·SHA256을 로컬 원본과 대조했다. 릴리스 태그도 대상 커밋과 일치한다. 전체 payload 정합성은 [이번 QA](readability-release-qa-report.md)를 따른다. 새 실제 설치·앱 기동은 미실행이며 과거 패키지의 실행 결과를 대신 사용하지 않는다.

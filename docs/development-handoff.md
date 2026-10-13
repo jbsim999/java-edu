@@ -1,6 +1,10 @@
-# Java Edu 개발 인계 — v0.3 통합 패키지
+# Java Edu 개발 인계 — v0.3.1 교재·화면 개선
 
-최신 앱 소스는 `0e1ff5eb38484d1594d4fd1c231d4dbe229b44e8`, 원격은 jbsim999/java-edu, 구현 브랜치는 feat/java-learning-mvp이며 PR1은 미병합이다. [v0.3 통합 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.3.0)는 Windows x64 EXE·전체 ZIP에 Temurin21.0.12.1+1·Maven3.10.0·Electron/Node를 포함한다. 학습자의 별도 도구 설치·폴더 등록은 필요 없다. 기본 실제 JVM은21이며 컴파일 대상8·11·17·21과 구분한다. 다른 실제 JDK 등록은 고급 설정의 선택 기능이고 기존 외부 설정을 보존한다. 기본20실무 첫 준비에는 인터넷이 필요하며 Redis/Kafka 서버는 포함하지 않는다.
+최신 앱·릴리스 소스는 `6ce0428a802be7a8a757a27a40853996a5b7fa04`다. [v0.3.1 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1)는 2026-10-13 03:14:44UTC에 공개했다. 34수업에 상황·용어·실제 코드·값 추적·예측 해설을 넣고, 반복 안내를 펼침 항목으로 정리했다. 1440px 화면의 본문 폭은 약762px에서1092px로 넓어졌다. CI38338837092의12작업과 독립 정적5/5·읽기24/24·기존49/49·도식19/19 PASS, 새 EXE·ZIP 전체 payload 및 도구604파일 대조 PASS다. 사용 중인 기존 앱과 데이터를 보존하여 새 설치·기동 검사는 미실행이다. [이번 QA](readability-release-qa-report.md)·[설치 안내](installation.md)를 따른다. 문서 후속 커밋은 앱 패키징 소스와 구분한다.
+
+## 이전 v0.3.0 통합 패키지 기록
+
+당시 앱 소스는 `0e1ff5eb38484d1594d4fd1c231d4dbe229b44e8`, 원격은 jbsim999/java-edu, 구현 브랜치는 feat/java-learning-mvp이며 PR1은 미병합이다. [v0.3 통합 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.3.0)는 Windows x64 EXE·전체 ZIP에 Temurin21.0.12.1+1·Maven3.10.0·Electron/Node를 포함한다. 학습자의 별도 도구 설치·폴더 등록은 필요 없다. 기본 실제 JVM은21이며 컴파일 대상8·11·17·21과 구분한다. 다른 실제 JDK 등록은 고급 설정의 선택 기능이고 기존 외부 설정을 보존한다. 기본20실무 첫 준비에는 인터넷이 필요하며 Redis/Kafka 서버는 포함하지 않는다.
 
 CI38223955175의12작업, 최종 실제 ZIP10/10·NSIS10/10, 도구604개 전체 무결성·원본197+생성2파일 대조, 코드·기능·시각 독립 검수 PASS. package.json은 builder가 제거한 개발 필드를 제외한 런타임 필드를 비교한다. 첫7z NSIS의2파일 누락은 내부 ZIP으로 수정해 한글 설치 경로에서 재검증했다. 설치 제거·학습 데이터 보존·원래 AppData 부재 복원 PASS. 검사 자료는 work/bundled-desktop-qa에 보존하며 Git에 넣지 않는다. [통합 QA](bundled-desktop-qa-report.md)·[번들 계약](bundled-runtime.md)·[설치 안내](installation.md)·[배포 기록](deployment.md)을 먼저 읽는다.
 

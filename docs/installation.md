@@ -1,11 +1,11 @@
 # Windows 설치와 학습 시작
 
-Windows 10/11 x64용 [v0.3.0 통합 패키지와 SHA-256](https://github.com/jbsim999/java-edu/releases/tag/v0.3.0)를 제공한다. Electron/Node 실행 환경, Eclipse Temurin JDK21.0.12.1+1, Apache Maven3.10.0이 포함되어 학습자가 Java·Maven·Node.js를 따로 설치하거나 폴더를 등록할 필요가 없다. 시스템 PATH를 바꾸지 않는다.
+Windows 10/11 x64용 [v0.3.1 통합 패키지와 SHA-256](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1)를 제공한다. Electron/Node 실행 환경, Eclipse Temurin JDK21.0.12.1+1, Apache Maven3.10.0이 포함되어 학습자가 Java·Maven·Node.js를 따로 설치하거나 폴더를 등록할 필요가 없다. 시스템 PATH를 바꾸지 않는다.
 
 ## EXE 또는 ZIP으로 시작
 
-1. 설치하려면 [설치 EXE 다운로드](https://github.com/jbsim999/java-edu/releases/download/v0.3.0/Java-Edu-Setup-0.3.0-x64.exe)를 눌러 받은 파일을 실행하고 설치 위치를 선택한다. 현재 사용자용이며 관리자 권한을 요구하지 않는다.
-2. 설치 없이 사용하려면 [전체 ZIP 다운로드](https://github.com/jbsim999/java-edu/releases/download/v0.3.0/Java-Edu-0.3.0-x64.zip)를 **전체 해제**하고 Java Edu.exe를 실행한다. resources 등 함께 있는 파일을 보존한다. exe만 다른 폴더로 옮기면 실행되지 않는다.
+1. 설치하려면 [설치 EXE 다운로드](https://github.com/jbsim999/java-edu/releases/download/v0.3.1/Java-Edu-Setup-0.3.1-x64.exe)를 눌러 받은 파일을 실행하고 설치 위치를 선택한다. 현재 사용자용이며 관리자 권한을 요구하지 않는다.
+2. 설치 없이 사용하려면 [전체 ZIP 다운로드](https://github.com/jbsim999/java-edu/releases/download/v0.3.1/Java-Edu-0.3.1-x64.zip)를 **전체 해제**하고 Java Edu.exe를 실행한다. resources 등 함께 있는 파일을 보존한다. exe만 다른 폴더로 옮기면 실행되지 않는다.
 3. 앱에 포함된 Java21·Maven이 자동으로 표시된다. 학습 코드 실행에 동의하고 코어 실습의 실행·제출을 사용한다. 앱 실행만으로 학습 코드가 실행되지는 않는다.
 4. Spring/H2 실무는 **환경 준비 → 파일 편집 → 실행·제출** 순서다. 첫 환경 준비는 앱이 고정 의존성을 내려받으므로 인터넷이 필요하다. 별도 프로그램 설치는 필요 없으며 준비 후 학생 제출은 오프라인 모드다. 앱 재시작·도구 변경 후에는 준비 상태를 다시 확인한다.
 
@@ -26,3 +26,5 @@ Java8/11/17/21 교재와 컴파일 대상을 제공하되 기본 실제 JVM은21
 웹도 같은34단원의 이론·예제·퀴즈·메모·문법 강조 편집기를 제공한다. 실무 프로젝트는 ZIP을 내려받아 IDE에서 사용하거나 Windows 앱에서 실행한다. 프로젝트 ZIP의 부모 pom.xml과 lessons/<단원>/starter·reference·grader의 상대 위치를 유지하고 starter 또는 reference에서 mvn test를 수행한다.
 
 웹 Java 코어 실행은 Wandbox의 실제 JVM21이며 교재 기준·컴파일 대상·실제 JVM을 구분해 표시한다. 웹 진도는 해당 브라우저에 저장되며 앱과 자동 동기화되지 않는다. Sites 웹 배포는 소유자 전용 접근을 유지한다. 과거 v0.2는 도구 별도 등록 방식이며 통합 패키지와 구분한다.
+
+현재 v0.3.1은 교재·레이아웃 독립 검수와 EXE·ZIP 전체 파일 대조를 통과했다. 기존 앱과 학습 기록을 보존하여 신버전 설치·기동 재검사는 수행하지 않았다. [이번 검증 범위](readability-release-qa-report.md)를 따른다.

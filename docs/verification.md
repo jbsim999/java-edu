@@ -73,3 +73,7 @@ Temurin21·Maven3.10.0의 공식 ZIP 체크섬, 새해제본 전체, stage604파
 첫7z NSIS는604중602로 무결성FAIL이었다. 원본ARM64필터2파일이 압축에는 있지만19.00 NSIS해제기에서 누락됨을 독립진단·직접추출SHA로 확인했다. differentialPackage:false/useZip:true 최소수정독립리뷰 후 새빌드·한글/공백/&/%JAVA_HOME% 경로실제설치와604전체를 재검증했다. 미검증 파일을 누락허용하지 않았다. 첫ZIP10/10·환경guard중단2개·첫NSISFAIL 근거는보존했다. 수정전산출물은 출시하지 않는다.
 
 최종NSIS제거exit0,등록0·바로가기0·학습데이터보존PASS. 새테스트AppData를 work로보관하고 작업전두경로부재로복원했다. userData우회나기존개인설정삭제는하지않았다. Windows11 실제제품 검사이며 Windows10·SmartScreen·OS배율·실기기·스크린리더·Redis/Kafka실제연동은 미검증이다. 기본실무 최초준비는인터넷이필요하고 실제JVM21만기본포함한다. 판정 PASS — 통합프리뷰범위. 대응JDK/Temurin빌드/Maven/제3자소스와원본고지를같은릴리스에서제공한다.
+
+## v0.3.1 교재·화면 개선 (2026-10-13)
+
+앱 소스 `6ce0428`의 CI12작업 PASS. 독립 정적5/5·읽기24/24·기존49/49·도식19/19, EXE·ZIP 전체 payload·604도구 파일·릴리스 첨부5개 무결성 PASS. 새 설치·기동은 사용자 앱과 기록을 보존하여 미실행이다. [교재 QA](readability-qa-report.md)·[패키지와 검증 경계](readability-release-qa-report.md)를 따른다.
