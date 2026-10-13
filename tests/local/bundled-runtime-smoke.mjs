@@ -1,4 +1,4 @@
-// Opt-in actual Windows toolchain check: no chooseJdk/chooseMaven call, no external tool install.
+// Opt-in actual native bundled toolchain check: no folder selection or external tool install.
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -9,12 +9,12 @@ import { createSettingsStore } from '../../server/local/settings.mjs';
 import { createLocalEngine } from '../../server/local/engine.mjs';
 import { exerciseDefinitions } from '../../server/exercises.mjs';
 
-if (process.platform !== 'win32') throw new Error('The bundled distribution is Windows x64 only.');
+if (!['win32', 'darwin'].includes(process.platform)) throw new Error('Bundled runtime smoke supports Windows and macOS.');
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const bundleRoot = path.join(root, 'work/desktop-bundle');
 const dataRoot = path.join(root, 'work', `bundled-runtime-smoke-${randomUUID()}`);
 await mkdir(dataRoot);
-const report = { startedAt: new Date().toISOString(), bundleRoot, dataRoot, results: [] };
+const report = { startedAt: new Date().toISOString(), platform: process.platform, arch: process.arch, bundleRoot, dataRoot, results: [] };
 let engine;
 try {
   const bundle = await loadBundledRuntime(bundleRoot);
