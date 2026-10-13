@@ -330,4 +330,3 @@ catch (error) {
   await mkdir(artifacts, { recursive: true });
   await writeFile(path.join(artifacts, 'runtime-results.json'), JSON.stringify(evidence, null, 2));
 }
-

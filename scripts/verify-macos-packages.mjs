@@ -322,4 +322,3 @@ catch (error) {
   await writeFile(resultFile, JSON.stringify(evidence, null, 2));
   console.log(JSON.stringify({ status: evidence.status, arch, resultFile, packageChecks: evidence.packageChecks.map(item => ({ kind: item.kind, status: item.status })), runtimeChecks: evidence.runtimeChecks.map(item => ({ kind: item.kind, status: item.status })) }, null, 2));
 }
-
