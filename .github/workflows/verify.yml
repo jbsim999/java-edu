@@ -58,6 +58,9 @@ jobs:
       - run: npm run test:theory
         env:
           QA_ARTIFACT_DIR: work/theory-independent-qa
+      - run: npm run test:readability
+        env:
+          QA_ARTIFACT_DIR: work/readability-qa
   professional:
     name: Professional projects (${{ matrix.java }})
     runs-on: ubuntu-latest

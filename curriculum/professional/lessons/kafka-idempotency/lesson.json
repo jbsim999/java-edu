@@ -1,7 +1,7 @@
 {
   "id": "kafka-idempotency",
   "title": "Kafka 재전달과 DB 멱등 처리",
-  "description": "Kafka 전송과 DB 반영을 분리하고 같은 이벤트의 중복 처리 및 커밋 사이의 장애 구간을 설명합니다.",
+  "description": "같은 이벤트가 두 번 오면 주문 처리 횟수도 두 번 늘어날까요? 처리한 eventId 기록과 주문 변경을 하나의 DB 작업으로 묶어 중복 적용을 막는 코드를 읽습니다.",
   "track": "advanced",
   "level": "심화",
   "minVersion": 17,
@@ -10,31 +10,70 @@
   "duration": 75,
   "category": "실무 프로젝트",
   "goals": [
-    "메시지를 다시 받더라도 DB 효과를 한 번만 적용하려면?",
-    "중복 이벤트 효과 한 번",
-    "DB 실패 시 이벤트 기록 롤백",
-    "다른 payload 중복 ID 거절",
-    "Kafka 전송 후 수동 오프셋 커밋"
+    "같은 이벤트를 다시 받아도 DB 효과를 반복하지 않는 멱등 처리를 설명한다.",
+    "첫 handle은 true, 같은 eventId·orderId의 재호출은 false가 되는 경로를 따라간다.",
+    "없는 주문 처리 실패가 processed_events 기록까지 되돌려야 하는 이유를 설명한다.",
+    "같은 eventId에 다른 orderId가 오면 왜 거절하는지 설명한다.",
+    "DB 확정과 Kafka 읽은 위치 확정 사이의 장애 가능성 및 실제 연동 미검증 범위를 구분한다."
   ],
+  "learningGuide": {
+    "scenario": "주문 A의 handled_count가 0일 때 evt-1이 도착합니다. 처리 후 같은 evt-1과 A가 다시 전달됩니다. 두 번째 전달을 새 작업으로 보면 처리 횟수가 2가 됩니다.",
+    "question": "이 메서드는 두 번째 전달을 어디서 알아보고, 어떤 값을 반환할까요?",
+    "terms": [
+      {
+        "term": "멱등 처리",
+        "meaning": "같은 의미의 요청을 다시 받아도 업무 효과를 더 만들지 않는 처리입니다. 여기서는 handled_count를 한 번만 올립니다."
+      },
+      {
+        "term": "eventId / payload",
+        "meaning": "eventId는 이벤트 식별자이고 payload는 그 이벤트의 내용입니다. 이 예제에서 비교할 내용은 orderId입니다."
+      },
+      {
+        "term": "커밋 / 롤백",
+        "meaning": "commit은 연결의 DB 변경을 확정하고 rollback은 아직 확정하지 않은 변경을 되돌립니다. 처리 기록과 주문 변경에 함께 적용합니다."
+      },
+      {
+        "term": "오프셋",
+        "meaning": "Kafka에서 소비자가 읽은 위치입니다. 이 메서드의 DB 커밋과는 별도로 소비자가 확정합니다."
+      }
+    ],
+    "code": {
+      "file": "src/main/java/edu/lab/EventHandler.java",
+      "source": "            c.setAutoCommit(false);\n            try {\n                try (PreparedStatement s = c.prepareStatement(\"insert into processed_events(event_id,order_id) values(?,?)\")) {\n                    s.setString(1,eventId); s.setString(2,orderId); s.executeUpdate();\n                }\n                try (PreparedStatement s = c.prepareStatement(\"update orders set handled_count=handled_count+1 where id=?\")) {\n                    s.setString(1,orderId); if (s.executeUpdate() != 1) throw new SQLException(\"unknown order\",\"02000\");\n                }\n                c.commit(); return true;\n            } catch (SQLException failure) {\n                try { c.rollback(); } catch (SQLException rollback) { failure.addSuppressed(rollback); throw failure; }\n                if (!\"23505\".equals(failure.getSQLState())) throw failure;\n                try (PreparedStatement s = c.prepareStatement(\"select order_id from processed_events where event_id=?\")) {\n                    s.setString(1,eventId);\n                    try (ResultSet result = s.executeQuery()) {\n                        if (result.next() && orderId.equals(result.getString(1))) return false;\n                        throw new IllegalArgumentException(\"same eventId with different payload\",failure);"
+    },
+    "walkthrough": [
+      "c.setAutoCommit(false)는 아래 SQL을 매번 따로 확정하지 않게 합니다. 첫 INSERT가 processed_events에 eventId와 orderId를 기록합니다.",
+      "다음 UPDATE가 해당 주문의 handled_count를 1 올립니다. 바뀐 행 수가 1이 아니면 unknown order 예외를 던져 확정 단계로 가지 못하게 합니다.",
+      "두 SQL이 성공하면 c.commit() 뒤 true를 반환합니다. 예외가 나면 catch에서 c.rollback()으로 이번 변경을 되돌립니다.",
+      "학습 DB의 중복 키 SQLState인 23505만 중복 처리 분기로 보냅니다. 다른 DB 오류는 그대로 호출자에게 전달합니다.",
+      "SELECT로 기존 eventId의 order_id를 읽고 전달받은 orderId와 같으면 false를 반환합니다. 다르면 같은 ID의 다른 내용이므로 예외를 던집니다. 중복 분기에는 handled_count를 다시 올리는 SQL이 없습니다."
+    ],
+    "prediction": {
+      "question": "초기 처리 기록이 없고 주문 A의 handled_count가 0일 때, 정상 DB에서 handle(\"evt-1\",\"A\")를 순서대로 두 번 호출하면 어떻게 될까요?",
+      "answer": "첫 호출은 true, 두 번째는 false이며 handled_count는 1입니다.",
+      "explanation": "첫 호출이 기록과 증가를 함께 확정합니다. 두 번째 INSERT는 eventId 중복으로 실패하지만 기존 order_id가 A와 같으므로 이미 처리한 내용으로 판단합니다. 이 DB 동작 예측이 실제 Kafka 장애 복구 검증을 뜻하지는 않습니다."
+    },
+    "takeaway": "같은 ID라는 사실과 같은 내용이라는 사실을 함께 확인해야 중복을 안전하게 건너뛸 수 있습니다."
+  },
   "theory": [
     {
       "heading": "전달 횟수와 업무 효과",
-      "text": "메시지가 한 번 보였다는 사실과 업무 상태가 한 번 변경됐다는 사실은 다릅니다. 이 과제는 같은 eventId를 두 메시지로 전송하여 재전달 가능성을 모델링합니다. 브로커 장애나 프로세스 강제 종료 복구를 직접 재현한 검사는 아닙니다."
+      "text": "소비자가 이벤트를 처리하고 응답을 남기기 전에 멈추면 같은 내용을 다시 받을 수 있습니다. 전달받은 횟수와 주문 상태를 바꾼 횟수를 분리해야 하는 이유입니다. 멱등 처리는 같은 의미의 이벤트를 반복해도 업무 효과를 추가로 만들지 않는 처리입니다. 이 실습은 eventId가 같은 메시지 두 건을 보내 재전달 가능성을 모델링하도록 작성되어 있습니다. 브로커 장애나 프로세스 강제 종료 후 복구를 직접 재현한 검사는 아니며, 실제 Kafka 연동도 별도 환경에서 확인해야 합니다."
     },
     {
       "heading": "DB 멱등 처리",
-      "text": "처리한 eventId의 UNIQUE 기록과 업무 UPDATE를 같은 DB 트랜잭션에 둡니다. 중복 이벤트는 이전 payload와 일치하는지 확인한 뒤 효과를 반복하지 않습니다. 같은 ID의 다른 payload는 조용히 무시하지 않고 계약 위반으로 거절합니다."
+      "text": "EventHandler.handle은 c.setAutoCommit(false)로 SQL마다 자동 확정하는 동작을 끄고, processed_events에 eventId·orderId를 넣은 뒤 orders.handled_count를 1 늘립니다. 둘 다 성공해야 c.commit()으로 함께 확정합니다. 실패하면 c.rollback()으로 이번 변경을 되돌립니다. 학습 H2에서 eventId 중복을 나타내는 SQLState 23505라면 기존 order_id를 조회합니다. 같은 주문이면 이미 반영된 이벤트라 false를 반환하고, 다른 주문이면 같은 ID의 의미가 바뀐 것이므로 거절합니다."
     },
     {
       "heading": "오프셋과 DB 사이",
-      "text": "DB 커밋 뒤 오프셋을 커밋하면 두 커밋 사이 장애에서 중복 전달이 가능하므로 DB 멱등 처리가 필요합니다. Kafka 트랜잭션만으로 임의의 외부 DB까지 자동으로 exactly-once가 되는 것은 아닙니다. outbox·재시도·독성 메시지 처리 정책은 후속 설계 비교 대상입니다."
+      "text": "오프셋은 Kafka 파티션에서 어디까지 읽었는지 나타내는 위치입니다. 테스트 소스는 자동 오프셋 커밋을 끄고 DB 처리 뒤 consumer.commitSync()로 읽은 위치를 확정합니다. DB의 c.commit() 후 이 호출 전에 멈추면 DB 반영은 끝났어도 같은 메시지를 다시 받을 수 있습니다. 그래서 DB 쪽 eventId 검사가 필요합니다. Kafka 트랜잭션만 켠다고 임의의 외부 DB까지 자동으로 한 번만 반영되는 것은 아닙니다. 이벤트 발행 기록을 DB와 함께 남기는 outbox, 제한된 재시도, 반복 실패 메시지의 격리 정책은 후속 설계 대상입니다."
     }
   ],
   "example": {
     "title": "EventHandler 기준 구현",
     "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport java.sql.*;\npublic final class EventHandler {\n    private final DataSource source;\n    public EventHandler(DataSource source) { this.source = java.util.Objects.requireNonNull(source); }\n    public boolean handle(String eventId, String orderId) throws SQLException {\n        // BEGIN EXERCISE\n        if (eventId == null || eventId.isBlank() || orderId == null || orderId.isBlank()) throw new IllegalArgumentException(\"event identity\");\n        try (Connection c = source.getConnection()) {\n            c.setAutoCommit(false);\n            try {\n                try (PreparedStatement s = c.prepareStatement(\"insert into processed_events(event_id,order_id) values(?,?)\")) {\n                    s.setString(1,eventId); s.setString(2,orderId); s.executeUpdate();\n                }\n                try (PreparedStatement s = c.prepareStatement(\"update orders set handled_count=handled_count+1 where id=?\")) {\n                    s.setString(1,orderId); if (s.executeUpdate() != 1) throw new SQLException(\"unknown order\",\"02000\");\n                }\n                c.commit(); return true;\n            } catch (SQLException failure) {\n                try { c.rollback(); } catch (SQLException rollback) { failure.addSuppressed(rollback); throw failure; }\n                if (!\"23505\".equals(failure.getSQLState())) throw failure;\n                try (PreparedStatement s = c.prepareStatement(\"select order_id from processed_events where event_id=?\")) {\n                    s.setString(1,eventId);\n                    try (ResultSet result = s.executeQuery()) {\n                        if (result.next() && orderId.equals(result.getString(1))) return false;\n                        throw new IllegalArgumentException(\"same eventId with different payload\",failure);\n                    }\n                }\n            }\n        }\n        // END EXERCISE\n    }\n}\n",
     "output": "예상 검증 항목: 중복 이벤트 효과 한 번 · DB 실패 시 이벤트 기록 롤백 · 다른 payload 중복 ID 거절 · Kafka 전송 후 수동 오프셋 커밋. 아직 실행하지 않았습니다.",
-    "explanation": "기준 구현과 테스트 소스는 공개 학습 자료입니다. 실제 실행·의존성 해석·설치형 통합 검증 결과는 별도 증거로 표시합니다.",
+    "explanation": "handle은 eventId와 orderId를 확인한 뒤 같은 JDBC 연결에서 처리 기록 INSERT와 주문 횟수 UPDATE를 수행합니다. 주문이 없으면 UPDATE 수가 1이 아니므로 예외를 던지고 INSERT까지 롤백합니다. 이미 처리한 eventId라면 중복 INSERT 실패 뒤 기존 order_id를 읽어 같은 주문일 때만 false를 반환합니다. 따라서 true는 이번에 새로 반영했다는 뜻이고 false는 같은 내용을 앞서 반영했다는 뜻입니다. Kafka 오프셋 커밋은 이 메서드 밖의 테스트 소비자가 담당합니다. 실제 Kafka 연동은 현재 미검증이며 기준 구현과 테스트 소스는 공개 학습 자료입니다. 실제 서비스 연결·설치형 통합 검증은 별도 증거가 필요합니다.",
     "files": [
       {
         "path": "src/main/java/edu/lab/EventHandler.java",
@@ -64,7 +103,7 @@
         "같은 메시지가 다시 전달될 수 있어 DB 멱등 처리가 필요하다."
       ],
       "correctIndex": 3,
-      "explanation": "DB와 오프셋은 별도의 커밋입니다. 중간 장애로 다시 받은 메시지가 DB 효과를 반복하지 않도록 설계해야 합니다."
+      "explanation": "c.commit()과 consumer.commitSync()는 서로 다른 시스템에 남기는 확정 기록입니다. DB만 확정한 채 멈추면 소비자는 마지막으로 확정된 오프셋부터 다시 읽을 수 있습니다. 같은 이벤트의 processed_events 기록을 확인해 handled_count를 또 올리지 않아야 합니다."
     },
     {
       "id": "kafka-idempotency-q2",
@@ -76,20 +115,20 @@
         "eventId를 새로 만들어 조용히 재처리한다."
       ],
       "correctIndex": 2,
-      "explanation": "멱등 키가 같다는 이유만으로 의미가 다른 요청을 동일 요청으로 수용해서는 안 됩니다."
+      "explanation": "eventId가 같아도 orderId가 A에서 B로 바뀌면 같은 업무 요청이 아닙니다. handle의 중복 분기는 기존 order_id와 전달받은 orderId를 비교하고 다르면 IllegalArgumentException을 던집니다. 중복 ID라는 이유로 다른 주문까지 처리하거나 성공으로 숨기지 않습니다."
     }
   ],
   "practice": {
     "title": "주문·재고·취소 프로젝트에 연결",
-    "scenario": "Kafka 전송과 DB 반영을 분리하고 같은 이벤트의 중복 처리 및 커밋 사이의 장애 구간을 설명합니다.",
+    "scenario": "evt-1을 처리해 주문 A의 처리 횟수를 늘렸지만, 소비자가 Kafka의 읽은 위치를 남기기 전에 종료됐다고 가정합니다. 재시작 뒤 evt-1을 다시 받아도 DB 효과를 반복하지 않아야 합니다.",
     "tasks": [
-      "handle(eventId, orderId)는 첫 정상 적용에 true, 동일 payload의 중복 적용에는 false를 반환합니다.",
-      "processed_events 기록과 orders.handled_count 증가는 같은 DB 트랜잭션입니다.",
-      "없는 주문이나 같은 eventId의 다른 orderId는 거절하고 부분 변경을 남기지 않습니다.",
-      "실제 전송 검사는 전용 loopback Kafka와 JAVA_EDU_KAFKA_BOOTSTRAP_SERVERS가 필요하며 자원 미준비 시 실행되지 않습니다.",
-      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+      "handle(\"evt-1\",\"A\")의 첫 true와 두 번째 false가 각각 어떤 분기에서 반환되는지 설명하세요.",
+      "processed_events INSERT와 handled_count UPDATE 중 하나만 확정되면 어떤 문제가 생기는지, setAutoCommit(false)·commit·rollback과 연결하세요.",
+      "없는 주문이면 방금 추가한 처리 기록도 사라져야 하는 이유와, 같은 eventId에 다른 orderId가 오면 거절해야 하는 이유를 구분하세요.",
+      "실제 전송 검사에는 전용 loopback Kafka와 JAVA_EDU_KAFKA_BOOTSTRAP_SERVERS가 필요합니다. 현재 실제 연동은 미검증이며 자원 미준비를 검사 통과로 보지 않습니다.",
+      "DB 커밋 뒤 오프셋 커밋 전 장애와 반복 실패 메시지의 처리 정책을 적으세요. 같은 메시지 두 건 전송은 브로커 장애 복구 검증과 다릅니다."
     ],
-    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+    "takeaway": "중복을 알아보는 기록과 실제 업무 변경을 같은 DB 트랜잭션에 둡니다. Kafka에 읽은 위치를 남기는 단계까지 포함해 장애 구간을 설명해야 합니다."
   },
   "sources": [
     {

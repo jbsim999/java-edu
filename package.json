@@ -1,6 +1,6 @@
 {
   "name": "java-edu",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "main": "desktop/main.cjs",
   "private": true,
   "type": "module",
@@ -22,6 +22,7 @@
     "test:java": "node scripts/check-java.mjs",
     "test:browser": "node tests/browser.mjs",
     "test:theory": "node tests/theory-visuals.mjs",
+    "test:readability": "node tests/readability.mjs",
     "check": "node --check dist/app.js && node --check dist/data/curriculum.js && node --check dist/data/job-evidence.js && node --check dist/data/lesson-visuals.js && npm test"
   },
   "engines": {

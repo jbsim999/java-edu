@@ -1,7 +1,7 @@
 {
   "id": "json-validation",
   "title": "Jackson·Validation의 입력 경계",
-  "description": "JSON 역직렬화 실패, Bean Validation 실패, 업무 불변식 위반을 구분하고 입력 정책을 고정합니다.",
+  "description": "깨진 JSON, 수량 0, 알 수 없는 필드는 서로 다른 단계에서 거절됩니다. Request를 만드는 단계와 @Valid 검사, create 본문에 도달하는 순서를 따라갑니다.",
   "track": "advanced",
   "level": "심화",
   "minVersion": 17,
@@ -10,30 +10,30 @@
   "duration": 75,
   "category": "실무 프로젝트",
   "goals": [
-    "자료형에 들어온 값은 언제 업무에 사용할 수 있는가?",
-    "정상 생성 201",
-    "0 수량·공백 sku 400",
-    "깨진 JSON·미지 필드 400"
+    "JSON을 Request로 바꾸는 과정과 Request 값의 제약 검사를 구분한다.",
+    "정상 sku·quantity가 create를 거쳐 201 응답으로 반환되는 순서를 설명한다.",
+    "0 수량·공백 sku가 create 본문 전에 400으로 거절되는 이유를 설명한다.",
+    "깨진 JSON·미지 필드 거절이 Jackson 설정과 연결된다는 점을 확인한다."
   ],
   "theory": [
     {
       "heading": "세 가지 입력 경계",
-      "text": "유효한 JSON이라고 해서 유효한 주문은 아닙니다. 파싱·자료형 변환·필드 제약·업무 규칙을 단계별로 구분하면 400 응답과 내부 오류를 혼동하지 않습니다. @Valid는 요청 객체 검증을 MVC 경계에 연결합니다."
+      "text": "여기서 입력 경계란 외부에서 받은 값을 프로그램이 사용하기 전에 확인하는 지점입니다. 먼저 Jackson이 JSON 문장을 읽어 Request 객체로 바꿉니다. 깨진 JSON이면 이 단계에서 실패합니다. 객체가 만들어지면 MVC가 @Valid에 따라 sku의 @NotBlank와 quantity의 @Min(1)을 검사합니다. 수량 0은 int로 만들 수 있어도 주문 수량 조건에 맞지 않아 이 단계에서 거절됩니다.\n\n필드 검사를 통과해야 create 본문이 실행되어 Created를 반환합니다. 다만 @Min(1)은 재고가 있는지까지 확인하지 않습니다. 실제 주문에서 재고 부족·판매 중단 같은 업무 규칙은 서비스가 현재 데이터를 보고 검사해야 합니다. 이 예제의 create는 받은 값을 응답으로 옮길 뿐 실제 주문을 DB에 저장하지 않습니다."
     },
     {
       "heading": "누락과 기본값",
-      "text": "원시 int의 누락이 0으로 변환되는 설정에서는 @Min(1)이 거절합니다. nullable Integer를 쓰면 @NotNull이 별도로 필요할 수 있습니다. 의도한 부재 의미를 타입과 검증 규칙에 함께 기록합니다."
+      "text": "기존 테스트 설정에서 {\"sku\":\"BOOK\"}처럼 quantity를 생략하면 원시 int 값은 0이 되고 @Min(1)에 걸립니다. “값이 없었다”와 “명시적으로 0을 보냈다”가 같은 0으로 보이므로, 두 경우를 API에서 구분해야 한다면 타입과 입력 정책을 함께 정해야 합니다.\n\nInteger로 바꾸면 누락을 null로 표현할 수 있지만 @Min만으로 null을 거절하지는 않습니다. 필수값이어야 한다면 @NotNull 같은 별도 제약도 필요합니다. 이 설명은 타입을 무조건 바꾸라는 처방이 아니라, 현재 Request의 int와 @Min(1)이 누락을 어떻게 처리하는지 읽기 위한 비교입니다."
     },
     {
       "heading": "호환성과 엄격성",
-      "text": "알 수 없는 필드를 거절할지 무시할지는 API 정책입니다. 이 예제는 오타를 발견하도록 FAIL_ON_UNKNOWN_PROPERTIES를 명시적으로 켭니다. 이를 모든 API의 보편적 정답으로 적용하면 점진 배포 호환성을 해칠 수 있습니다."
+      "text": "알 수 없는 필드 이름을 거절하는 일은 sku·quantity 값의 제약 검사와 다른 역할입니다. 이 수업의 ContractTest.setup은 ObjectMapper에 FAIL_ON_UNKNOWN_PROPERTIES를 켜서 \"quanity\" 같은 필드를 보내면 Jackson 변환 단계에서 실패하게 합니다. 컨트롤러의 @Valid만으로 이 엄격한 필드 정책이 생기는 것은 아닙니다.\n\n이 선택은 오타를 빨리 드러내지만, 새 클라이언트가 추가 필드를 보내는 동안 구 서버가 이를 거절할 수 있다는 비용도 있습니다. 실제 API에서는 서버·클라이언트가 서로 다른 버전으로 배포되는 기간을 고려해 정책을 정합니다. 이 수업의 400 결과는 지정된 MockMvc 변환기·검증기 설정에 대한 결과로 읽습니다."
     }
   ],
   "example": {
     "title": "CreateOrderController 기준 구현",
     "code": "package edu.lab;\nimport jakarta.validation.Valid;\nimport jakarta.validation.constraints.Min;\nimport jakarta.validation.constraints.NotBlank;\nimport org.springframework.http.HttpStatus;\nimport org.springframework.web.bind.annotation.*;\n@RestController\n@RequestMapping(\"/orders\")\npublic class CreateOrderController {\n    // BEGIN MODEL\n    public record Request(@NotBlank String sku, @Min(1) int quantity) {}\n    // END MODEL\n    public record Created(String sku, int quantity) {}\n    @PostMapping\n    @ResponseStatus(HttpStatus.CREATED)\n    public Created create(@Valid @RequestBody Request request) {\n        // BEGIN EXERCISE\n        return new Created(request.sku(), request.quantity());\n        // END EXERCISE\n    }\n}\n",
     "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 3개 JUnit 테스트 통과.\n검증 항목: 정상 생성 201 · 0 수량·공백 sku 400 · 깨진 JSON·미지 필드 400.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
-    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "explanation": "Request는 sku에 @NotBlank, quantity에 @Min(1)을 선언합니다. 테스트의 MVC 경로로 {\"sku\":\"BOOK\",\"quantity\":2}를 보내면 Jackson이 Request를 만들고 @Valid 검사를 통과한 뒤 create가 Created(\"BOOK\", 2)를 반환합니다. @ResponseStatus가 응답을 201로 정합니다. quantity 0과 공백 sku는 본문 전에 거절됩니다. 알 수 없는 필드 거절은 별도 ContractTest.setup의 ObjectMapper 설정에서 오며, 이 컨트롤러에는 저장소나 재고 검사 구현이 없습니다.\n\n공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
     "files": [
       {
         "path": "src/main/java/edu/lab/CreateOrderController.java",
@@ -58,7 +58,7 @@
         "int는 항상 요청에 존재하므로 누락할 수 없다."
       ],
       "correctIndex": 0,
-      "explanation": "요청 객체 생성 후 @Valid가 제약을 검사합니다. int의 0 기본값이 양수 조건에 맞지 않으므로 MVC는 요청을 거절합니다."
+      "explanation": "현재 테스트의 Jackson 설정은 빠진 원시 int quantity를 0으로 만들고, MVC가 @Valid로 @Min(1)을 검사합니다. 0은 조건에 맞지 않아 create 본문에 들어가기 전에 400으로 끝납니다. 수량 1로 자동 보정하는 코드는 없습니다."
     },
     {
       "id": "json-validation-q2",
@@ -70,20 +70,20 @@
         "HTTP 상태 코드와 무관하므로 문서화할 필요가 없다."
       ],
       "correctIndex": 1,
-      "explanation": "JSON 변환 정책과 값 검증은 별개이며 엄격한 필드 정책은 오타 발견과 점진 배포 사이의 선택을 요구합니다."
+      "explanation": "FAIL_ON_UNKNOWN_PROPERTIES는 JSON 이름을 Request의 필드에 맞추는 Jackson 설정입니다. @Valid가 검사하는 것은 이미 만들어진 Request의 값입니다. 알 수 없는 필드를 거절하면 오타를 찾기 쉽지만 구 서버가 새 클라이언트의 추가 필드도 거절할 수 있으므로 배포 호환성과 함께 결정해야 합니다."
     }
   ],
   "practice": {
-    "title": "주문·재고·취소 프로젝트에 연결",
-    "scenario": "JSON 역직렬화 실패, Bean Validation 실패, 업무 불변식 위반을 구분하고 입력 정책을 고정합니다.",
+    "title": "요청이 어느 단계에서 거절되는지 찾기",
+    "scenario": "클라이언트가 수량을 빠뜨리거나 quantity를 quanity로 잘못 적어 보냅니다. 서버는 실패 원인을 구분해 입력을 거절하고 정상 요청만 응답 객체로 옮겨야 합니다.",
     "tasks": [
-      "sku는 공백이 아니고 quantity는 1 이상이어야 합니다.",
-      "POST /orders의 유효한 JSON은 201과 sku·quantity를 반환합니다.",
-      "잘못된 JSON, 잘못된 필드 값, 알 수 없는 필드는 400입니다.",
-      "메서드 안의 업무 규칙과 @Valid 요청 검증이 같은 검사라고 가정하지 마세요.",
-      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+      "sku는 공백이 아니고 quantity는 1 이상이어야 합니다. 각각 Request의 어떤 제약이 담당하는지 설명하세요.",
+      "POST /orders의 {\"sku\":\"BOOK\",\"quantity\":2}가 검증 후 201과 sku·quantity를 반환하도록 create를 완성하세요.",
+      "깨진 JSON, quantity 0, 알 수 없는 quanity를 각각 Jackson 변환 단계와 @Valid 검사 단계 중 어디서 거절하는지 구분하세요.",
+      "ContractTest.setup의 FAIL_ON_UNKNOWN_PROPERTIES 설정을 찾아 @Valid만으로 미지 필드를 거절한다고 오해하지 않도록 설명하세요.",
+      "현재 Created 반환은 실제 주문 저장이 아닙니다. 실무의 재고 검사·저장 규칙은 어느 서비스에서 확인할지, 컨트롤러를 자바로 직접 호출하면 MVC 검증을 거치지 않는다는 점과 함께 적으세요."
     ],
-    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+    "takeaway": "JSON 문장을 읽을 수 있는지, 객체의 값이 조건에 맞는지, 실제로 주문할 수 있는지는 서로 다른 질문입니다. 실패한 단계를 알면 입력 오류를 내부 장애나 저장 성공과 혼동하지 않습니다."
   },
   "sources": [
     {
@@ -173,5 +173,44 @@
     "starterSatisfied": false,
     "sourceFingerprint": "cb2dd529c781109c07cf6272989e94ab712c38e29484390922d7e38fb4f046b9",
     "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  },
+  "learningGuide": {
+    "scenario": "같은 POST /orders라도 깨진 JSON과 수량 0은 다른 이유로 실패합니다. {\"sku\":\"BOOK\",\"quantity\":2}가 실제로 create 본문에 도착하기까지 거치는 단계를 봅니다.",
+    "question": "int로 변환할 수 있는 quantity 0은 왜 정상 요청이 아니며, 누가 거절할까요?",
+    "terms": [
+      {
+        "term": "역직렬화",
+        "meaning": "전송된 JSON을 자바 객체로 바꾸는 일입니다. Jackson은 요청 본문을 이 코드의 Request로 만듭니다."
+      },
+      {
+        "term": "Bean Validation",
+        "meaning": "객체 값이 애너테이션의 조건에 맞는지 검사하는 기능입니다. Request에서는 공백이 아닌 sku와 1 이상 quantity를 확인합니다."
+      },
+      {
+        "term": "@Valid",
+        "meaning": "이 MVC 요청 처리에서 만들어진 Request에 검증을 적용하도록 연결하는 표시입니다. 필드별 조건 자체는 @NotBlank와 @Min에 있습니다."
+      },
+      {
+        "term": "업무 규칙",
+        "meaning": "형식이 맞는 요청을 실제로 처리해도 되는지 정한 조건입니다. 주문 수량이 1 이상이어도 재고가 충분한지는 별도 데이터로 판단해야 합니다."
+      }
+    ],
+    "walkthrough": [
+      "@RequestBody는 요청 JSON을 Request로 변환해 받도록 합니다. 기존 테스트는 Jackson 변환기와 검증기를 MockMvc에 등록합니다.",
+      "Request의 quantity가 2이고 sku가 BOOK이면 @Min(1)과 @NotBlank를 모두 만족합니다.",
+      "MVC가 @Valid 검사를 마친 뒤 create 본문을 실행합니다. request.sku()와 request.quantity()를 읽어 Created에 그대로 옮깁니다.",
+      "@ResponseStatus(HttpStatus.CREATED)가 이 정상 반환의 상태 코드를 201로 정하고 Created가 JSON 응답이 됩니다.",
+      "quantity가 0이면 객체로는 만들 수 있지만 @Min(1)을 통과하지 못해 본문 전에 400으로 끝납니다. 깨진 JSON이나 엄격한 설정의 미지 필드는 그보다 앞선 Jackson 변환 단계에서 실패합니다."
+    ],
+    "prediction": {
+      "question": "기존 MockMvc 설정에 {\"sku\":\"BOOK\"}를 POST하면 create 본문이 실행되고 201이 나올까요?",
+      "answer": "아닙니다. quantity가 0이 되어 @Min(1)에 걸리고 400이 됩니다.",
+      "explanation": "JSON 문법은 맞아 Request를 만들 수 있지만, 이 설정에서 누락된 원시 int의 값 0이 수량 조건에 맞지 않습니다. Created를 만드는 본문에 들어가기 전에 거절됩니다."
+    },
+    "takeaway": "“값이 자바 타입에 들어왔다”는 것은 검사 완료가 아닙니다. Request 생성 → 값 검증 → 업무 처리의 순서를 구분해 읽습니다.",
+    "code": {
+      "file": "src/main/java/edu/lab/CreateOrderController.java",
+      "source": "    // BEGIN MODEL\n    public record Request(@NotBlank String sku, @Min(1) int quantity) {}\n    // END MODEL\n    public record Created(String sku, int quantity) {}\n    @PostMapping\n    @ResponseStatus(HttpStatus.CREATED)\n    public Created create(@Valid @RequestBody Request request) {\n        // BEGIN EXERCISE\n        return new Created(request.sku(), request.quantity());\n        // END EXERCISE\n    }\n"
+    }
   }
 }

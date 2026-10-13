@@ -29,17 +29,18 @@
     <header class="site-header" id="site-header">
       <a class="brand" href="./" aria-label="Java Edu 학습실 처음으로"><span class="brand-mark" aria-hidden="true">j<span>.</span></span><span>java<span class="brand-light">edu.</span></span></a>
       <nav class="header-navigation" aria-label="서비스 메뉴"><a class="header-link is-current" href="#learning-workspace">학습실</a><button class="header-link" id="guide-open" type="button">학습 안내</button><button class="header-link" id="desktop-settings-open" type="button" hidden>실행 설정</button><button class="header-link" id="desktop-install-open" type="button">Windows 앱</button></nav>
-      <div class="header-tools"><span class="storage-indicator" id="storage-indicator"><span class="status-dot"></span><span id="storage-label">이 브라우저에 저장</span></span><button class="icon-button mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="curriculum-sidebar" aria-label="수업 목차 열기"><svg class="icon"><use href="#icon-menu"></use></svg><span>목차</span></button></div>
+      <div class="header-tools"><button class="icon-button mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="curriculum-sidebar" aria-label="수업 목차 열기"><svg class="icon"><use href="#icon-menu"></use></svg><span>목차</span></button></div>
     </header>
 
     <div class="page-shell" id="app-shell">
       <section class="intro" id="intro" aria-labelledby="page-title">
-        <div class="intro-copy"><p class="eyebrow"><span class="eyebrow-line"></span> THE JAVA LEARNING WORKBENCH</p><h1 id="page-title">이해에서 한 걸음 더,<br /><span>설계하는 Java로.</span></h1><p class="intro-description">다른 언어에서 Java로, 익숙한 코드에서 깊은 설계로.<br class="desktop-break" /> 공식 문서를 읽고 직접 구현하며 판단의 근거를 쌓습니다.</p><div class="intro-facts"><span><strong>2</strong> 학습 트랙</span><span><strong>4</strong> 기준 버전</span><span><strong id="lesson-total">34</strong> 전체 수업</span></div></div>
-        <div class="journey-card"><div class="journey-top"><span class="small-label">MY LEARNING</span><span class="local-badge" id="storage-location-badge">브라우저 기록</span></div><div class="journey-progress-heading"><span>나의 학습 여정</span><span class="journey-count"><strong id="overall-completed">0</strong><span id="overall-denominator"> / 12</span></span></div><div class="progress-track" id="overall-progress" role="progressbar" aria-label="전체 수업 완료" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0"><span id="overall-progress-fill"></span></div><p class="journey-caption">객관식 성취 + 코드 제출 통과 시 수업 완료</p><button class="continue-button" id="continue-button" type="button"><span><span class="continue-label" id="continue-label">학습 시작하기</span><strong id="continue-title">첫 수업을 준비하고 있습니다</strong></span><svg class="icon"><use href="#icon-arrow"></use></svg></button></div>
+        <div class="learning-status-heading"><h1 id="page-title">Java 학습실</h1><span class="journey-count"><strong id="overall-completed">0</strong><span id="overall-denominator"> / 34</span> 완료</span></div>
+        <div class="progress-track" id="overall-progress" role="progressbar" aria-label="전체 수업 완료" aria-valuemin="0" aria-valuemax="34" aria-valuenow="0"><span id="overall-progress-fill"></span></div>
+        <button class="continue-button" id="continue-button" type="button"><span><span class="continue-label" id="continue-label">학습 시작하기</span><strong id="continue-title">첫 수업을 준비하고 있습니다</strong></span><svg class="icon"><use href="#icon-arrow"></use></svg></button>
+        <span class="storage-indicator" id="storage-indicator"><span class="status-dot"></span><span id="storage-label">이 브라우저에 저장</span></span>
       </section>
 
       <main id="learning-workspace" class="learning-workspace">
-        <div class="workspace-heading"><div><span class="workspace-kicker">WORKSPACE 01</span><span class="workspace-divider"></span><span>Java 학습실</span></div><span class="official-note"><span class="status-dot"></span> Java 공식 문서 기반</span></div>
         <div id="loading-state" class="loading-state" role="status">학습 콘텐츠를 불러오고 있습니다…</div>
         <div class="workspace-grid" id="workspace-grid" hidden>
           <aside class="curriculum-sidebar" id="curriculum-sidebar" aria-label="수업 목차">
@@ -54,13 +55,16 @@
           </aside>
 
           <article class="lesson-card" id="lesson-card" aria-labelledby="lesson-title">
-            <header class="lesson-header"><div class="lesson-topline"><p class="eyebrow" id="lesson-category">JAVA CORE</p><span class="lesson-position" id="lesson-position">01 / 12</span></div><h2 id="lesson-title" tabindex="-1">학습을 준비하고 있습니다</h2><p id="lesson-description" class="lesson-description"></p><div id="lesson-meta" class="lesson-meta"></div><div class="achievement-row" id="lesson-achievements"></div></header>
+            <header class="lesson-header"><div class="lesson-heading-row"><h2 id="lesson-title" tabindex="-1">학습을 준비하고 있습니다</h2></div><div class="lesson-status-row"><div id="lesson-meta" class="lesson-meta"></div><div class="achievement-row" id="lesson-achievements"></div><span class="lesson-position" id="lesson-position">01 / 34</span></div></header>
+            <div class="lesson-support" id="lesson-support">
+              <details class="lesson-details" id="lesson-info"><summary>수업 정보와 학습 목표</summary><div class="lesson-information"><p class="small-label" id="lesson-category">JAVA CORE</p><p id="lesson-description" class="lesson-description"></p><div class="lesson-detail-meta" id="lesson-detail-meta"></div><div class="learning-goals" id="lesson-goals"></div></div></details>
+              <details class="lesson-details reference-column" id="reference-column"><summary>공식 문서와 실무 사례</summary><div class="reference-content"><section class="reference-card source-card"><div class="reference-card-heading"><svg class="icon"><use href="#icon-book"></use></svg><h3>공식 문서</h3></div><div id="source-list" class="source-list"></div></section><section class="reference-card evidence-card"><h3>실무 사례</h3><p class="reference-description">공고 원문에서 관찰한 기술과 역할</p><div id="evidence-list"></div><p class="evidence-disclaimer">선별한 공고 사례이며 채용시장 통계가 아닙니다. 확인일은 게시일·현재 채용 여부를 의미하지 않습니다.</p></section></div></details>
+            </div>
             <div class="lesson-tabs" role="tablist" aria-label="수업 학습 단계"><button type="button" id="tab-theory" role="tab" data-step="theory" aria-controls="lesson-panel" aria-selected="true" tabindex="0"><span class="tab-number">01</span> 이론</button><button type="button" id="tab-example" role="tab" data-step="example" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">02</span> 예제</button><button type="button" id="tab-quiz" role="tab" data-step="quiz" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">03</span> 문제</button><button type="button" id="tab-practice" role="tab" data-step="practice" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">04</span> 실무</button><button type="button" id="tab-lab" role="tab" data-step="lab" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">05</span> 코드 실습</button></div>
             <section class="lesson-panel" id="lesson-panel" role="tabpanel" aria-labelledby="tab-theory" tabindex="0"></section>
             <footer class="lesson-footer" id="lesson-footer"></footer>
           </article>
 
-          <aside class="reference-column" id="reference-column" aria-label="학습 참고 자료"><section class="reference-card source-card"><div class="reference-card-heading"><svg class="icon"><use href="#icon-book"></use></svg><h2>원문에서 확인하기</h2></div><p class="reference-description">개념의 기준은 공식 문서입니다.</p><div id="source-list" class="source-list"></div></section><section class="reference-card evidence-card"><p class="small-label">IN THE REAL WORLD</p><h2>실무와 연결하기</h2><p class="reference-description">공고 원문에서 관찰한 기술과 역할</p><div id="evidence-list"></div><p class="evidence-disclaimer">선별한 공고 사례이며 채용시장 통계가 아닙니다. 확인일은 게시일·현재 채용 여부를 의미하지 않습니다.</p></section></aside>
         </div>
       </main>
       <footer class="site-footer"><span class="footer-brand">javaedu.</span><p>공식 문서로 이해하고, 코드로 확인하는 시간.</p><button class="text-button" id="footer-guide-open" type="button">학습 기준과 기록 안내 <span aria-hidden="true">↗</span></button></footer>

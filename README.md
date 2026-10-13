@@ -16,11 +16,25 @@
 
 ## 소개
 
-Java Edu는 **Windows에서 코드를 직접 실행하는 학습 앱과 웹 교재**를 함께 만드는 한국어 교육 프로젝트입니다. 문법을 넘어 객체의 책임·불변식, 타입과 동등성, 동시성, 트랜잭션을 코드와 행동 검사로 연결합니다.
+Java Edu는 **Windows에서 코드를 직접 실행하는 학습 앱과 웹 교재**를 함께 만드는 한국어 교육 프로젝트입니다. 다른 언어 경험자와 현직 Java 개발자가 “메서드에 객체를 넘겼는데 왜 결과가 달라질까?”, “트랜잭션을 붙였는데 왜 데이터가 남을까?” 같은 질문을 실제 코드로 확인하도록 돕습니다.
 
 수업은 **이론 → 예시 → 문제풀이 → 실무 심화 → 직접 코딩** 순서로 진행합니다. Java 언어·표준 API는 Oracle/OpenJDK 공식 문서를, 프레임워크·라이브러리는 각 프로젝트의 공식 문서를 기준으로 합니다. 실무 주제에는 출처를 기록한 채용 공고의 기술 요건도 연결합니다.
 
 > **개발 상태** — 전체 34수업과 Windows 앱 소스는 `feat/java-learning-mvp` 브랜치에 있습니다. `main`은 프로젝트 소개를 제공합니다. [Windows v0.3.0 통합 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.3.0)를 설치해 학습할 수 있습니다. [호스팅 웹](https://java-edu-lab-jbsim999.junbo1218.chatgpt.site)은 소유자 전용이며 34수업·이론 도식 12개·편집기 테마가 배포돼 있습니다.
+
+## 설치하고 시작하기
+
+**Windows x64용입니다. 아래에서 하나만 다운로드하세요.**
+
+**[설치 EXE 다운로드](https://github.com/jbsim999/java-edu/releases/download/v0.3.0/Java-Edu-Setup-0.3.0-x64.exe)** · **[설치 없이 사용하는 ZIP 다운로드](https://github.com/jbsim999/java-edu/releases/download/v0.3.0/Java-Edu-0.3.0-x64.zip)**
+
+1. **EXE:** 다운로드한 파일을 실행해 설치한 뒤 **Java Edu**를 엽니다. **ZIP:** 폴더 전체를 압축 해제한 뒤 `Java Edu.exe`를 엽니다.
+2. 앱에서 수업을 선택하고 **이론 → 예시 → 문제 → 실무 → 코드 실습** 순서로 진행합니다.
+3. Spring 실습은 **환경 준비**를 한 번 진행한 뒤 코드를 작성하고 실행·제출합니다.
+
+Java·Maven·Node.js가 포함돼 있어 따로 설치하거나 폴더를 등록할 필요가 없습니다. Spring 실습의 첫 환경 준비에는 인터넷이 필요합니다. ZIP 안의 EXE만 따로 옮기지 마세요.
+
+[자세한 설치 안내](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/installation.md) · [릴리스와 체크섬](https://github.com/jbsim999/java-edu/releases/tag/v0.3.0)
 
 ## 학습실 미리보기
 
@@ -34,6 +48,8 @@ Java Edu는 **Windows에서 코드를 직접 실행하는 학습 앱과 웹 교�
 | --- | --- |
 | 공식 문서 기반 과정 | Java 8·11·17·21의 언어·API 차이와 공식 출처 확인 |
 | 깊이 있는 OOP | 객체의 책임·불변식, 다형성·합성, 동등성·변경 계약 탐구 |
+| 실제 코드로 이해하기 | 34수업의 상황·용어·원문 코드·값 변화·결과 예측 해설 |
+| 넓은 수업 본문 | 반복 안내는 펼쳐 보고, 화면 크기에 맞춰 본문과 코드 폭 확보 |
 | 검수한 이론 도식 | 참조·상태·호출·보안 조건을 설명하는 12개 도식과 공식 참고자료 |
 | 직접 코딩 | 클래스 골격, 메서드 본문, 다중 파일 프로젝트에 코드 작성 |
 | 읽기 쉬운 편집기 | 클래스·타입·변수·메서드 문법 색상, 다크·라이트·고대비 테마 |
@@ -57,9 +73,7 @@ Java Edu는 **Windows에서 코드를 직접 실행하는 학습 앱과 웹 교�
 
 기본 실무 20프로젝트는 H2·로컬 테스트를 사용합니다. Redis/Kafka 두 단원은 별도 선택 환경이며 실제 서비스 연동은 아직 검증하지 않았습니다. OIDC 수업은 인증 주체 처리에 집중하고 전체 로그인 프로토콜 구현은 다루지 않습니다. [전체 로드맵](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/education-roadmap.md) · [실무 과정 상세](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/professional-curriculum.md)
 
-## 빠르게 시작하기
-
-**Windows 학습자:** [v0.3.0 통합 패키지](https://github.com/jbsim999/java-edu/releases/tag/v0.3.0)에서 **설치 EXE 또는 ZIP 중 하나**를 받습니다. EXE는 설치 후 실행하고, ZIP은 전체 내용을 풀고 `Java Edu.exe`를 실행합니다. Java·Maven·Node.js가 포함되어 별도 설치와 폴더 등록이 필요 없습니다. Spring 실습의 첫 환경 준비에는 인터넷이 필요합니다. [설치 안내](https://github.com/jbsim999/java-edu/blob/feat/java-learning-mvp/docs/installation.md)
+## 개발 소스로 실행하기
 
 **개발 소스 실행:** Node.js 22 이상이 필요합니다.
 

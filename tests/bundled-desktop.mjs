@@ -12,6 +12,7 @@ import { professionalLessons, professionalExercises } from '../dist/data/profess
 // This script never installs, uninstalls, deletes data, redirects userData,
 // registers external tools, or replaces API/JVM/Maven/clipboard responses.
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
+const expectedVersion = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).version;
 const option = (name, fallback) => {
   const index = process.argv.indexOf(name);
   return index === -1 ? fallback : process.argv[index + 1];
@@ -19,7 +20,7 @@ const option = (name, fallback) => {
 const kind = option('--kind', process.env.BUNDLED_PACKAGE_KIND);
 const executableInput = option('--executable', process.env.BUNDLED_APP_EXE);
 const executablePath = executableInput && path.resolve(executableInput);
-const artifactsRoot = path.join(root, 'work/bundled-desktop-qa');
+const artifactsRoot = path.resolve(root, process.env.BUNDLED_QA_ARTIFACT_DIR || 'work/bundled-desktop-qa');
 const artifacts = path.join(artifactsRoot, kind === 'zip' || kind === 'nsis' ? kind : 'invalid-input');
 const preflightPath = path.join(artifactsRoot, 'preflight.json');
 const progressKey = 'java-edu:progress:v1';
@@ -327,7 +328,7 @@ async function main() {
     userData = facts.userData;
     evidence.application = facts;
     assert.equal(facts.packaged, true);
-    assert.equal(facts.version, '0.3.0');
+    assert.equal(facts.version, expectedVersion, 'packaged version matches the canonical release package');
     assert.equal(normalize(facts.executable), normalize(executablePath));
     assert.ok(preflight.AppData.some(item => normalize(item.Path) === normalize(userData)), 'default production AppData only');
     for (const [key, value] of Object.entries({ contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, allowRunningInsecureContent: false })) assert.equal(facts.preferences[key], value);
@@ -355,6 +356,41 @@ async function main() {
     await page.keyboard.press('Enter');
     await eventually(() => page.locator('#desktop-advanced-settings').evaluate(node => node.open), false, 'optional settings close without choosing a directory');
     await closeSettings();
+  });
+
+  await check('all34-packaged-reading-guides-and-prediction-without-achievement', async () => {
+    const lessons = [...coreLessons, ...professionalLessons];
+    assert.equal(lessons.length, 34);
+    const beforeRequests = executionCount();
+    const learningState = async () => {
+      const stored = await progress();
+      return Object.fromEntries(['quizPassed', 'labPassed', 'drafts', 'fileDrafts', 'notes'].map(field => [field, stored[field] || []]));
+    };
+    const before = await learningState();
+    for (const lesson of lessons) {
+      assert.ok(lesson.learningGuide, `${lesson.id}: expected release guide exists`);
+      await openLesson(lesson, 'theory');
+      assert.equal(await page.locator('.learning-guide').count(), 1, `${lesson.id}: packaged guide renders`);
+      assert.equal(await page.locator('.guide-scenario-text').textContent(), lesson.learningGuide.scenario);
+      assert.equal(await page.locator('#theory-code-panel code').textContent(), lesson.learningGuide.code.source);
+      assert.deepEqual(await page.locator('.guide-walkthrough li').allTextContents(), lesson.learningGuide.walkthrough);
+      assert.equal(await page.locator('.guide-prediction').getAttribute('open'), null);
+      await page.locator('.guide-prediction summary').focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await page.locator('.guide-answer-text').isVisible(), true);
+      assert.equal(await page.locator('.guide-answer-text').textContent(), lesson.learningGuide.prediction.answer);
+      assert.equal(await page.locator('.guide-answer-explanation').textContent(), lesson.learningGuide.prediction.explanation);
+      await page.keyboard.press('Space');
+      assert.equal(await page.locator('.guide-prediction').getAttribute('open'), null);
+    }
+    assert.deepEqual(await learningState(), before, 'reading and revealing answers do not grant or erase learning state');
+    assert.equal(executionCount(), beforeRequests, 'reading guides never execute or prepare code');
+    assert.equal(await page.locator('#overall-completed').textContent(), '0');
+    evidence.packagedReadingGuides = { verified: lessons.map(lesson => lesson.id), predictionGrantsAchievement: false };
+    await openLesson(professionalLessons.find(lesson => lesson.id === 'jpa-state'), 'theory');
+    await page.locator('#theory-code-panel').scrollIntoViewIfNeeded();
+    await capture('bundled-reading-guide-code');
+    await openLesson(coreCases[0]);
   });
 
   await check('consent-enables-bundled-tools-without-directory-selection', async () => {

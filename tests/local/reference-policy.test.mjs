@@ -30,8 +30,16 @@ test('hiring evidence, actual UI links and installation guide downloads remain a
   const uiUrls = uiFiles.flatMap((content) => [...content.matchAll(/https:\/\/[^\s'"<>`]+/g)].map((match) => match[0]));
   const installUrls = [...(await text('docs/installation.md')).matchAll(/\]\((https:\/\/[^\s)]+)\)/g)].map((match) => match[1]);
   assert.ok(uiUrls.some((url) => url.startsWith('https://github.com/jbsim999/java-edu/releases')));
-  assert.ok(installUrls.some((url) => new URL(url).hostname === 'adoptium.net'));
-  assert.ok(installUrls.some((url) => new URL(url).hostname === 'maven.apache.org'));
+  // Bundled releases replaced the former mandatory JDK/Maven download steps.
+  // Require the actual learner downloads while retaining the host allowlist
+  // checks for every documented and rendered link below.
+  for (const extension of ['exe', 'zip']) {
+    assert.ok(installUrls.some((value) => {
+      const url = new URL(value);
+      return url.hostname === 'github.com'
+        && new RegExp(`^/jbsim999/java-edu/releases/download/v[^/]+/[^/]+\\.${extension}$`, 'i').test(url.pathname);
+    }), `Missing direct ${extension.toUpperCase()} bundled release download`);
+  }
   assert.equal(jobEvidence.length, 5);
   for (const url of [...jobEvidence.map((entry) => entry.url), ...uiUrls, ...installUrls]) {
     assert.equal(externalReferenceUrl(url), new URL(url).href, url);

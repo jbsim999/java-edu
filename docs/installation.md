@@ -4,8 +4,8 @@ Windows 10/11 x64용 [v0.3.0 통합 패키지와 SHA-256](https://github.com/jbs
 
 ## EXE 또는 ZIP으로 시작
 
-1. 설치하려면 Java-Edu-Setup-0.3.0-x64.exe를 실행하고 설치 위치를 선택한다. 현재 사용자용이며 관리자 권한을 요구하지 않는다.
-2. 설치 없이 사용하려면 Java-Edu-0.3.0-x64.zip을 **전체 해제**하고 Java Edu.exe를 실행한다. resources 등 함께 있는 파일을 보존한다. exe만 다른 폴더로 옮기면 실행되지 않는다.
+1. 설치하려면 [설치 EXE 다운로드](https://github.com/jbsim999/java-edu/releases/download/v0.3.0/Java-Edu-Setup-0.3.0-x64.exe)를 눌러 받은 파일을 실행하고 설치 위치를 선택한다. 현재 사용자용이며 관리자 권한을 요구하지 않는다.
+2. 설치 없이 사용하려면 [전체 ZIP 다운로드](https://github.com/jbsim999/java-edu/releases/download/v0.3.0/Java-Edu-0.3.0-x64.zip)를 **전체 해제**하고 Java Edu.exe를 실행한다. resources 등 함께 있는 파일을 보존한다. exe만 다른 폴더로 옮기면 실행되지 않는다.
 3. 앱에 포함된 Java21·Maven이 자동으로 표시된다. 학습 코드 실행에 동의하고 코어 실습의 실행·제출을 사용한다. 앱 실행만으로 학습 코드가 실행되지는 않는다.
 4. Spring/H2 실무는 **환경 준비 → 파일 편집 → 실행·제출** 순서다. 첫 환경 준비는 앱이 고정 의존성을 내려받으므로 인터넷이 필요하다. 별도 프로그램 설치는 필요 없으며 준비 후 학생 제출은 오프라인 모드다. 앱 재시작·도구 변경 후에는 준비 상태를 다시 확인한다.
 

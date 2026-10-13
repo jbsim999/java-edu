@@ -1,7 +1,7 @@
 {
   "id": "spring-di",
   "title": "Spring IoC·DI와 객체 수명",
-  "description": "Spring의 빈 조립과 서비스의 업무 책임을 분리합니다.",
+  "description": "주문 서비스에 배송비 계산기를 누가 만들고 전달하는지 따라갑니다. 29,999원과 30,000원 주문을 계산하며 Spring의 객체 조립과 서비스의 금액 규칙을 구분합니다.",
   "track": "advanced",
   "level": "심화",
   "minVersion": 17,
@@ -10,26 +10,26 @@
   "duration": 75,
   "category": "실무 프로젝트",
   "goals": [
-    "컨테이너가 대신하는 일과 도메인이 책임질 일은 무엇인가?",
-    "컨테이너 조립",
-    "정책 계약",
-    "기본 singleton 확인"
+    "Config.policy의 반환 객체가 OrderService 생성자까지 전달되는 경로를 설명한다.",
+    "Spring이 PricePolicy와 OrderService를 조립하는 부분을 찾는다.",
+    "total(29999)와 total(30000)의 배송비·최종 금액을 계산한다.",
+    "같은 컨테이너에서 공유하는 singleton 빈과 요청별 값을 구분한다."
   ],
   "theory": [
     {
       "heading": "IoC와 생성자 주입",
-      "text": "컨테이너가 객체 생성·조립을 관리해도 업무 불변식은 서비스와 도메인이 책임집니다. 생성자 주입은 필수 협력을 드러내고 대역을 넣어 테스트하기 쉽게 합니다."
+      "text": "OrderService는 배송비를 계산할 PricePolicy가 필요합니다. 생성자의 policy 인수로 필요한 객체를 밖에서 받는 것이 생성자 주입입니다. 이 예제에서 Config.policy()는 “소계 30000 이상이면 0, 미만이면 3000”을 반환하는 정책 객체를 만들고, Spring은 이 객체를 Config.orders(PricePolicy policy)의 인수로 전달합니다. orders는 new OrderService(policy)로 둘을 연결합니다. Spring이 이런 생성·연결을 관리하는 방식을 IoC라고 부르고, 관리 대상 객체를 빈(bean)이라고 부릅니다.\n\n객체가 연결됐다고 모든 주문이 유효해지는 것은 아닙니다. total(-1)을 거절하는 규칙은 OrderService.total에 남아 있습니다. 생성자가 policy를 받으므로 기존 테스트처럼 배송비 0인 대체 정책을 전달해 Spring 없이도 이 음수 검사를 확인할 수 있습니다."
     },
     {
       "heading": "스코프와 가변 상태",
-      "text": "기본 singleton 빈은 컨테이너 내에서 공유됩니다. singleton이라는 사실이 필드 변경의 스레드 안전성을 보장하지 않습니다. 사용자별 요청 상태를 무심코 서비스 필드에 저장하지 않습니다."
+      "text": "기본 singleton 스코프는 같은 컨테이너의 같은 빈 정의를 조회할 때 한 객체를 공유한다는 뜻입니다. 기존 테스트가 OrderService를 getBean으로 두 번 조회하고 isSameAs로 비교하는 이유입니다. JVM 전체에 OrderService 하나만 존재한다는 의미는 아닙니다.\n\n공유 객체의 필드에 “현재 주문의 소계”를 저장하면 동시에 들어온 두 주문이 같은 필드를 덮어쓸 수 있습니다. 여기서는 subtotal을 total의 매개변수로 받고 요청값을 필드에 저장하지 않습니다. final policy는 정책 참조를 고정할 뿐, 전달된 정책 객체의 내부 변경까지 금지하지는 않습니다. singleton 설정 자체가 동시 접근을 안전하게 만들어 주는 것은 아니므로 정책의 상태도 함께 살펴야 합니다."
     }
   ],
   "example": {
     "title": "DiLab 기준 구현",
     "code": "package edu.lab;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.context.annotation.Configuration;\npublic final class DiLab {\n public interface PricePolicy { int fee(int subtotal); }\n public static final class OrderService {\n  private final PricePolicy policy;\n  public OrderService(PricePolicy policy) { this.policy=java.util.Objects.requireNonNull(policy); }\n  public int total(int subtotal) { if(subtotal<0) throw new IllegalArgumentException(); return Math.addExact(subtotal,policy.fee(subtotal)); }\n }\n @Configuration\n public static class Config {\n  @Bean public PricePolicy policy() { return subtotal -> subtotal>=30000 ? 0 : 3000; }\n  @Bean public OrderService orders(PricePolicy policy) {\n   // BEGIN EXERCISE\n   return new OrderService(policy);\n   // END EXERCISE\n  }\n }\n}\n",
     "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 컨테이너 조립 · 정책 계약 · 기본 singleton 확인.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
-    "explanation": "공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "explanation": "먼저 Config.policy()가 배송비 규칙을 담은 PricePolicy를 만듭니다. Spring이 orders의 policy 인수로 그 객체를 전달하면 new OrderService(policy)가 필드에 보관합니다. total(29999)은 policy.fee에서 3000을 받아 32999를 반환하고, total(30000)은 배송비 0을 더해 30000을 반환합니다. subtotal < 0 검사는 서비스가 직접 맡습니다. 기존 테스트는 이 계산과 동일 컨테이너에서의 OrderService 공유를 각각 확인합니다.\n\n공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
     "files": [
       {
         "path": "src/main/java/edu/lab/DiLab.java",
@@ -54,7 +54,7 @@
         "순환 의존성이 모두 올바른 구조로 바뀐다."
       ],
       "correctIndex": 1,
-      "explanation": "생성자는 필수 협력 관계를 명확히 하지만 협력 객체의 동시성·수명·설계 적합성까지 자동으로 해결하지는 않습니다."
+      "explanation": "OrderService(PricePolicy policy)를 보면 이 서비스가 가격 정책 없이는 만들어질 수 없다는 점이 드러납니다. 테스트에서는 배송비 0인 정책을 직접 전달할 수 있습니다. 이렇게 연결을 바꾸기 쉬워져도 그 정책의 가변 상태나 동시 접근까지 생성자가 해결하지는 않습니다."
     },
     {
       "id": "spring-di-q2",
@@ -66,18 +66,19 @@
         "필드가 자동으로 불변이 된다."
       ],
       "correctIndex": 1,
-      "explanation": "스코프는 인스턴스 수명과 공유 범위입니다. 공유되는 가변 상태의 동시성은 개발자가 설계해야 합니다."
+      "explanation": "같은 AnnotationConfigApplicationContext에서 같은 OrderService 빈을 두 번 조회하면 기본 스코프에서는 같은 객체를 받습니다. 다른 컨테이너의 객체까지 같은 것은 아닙니다. 또한 같은 객체를 공유한다는 것은 필드도 공유한다는 뜻이므로 요청별 값을 필드에 넣을지는 별도로 설계해야 합니다."
     }
   ],
   "practice": {
-    "title": "주문·재고·취소 프로젝트에 연결",
-    "scenario": "Spring의 빈 조립과 서비스의 업무 책임을 분리합니다.",
+    "title": "배송비 정책을 받아 주문 금액 계산하기",
+    "scenario": "주문 서비스는 소계에 배송비를 더합니다. 실제 설정에서는 30,000원부터 무료 배송을 적용하고, 서비스 자체의 입력 검사는 Spring을 띄우지 않고도 확인하려 합니다.",
     "tasks": [
-      "Config의 @Bean 메서드로 PricePolicy와 OrderService를 조립하세요.",
-      "PricePolicy는 소계 30000 이상 배송비 0, 미만 3000입니다. OrderService는 생성자로 정책을 받습니다.",
-      "관련 실패 상황 하나를 설명하고 테스트의 검증 범위와 한계를 기록하세요."
+      "Config의 @Bean 메서드에서 PricePolicy를 받아 new OrderService(policy)로 연결하세요. Spring이 전달하는 곳과 생성자가 보관하는 곳을 구분하세요.",
+      "소계 29999와 30000에서 각각의 배송비와 total 결과를 계산해 기존 테스트와 대조하세요.",
+      "기존 domainChecksRemainInService가 대체 정책으로 OrderService를 직접 만든 뒤 total(-1)을 검사하는 이유를 설명하세요.",
+      "현재 subtotal이 매개변수인 점을 보고, 이 값을 공유 빈의 필드에 저장할 때 두 주문이 서로 덮어쓸 수 있는 상황을 설명하세요. 기존 singleton 검사는 동시성 검사가 아닙니다."
     ],
-    "takeaway": "도구를 사용한 사실보다 지켜야 하는 업무 계약과 실패 경계의 근거를 남깁니다."
+    "takeaway": "Spring은 필요한 객체를 만들어 연결하고, OrderService는 받은 정책을 사용해 주문 규칙을 지킵니다. 누가 객체를 조립하는지와 누가 값을 검사하는지 나눠 읽으면 테스트와 수명 문제가 분명해집니다."
   },
   "sources": [
     {
@@ -157,5 +158,44 @@
     "starterSatisfied": false,
     "sourceFingerprint": "092bd10703609e7a73d032f092ed2ace7c53fdf37819c64a4c41504b156ed844",
     "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  },
+  "learningGuide": {
+    "scenario": "배송비 계산이 여러 서비스에 흩어져 정책을 바꾸기 어렵습니다. OrderService에는 계산기를 전달하고 객체 연결은 Config에 모으려 합니다.",
+    "question": "Config에서 만든 PricePolicy가 어떤 순서로 OrderService.total의 계산에 쓰일까요?",
+    "terms": [
+      {
+        "term": "주입(DI)",
+        "meaning": "필요한 객체를 외부에서 전달하는 방식입니다. OrderService가 내부에서 정책을 만들지 않고 생성자의 policy로 받습니다."
+      },
+      {
+        "term": "빈과 컨테이너",
+        "meaning": "빈은 Spring이 생성·관리하는 객체이고 컨테이너는 그 객체들을 만들고 연결하는 관리 기능입니다. 여기서는 PricePolicy와 OrderService가 빈입니다."
+      },
+      {
+        "term": "IoC",
+        "meaning": "이 예제에서는 객체 생성과 연결을 각 서비스 대신 Spring에 맡기는 뜻입니다. Config의 @Bean 메서드가 연결 방법을 제공합니다."
+      },
+      {
+        "term": "singleton 스코프",
+        "meaning": "같은 컨테이너에서 한 빈 정의의 인스턴스를 공유하는 규칙입니다. getBean으로 OrderService를 다시 찾아도 같은 객체를 받습니다."
+      }
+    ],
+    "walkthrough": [
+      "Config.policy()가 PricePolicy를 만듭니다. 이 정책의 fee는 subtotal이 30000 이상이면 0, 그보다 작으면 3000을 돌려줍니다.",
+      "Spring은 orders(PricePolicy policy)를 호출할 때 관리 중인 PricePolicy를 인수로 전달합니다.",
+      "orders의 new OrderService(policy)가 서비스 생성자를 호출하고, 생성자는 그 객체를 this.policy에 저장합니다.",
+      "OrderService.total(29999)은 음수 검사를 통과한 다음 policy.fee(29999)의 3000을 Math.addExact로 더해 32999를 반환합니다.",
+      "같은 서비스의 total(30000)은 배송비 0을 더합니다. 다른 요청의 subtotal은 매개변수로 전달되며 서비스 필드에 누적되지 않습니다."
+    ],
+    "prediction": {
+      "question": "기본 Config로 조립한 서비스에서 total(29999)와 total(30000)은 각각 얼마인가요?",
+      "answer": "32999와 30000입니다.",
+      "explanation": "무료 배송 조건은 subtotal >= 30000입니다. 기준에 1원 모자란 첫 주문에는 3000이 붙고 두 번째 주문에는 붙지 않습니다. Spring은 정책 객체를 전달하며 이 판단은 fee에서 합니다."
+    },
+    "takeaway": "주입이라는 말은 이 코드에서 “PricePolicy를 생성자에 전달한다”는 구체적인 동작입니다. 전달받은 뒤의 금액 검사와 계산은 서비스 코드에서 확인합니다.",
+    "code": {
+      "file": "src/main/java/edu/lab/DiLab.java",
+      "source": " public interface PricePolicy { int fee(int subtotal); }\n public static final class OrderService {\n  private final PricePolicy policy;\n  public OrderService(PricePolicy policy) { this.policy=java.util.Objects.requireNonNull(policy); }\n  public int total(int subtotal) { if(subtotal<0) throw new IllegalArgumentException(); return Math.addExact(subtotal,policy.fee(subtotal)); }\n }\n @Configuration\n public static class Config {\n  @Bean public PricePolicy policy() { return subtotal -> subtotal>=30000 ? 0 : 3000; }\n  @Bean public OrderService orders(PricePolicy policy) {\n   // BEGIN EXERCISE\n   return new OrderService(policy);\n   // END EXERCISE\n  }\n }\n}\n"
+    }
   }
 }

@@ -38,6 +38,7 @@ const state = {
 const dom = Object.fromEntries([
   'workspace-grid', 'loading-state', 'lesson-list', 'lesson-card', 'lesson-panel', 'lesson-title',
   'lesson-description', 'lesson-category', 'lesson-position', 'lesson-meta', 'lesson-achievements',
+  'lesson-support', 'lesson-info', 'lesson-detail-meta', 'lesson-goals',
   'lesson-footer', 'source-list', 'evidence-list', 'reference-column', 'version-select',
   'lesson-search', 'curriculum-sidebar', 'mobile-menu-toggle', 'drawer-backdrop',
 ].map((id) => [id, document.getElementById(id)]));
@@ -225,13 +226,13 @@ function setEditorTheme(theme) {
   announce(`코드 테마를 ${theme === 'dark' ? '다크' : theme === 'light' ? '라이트' : '고대비'}로 변경했습니다.`);
 }
 
-function codePreferences() {
+function codePreferences(id = 'editor-theme-select') {
   const settings = el('div', 'code-settings');
   const label = el('label', 'code-theme-label', '코드 테마');
-  label.htmlFor = 'editor-theme-select';
+  label.htmlFor = id;
   const select = el('select', 'editor-theme-select');
-  select.id = 'editor-theme-select';
-  select.dataset.testid = 'editor-theme-select';
+  select.id = id;
+  select.dataset.testid = id;
   for (const [value, name] of [['dark', '다크'], ['light', '라이트'], ['contrast', '고대비']]) {
     const option = el('option', '', name); option.value = value; select.append(option);
   }
@@ -262,7 +263,6 @@ function updateStorageIndicator() {
   const label = state.storage === 'unavailable' ? '현재 화면 동안만 기록' : state.storage === 'invalid' ? '기존 기록을 읽지 못했습니다' : location;
   document.getElementById('storage-label').textContent = label;
   indicator.title = state.storage === 'unavailable' ? '학습 기록 저장소를 사용할 수 없습니다. 작성 코드를 별도로 복사해 주세요.' : isDesktop ? '진도와 코드는 이 PC의 앱 데이터에 저장되며 앱 재시작 후에도 유지됩니다.' : '진도와 코드는 현재 브라우저에만 저장됩니다.';
-  document.getElementById('storage-location-badge').textContent = isDesktop ? '이 PC의 앱 기록' : '브라우저 기록';
   const editorSave = document.getElementById('editor-save-state');
   if (editorSave) editorSave.textContent = state.storage === 'unavailable' ? '저장 불가 · 코드 복사 권장' : location;
   const notesSave = document.getElementById('notes-save-state');
@@ -389,7 +389,6 @@ function continuationLesson() {
 
 function renderProgress() {
   const count = lessons.filter(lessonComplete).length;
-  document.getElementById('lesson-total').textContent = String(lessons.length);
   document.getElementById('overall-completed').textContent = String(count);
   document.getElementById('overall-denominator').textContent = ` / ${lessons.length}`;
   const progress = document.getElementById('overall-progress');
@@ -424,14 +423,22 @@ function renderAchievements(lesson = currentLesson()) {
 
 function renderLesson() {
   const lesson = currentLesson();
+  const changedLesson = dom['lesson-card'].dataset.lessonId !== (lesson?.id || '');
   const tabs = document.querySelector('.lesson-tabs');
   destroyCodeEditor();
   dom['lesson-panel'].replaceChildren();
   dom['lesson-meta'].replaceChildren();
+  dom['lesson-detail-meta'].replaceChildren();
+  dom['lesson-goals'].replaceChildren();
   dom['lesson-footer'].replaceChildren();
   dom['lesson-achievements'].replaceChildren();
   tabs.hidden = !lesson;
   dom['lesson-footer'].hidden = !lesson;
+  dom['lesson-support'].hidden = !lesson;
+  if (changedLesson) {
+    dom['lesson-info'].open = false;
+    dom['reference-column'].open = false;
+  }
   dom['lesson-card'].dataset.lessonId = lesson?.id || '';
   if (!lesson) {
     dom['lesson-category'].textContent = 'FIND YOUR NEXT LESSON';
@@ -449,16 +456,20 @@ function renderLesson() {
   dom['lesson-description'].textContent = lesson.description;
   dom['lesson-position'].textContent = `${String(lessons.indexOf(lesson) + 1).padStart(2, '0')} / ${String(lessons.length).padStart(2, '0')}`;
   dom['lesson-meta'].append(el('span', 'meta-chip', `Java ${lesson.minVersion}+`));
-  if (lesson.featureSince) dom['lesson-meta'].append(el('span', 'meta-chip is-neutral', `기능 도입 ${String(lesson.featureSince)}`));
+  if (lesson.featureSince) dom['lesson-detail-meta'].append(el('span', '', `기능 도입 ${String(lesson.featureSince)}`));
   const trackLabel = lesson.track === 'both' ? '전환 · 심화 공통' : lesson.track === 'advanced' ? '실무 심화' : 'Java 전환';
-  dom['lesson-meta'].append(el('span', 'meta-chip is-neutral', trackLabel));
+  dom['lesson-detail-meta'].append(el('span', '', trackLabel));
   if (isProject(exerciseFor(lesson))) dom['lesson-meta'].append(el('span', 'meta-chip is-neutral', '실무 프로젝트 · Windows 앱 실행'));
   if (lesson.duration) {
     const time = el('span', 'meta-chip is-neutral');
     time.append(icon('clock'), document.createTextNode(typeof lesson.duration === 'number' ? `${lesson.duration}분` : lesson.duration));
-    dom['lesson-meta'].append(time);
+    dom['lesson-detail-meta'].append(time);
   }
   if (lesson.preview) dom['lesson-meta'].append(el('span', 'meta-chip is-preview', 'Preview 기능 포함'));
+  dom['lesson-goals'].append(el('h3', '', '학습 목표'));
+  const goals = el('ul');
+  (lesson.goals || []).forEach((goal) => { const item = el('li'); item.append(icon('check'), el('span', '', goal)); goals.append(item); });
+  dom['lesson-goals'].append(goals);
   renderAchievements(lesson);
   document.querySelectorAll('[data-step]').forEach((tab) => {
     const selected = tab.dataset.step === state.step;
@@ -469,6 +480,7 @@ function renderLesson() {
   const renderers = { theory: renderTheory, example: renderExample, quiz: renderQuiz, practice: renderPractice, lab: renderLab };
   renderers[state.step](lesson);
   renderLessonFooter(lesson);
+  requestAnimationFrame(() => revealStepTab(state.step));
 }
 
 function renderLessonFooter(lesson) {
@@ -671,13 +683,119 @@ function renderTheoryVisual(lesson, visual) {
   return figure;
 }
 
+function learningGuideFor(lesson) {
+  const value = lesson.learningGuide;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const text = (item) => typeof item === 'string' && item.trim() ? item : '';
+  const terms = Array.isArray(value.terms) ? value.terms
+    .filter((item) => item && text(item.term) && text(item.meaning))
+    .map((item) => ({ term: item.term, meaning: item.meaning })) : [];
+  const walkthrough = Array.isArray(value.walkthrough) ? value.walkthrough.filter((item) => text(item)) : [];
+  const code = text(value.code?.source) ? { file: text(value.code.file) || '코드 발췌', source: value.code.source } : null;
+  const prediction = text(value.prediction?.question) && text(value.prediction?.answer)
+    ? { question: value.prediction.question, answer: value.prediction.answer, explanation: text(value.prediction.explanation) } : null;
+  const guide = { scenario: text(value.scenario), question: text(value.question), terms, code, walkthrough, prediction, takeaway: text(value.takeaway) };
+  return guide.scenario || guide.question || terms.length || code || walkthrough.length || prediction || guide.takeaway ? guide : null;
+}
+
+function renderGuideCode(excerpt) {
+  const section = el('section', 'guide-section guide-code-section');
+  section.append(el('h3', '', '작은 코드로 확인하기'));
+  const scope = el('p', 'guide-code-scope', '이론 코드 발췌 · 전체 코드는 예제 단계에서 확인하세요.');
+  scope.id = 'theory-code-scope';
+  section.append(scope);
+  const shell = el('div', 'code-shell guide-code');
+  shell.dataset.editorTheme = state.editorTheme;
+  const heading = el('div', 'code-heading');
+  const filename = el('span', 'example-filename');
+  filename.append(icon('code'), el('span', 'guide-code-filename', excerpt.file));
+  const pre = el('pre', 'code-block');
+  pre.id = 'theory-code-panel';
+  pre.tabIndex = 0;
+  pre.setAttribute('aria-label', `${excerpt.file} · 이론 코드 발췌`);
+  pre.setAttribute('aria-describedby', 'theory-code-scope theory-code-hint');
+  const code = el('code', '', excerpt.source);
+  let highlighted = false;
+  if (editorLibrary && /\.java$/i.test(excerpt.file)) {
+    try {
+      editorLibrary.highlightJavaCode(code, excerpt.source);
+      highlighted = true;
+    } catch { code.textContent = excerpt.source; }
+  }
+  pre.append(code);
+  const copy = actionButton('코드 복사', 'copy-button', () => copyText(excerpt.source, pre), 'copy-theory-code');
+  copy.prepend(icon('copy'));
+  heading.append(filename, copy);
+  const tools = el('div', 'guide-code-tools');
+  tools.append(codePreferences('theory-theme-select'));
+  if (highlighted) {
+    const legend = el('details', 'code-legend-disclosure');
+    legend.append(el('summary', '', '구문 색상 안내'), syntaxLegend());
+    tools.append(legend);
+  }
+  shell.append(heading, tools);
+  shell.append(pre);
+  const hint = el('p', 'guide-code-hint', '긴 줄은 코드 영역 안에서 가로로 스크롤할 수 있습니다.');
+  hint.id = 'theory-code-hint';
+  if (/\.java$/i.test(excerpt.file) && !highlighted) hint.append(document.createTextNode(' 문법 강조를 불러오지 못해 원문으로 표시합니다.'));
+  section.append(shell, hint);
+  return section;
+}
+
+function renderLearningGuide(guide) {
+  const container = el('div', 'learning-guide');
+  if (guide.scenario || guide.question) {
+    const scenario = el('section', 'guide-scenario');
+    scenario.append(el('h3', '', '이 상황부터 생각해보세요'));
+    if (guide.scenario) scenario.append(el('p', 'guide-scenario-text', guide.scenario));
+    if (guide.question) scenario.append(el('p', 'guide-question', guide.question));
+    container.append(scenario);
+  }
+  if (guide.terms.length) {
+    const section = el('section', 'guide-section guide-terms');
+    section.append(el('h3', '', '먼저 알아둘 용어'));
+    const list = el('dl', 'guide-terms-list');
+    guide.terms.forEach(({ term, meaning }) => {
+      const item = el('div', 'guide-term');
+      item.append(el('dt', '', term), el('dd', '', meaning));
+      list.append(item);
+    });
+    section.append(list);
+    container.append(section);
+  }
+  if (guide.code) container.append(renderGuideCode(guide.code));
+  if (guide.walkthrough.length) {
+    const section = el('section', 'guide-section guide-walkthrough');
+    section.append(el('h3', '', '순서대로 따라가 보기'));
+    const list = el('ol');
+    guide.walkthrough.forEach((step) => list.append(el('li', '', step)));
+    section.append(list);
+    container.append(section);
+  }
+  if (guide.prediction) {
+    const section = el('section', 'guide-section guide-prediction-section');
+    section.append(el('h3', '', '결과를 먼저 예상해보세요'), el('p', 'guide-prediction-question', guide.prediction.question));
+    const details = el('details', 'guide-prediction');
+    details.append(el('summary', '', guide.prediction.explanation ? '예상 답과 이유 확인' : '예상 답 확인'));
+    const answer = el('div', 'guide-prediction-answer');
+    answer.append(el('p', 'guide-answer-label', '예상 답'), el('p', 'guide-answer-text', guide.prediction.answer));
+    if (guide.prediction.explanation) answer.append(el('p', 'guide-answer-label', '이유'), el('p', 'guide-answer-explanation', guide.prediction.explanation));
+    details.append(answer);
+    section.append(details);
+    container.append(section);
+  }
+  if (guide.takeaway) {
+    const takeaway = el('div', 'guide-takeaway');
+    takeaway.append(el('p', 'small-label', '한 문장으로 정리하면'), el('p', '', guide.takeaway));
+    container.append(takeaway);
+  }
+  return container;
+}
+
 function renderTheory(lesson) {
-  const goals = el('div', 'learning-goals');
-  goals.append(el('p', 'small-label', 'AFTER THIS LESSON'));
-  const list = el('ul');
-  (lesson.goals || []).forEach((goal) => { const item = el('li'); item.append(icon('check'), el('span', '', goal)); list.append(item); });
-  goals.append(list);
-  dom['lesson-panel'].append(goals);
+  const guide = learningGuideFor(lesson);
+  if (guide) dom['lesson-panel'].append(renderLearningGuide(guide));
+  if (guide && lesson.theory?.length) dom['lesson-panel'].append(el('h3', 'theory-reading-title', '핵심 개념 자세히 읽기'));
   const parts = lesson.theory || [];
   const visual = validLessonVisual(lessonVisuals[lesson.id]);
   const afterSection = visual && Number.isInteger(visual.afterSection) ? Math.min(Math.max(visual.afterSection, 0), Math.max(parts.length - 1, 0)) : 0;
@@ -1655,6 +1773,19 @@ async function executeCode(exercise, action) {
   }
 }
 
+function revealStepTab(step) {
+  const tab = document.getElementById(`tab-${step}`);
+  const tabs = tab?.parentElement;
+  if (!tabs || tabs.scrollWidth <= tabs.clientWidth) return;
+  const bounds = tabs.getBoundingClientRect();
+  const selected = tab.getBoundingClientRect();
+  // Keep the tab and its focus ring inside the strip without moving the page.
+  const left = bounds.left + tabs.clientLeft + 8;
+  const right = bounds.left + tabs.clientLeft + tabs.clientWidth - 8;
+  if (selected.left < left) tabs.scrollLeft += selected.left - left;
+  else if (selected.right > right) tabs.scrollLeft += selected.right - right;
+}
+
 function selectStep(step, focus = false) {
   if (!STEPS.includes(step) || !currentLesson()) return;
   if (state.step === 'lab' && step !== 'lab') cancelPending('단계 변경', false);
@@ -1774,9 +1905,15 @@ function bindEvents() {
       else return;
       event.preventDefault();
       selectStep(STEPS[nextIndex]);
-      document.getElementById(`tab-${STEPS[nextIndex]}`).focus();
+      document.getElementById(`tab-${STEPS[nextIndex]}`).focus({ preventScroll: true });
     });
   });
+  if (typeof ResizeObserver === 'function') {
+    const tabObserver = new ResizeObserver(() => revealStepTab(state.step));
+    tabObserver.observe(document.querySelector('.lesson-tabs'));
+  } else {
+    window.addEventListener('resize', () => revealStepTab(state.step));
+  }
   document.getElementById('continue-button').addEventListener('click', () => {
     const lesson = continuationLesson();
     if (!lesson) return;
