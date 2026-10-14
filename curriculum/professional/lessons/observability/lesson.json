@@ -1,0 +1,218 @@
+{
+  "id": "observability",
+  "title": "Micrometer 지표와 관측 실패 신호",
+  "description": "실패한 주문이 로그에만 남고 처리 시간 집계에서 빠지면 장애를 놓칠 수 있습니다. work.run의 성공·실패를 세고 시간을 남기면서 원래 예외도 전달하는 코드를 읽습니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "work.run이 성공하거나 실패할 때 어떤 관측 기록을 남기는지 설명한다.",
+    "outcome이 success에서 failure로 바뀌는 지점을 찾는다.",
+    "finally에서 호출 수·처리 시간을 기록하고 Observation을 끝내는 이유를 설명한다.",
+    "관측을 추가해도 원래 업무 예외를 호출자에게 전달해야 하는 이유를 설명한다.",
+    "주문별 ID 대신 값이 제한된 outcome 태그를 쓰는 이유를 설명한다."
+  ],
+  "learningGuide": {
+    "scenario": "주문 A 처리는 성공하고 B 처리는 IllegalStateException을 던졌습니다. 둘 다 얼마나 걸렸는지 남기면서 B의 호출자에게는 실패를 그대로 알려야 합니다.",
+    "question": "catch에서 예외를 다시 던지는데도 실패한 요청의 시간을 기록할 수 있을까요?",
+    "terms": [
+      {
+        "term": "Counter / Timer",
+        "meaning": "Counter는 횟수를 누적하고 Timer는 실행 시간과 기록 수를 모읍니다. 이 예제는 calls와 duration에 각각 사용합니다."
+      },
+      {
+        "term": "태그",
+        "meaning": "지표를 나누는 이름·값입니다. outcome=success 또는 outcome=failure로 결과를 구분합니다."
+      },
+      {
+        "term": "Observation",
+        "meaning": "관측할 구간의 시작·오류·종료를 관련 처리기에 알리는 객체입니다. 실제 원격 수집기까지 자동 설치하는 것은 아닙니다."
+      },
+      {
+        "term": "finally",
+        "meaning": "try가 정상 종료되거나 catch가 예외를 다시 던져도 실행되는 정리 구간입니다. 여기서 시간 기록과 관측 종료를 합니다."
+      }
+    ],
+    "code": {
+      "file": "src/main/java/edu/lab/OrderTelemetry.java",
+      "source": "        Timer.Sample sample = Timer.start(meters); String outcome=\"success\";\n        Observation observation = Observation.start(\"orders.reserve\", observations);\n        try (Observation.Scope ignored = observation.openScope()) { work.run(); }\n        catch (RuntimeException | Error failure) { outcome=\"failure\"; observation.error(failure); throw failure; }\n        finally {\n            meters.counter(\"orders.reserve.calls\",\"outcome\",outcome).increment();\n            sample.stop(Timer.builder(\"orders.reserve.duration\").tag(\"outcome\",outcome).register(meters));\n            observation.stop();"
+    },
+    "walkthrough": [
+      "Timer.start(meters)로 시간을 재기 시작하고 outcome을 success로 둡니다. Observation.start는 orders.reserve라는 관측 구간을 시작합니다.",
+      "try의 observation.openScope() 안에서 work.run()을 실행합니다. 업무가 정상이면 outcome은 success로 남습니다.",
+      "업무가 RuntimeException이나 Error를 던지면 catch가 outcome을 failure로 바꾸고 observation.error로 알립니다. throw failure는 원래 예외를 호출자에게 보내기 위한 줄입니다.",
+      "그 뒤 finally의 counter(...).increment()가 최종 outcome의 호출 수를 늘리고 sample.stop(...)이 같은 outcome으로 경과 시간을 기록합니다.",
+      "observation.stop()으로 관측을 끝냅니다. 태그를 만드는 두 줄 모두 orderId를 넣지 않고 outcome만 사용합니다."
+    ],
+    "prediction": {
+      "question": "새 메모리 레지스트리에서 성공 한 번과 업무 예외 한 번을 실행하고 관측 도구는 정상 동작했다면, 실패 Counter와 Timer의 기록 수는 얼마일까요?",
+      "answer": "failure Counter는 1이고 failure Timer의 기록 수도 1입니다. 업무 예외도 호출자에게 전달됩니다.",
+      "explanation": "catch가 failure로 표시한 뒤 예외를 던져도 finally가 실행됩니다. 그래서 실패 횟수와 시간 기록이 남습니다. 기록 수 1은 특정 밀리초가 측정됐다는 고정 결과나 성능 개선 수치를 뜻하지 않습니다."
+    },
+    "takeaway": "업무 실패를 보이게 만드는 관측 코드가 그 실패를 숨기거나 바꾸지 않는지 확인합니다."
+  },
+  "theory": [
+    {
+      "heading": "로그·지표·추적의 질문",
+      "text": "주문 처리가 느려졌다는 문의에는 시간이 필요하고, 얼마나 자주 실패했는지에는 횟수가 필요합니다. 지표는 이렇게 수와 변화를 모아 보는 데이터이며, 로그는 개별 사건의 문맥, 추적은 요청이 거친 경로를 보는 데 쓰입니다. OrderTelemetry는 Counter로 호출 수, Timer로 처리 시간을 기록합니다. Observation은 관측 구간의 시작·오류·종료를 알리는 객체입니다. 이번 검사는 메모리 안의 저장소와 콜백을 사용하므로 원격 수집기·대시보드·분산 추적 배포를 구성한 것은 아닙니다."
+    },
+    {
+      "heading": "태그의 개수 비용",
+      "text": "태그는 같은 지표를 조건별로 나누는 이름·값입니다. 이 코드의 outcome 태그는 success 또는 failure여서 결과별 호출 수를 볼 수 있습니다. 매 주문의 orderId를 붙이면 주문마다 별도 시계열, 즉 시간에 따른 별도 값의 묶음이 생겨 수집·저장·조회할 대상이 계속 늘어납니다. run은 orderId를 인수로 받지만 지표 태그에 넣지 않습니다. 이메일 같은 개인 식별값도 이런 태그로 쓰지 않습니다. 상세 식별자가 필요한 로그·추적에는 접근 권한과 보존 정책을 따로 정합니다."
+    },
+    {
+      "heading": "실패도 끝까지 기록",
+      "text": "try 안의 work.run이 예외를 던지면 catch가 outcome을 failure로 바꾸고 observation.error에 원인을 알린 뒤 같은 failure를 다시 던집니다. finally는 성공·실패 두 경로에서 호출 수와 시간을 기록하고 observation.stop을 호출합니다. 예외를 삼키고 정상 반환하면 상위 호출자가 성공으로 오해해 재시도나 DB 변경 취소인 롤백을 하지 않을 수 있습니다. 다만 관측 도구 자체가 예외를 던질 때 원래 업무에 미칠 영향은 별도 설계 대상이며, 이번 메모리 검사만으로 그 장애 대응까지 보장하지 않습니다."
+    }
+  ],
+  "example": {
+    "title": "OrderTelemetry 기준 구현",
+    "code": "package edu.lab;\nimport java.util.Objects;\nimport io.micrometer.core.instrument.*;\nimport io.micrometer.observation.*;\npublic final class OrderTelemetry {\n    private final MeterRegistry meters; private final ObservationRegistry observations;\n    public OrderTelemetry(MeterRegistry meters, ObservationRegistry observations) { this.meters=Objects.requireNonNull(meters); this.observations=Objects.requireNonNull(observations); }\n    public void run(String orderId, Runnable work) {\n        // BEGIN EXERCISE\n        Objects.requireNonNull(orderId); Objects.requireNonNull(work);\n        Timer.Sample sample = Timer.start(meters); String outcome=\"success\";\n        Observation observation = Observation.start(\"orders.reserve\", observations);\n        try (Observation.Scope ignored = observation.openScope()) { work.run(); }\n        catch (RuntimeException | Error failure) { outcome=\"failure\"; observation.error(failure); throw failure; }\n        finally {\n            meters.counter(\"orders.reserve.calls\",\"outcome\",outcome).increment();\n            sample.stop(Timer.builder(\"orders.reserve.duration\").tag(\"outcome\",outcome).register(meters));\n            observation.stop();\n        }\n        // END EXERCISE\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 1개 JUnit 테스트 통과.\n검증 항목: 성공·실패 계수 · 성공·실패 타이머 기록 · 예외 보존과 Observation 종료 · 주문 ID 태그 제외.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "유효한 인수로 run에 들어오면 Timer.Sample이 시작되고 outcome은 success입니다. work.run에서 RuntimeException 또는 Error가 나면 catch가 failure로 바꾼 뒤 같은 예외를 다시 던집니다. finally는 그 outcome으로 calls를 1 늘리고 duration에 시간을 남긴 다음 Observation을 종료합니다. 기준 테스트는 성공 한 번·실패 한 번 후 각 Counter와 Timer의 기록 수, 종료 두 번과 오류 한 번, 원래 예외 객체 보존을 검사합니다. 실제 처리 속도의 개선이나 원격 수집 성공을 측정하는 테스트는 아닙니다. 기존 기준 구현의 검증 기록은 JDK 21·Java 17 대상·Maven 3.10.0에서의 JUnit 검사입니다. 미완성 실습은 기준 테스트를 통과하지 않습니다. 설치형에서는 등록한 로컬 JDK로 자신의 코드를 별도로 실행·제출하며, 기준 구현의 기록과 자신의 실행 결과를 구분합니다.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrderTelemetry.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport java.util.Objects;\nimport io.micrometer.core.instrument.*;\nimport io.micrometer.observation.*;\npublic final class OrderTelemetry {\n    private final MeterRegistry meters; private final ObservationRegistry observations;\n    public OrderTelemetry(MeterRegistry meters, ObservationRegistry observations) { this.meters=Objects.requireNonNull(meters); this.observations=Objects.requireNonNull(observations); }\n    public void run(String orderId, Runnable work) {\n        // BEGIN EXERCISE\n        Objects.requireNonNull(orderId); Objects.requireNonNull(work);\n        Timer.Sample sample = Timer.start(meters); String outcome=\"success\";\n        Observation observation = Observation.start(\"orders.reserve\", observations);\n        try (Observation.Scope ignored = observation.openScope()) { work.run(); }\n        catch (RuntimeException | Error failure) { outcome=\"failure\"; observation.error(failure); throw failure; }\n        finally {\n            meters.counter(\"orders.reserve.calls\",\"outcome\",outcome).increment();\n            sample.stop(Timer.builder(\"orders.reserve.duration\").tag(\"outcome\",outcome).register(meters));\n            observation.stop();\n        }\n        // END EXERCISE\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>observability</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>io.micrometer</groupId><artifactId>micrometer-core</artifactId></dependency>\n<dependency><groupId>io.micrometer</groupId><artifactId>micrometer-observation</artifactId></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "observability-q1",
+      "question": "orderId를 모든 지표의 태그로 넣었을 때 주된 비용은?",
+      "options": [
+        "서로 다른 값만큼 시계열 수가 늘어 저장·조회 비용이 커질 수 있다.",
+        "지표 값이 항상 0이 된다.",
+        "Java 타입 검사가 실패한다.",
+        "트랜잭션 격리 수준이 자동 변경된다."
+      ],
+      "correctIndex": 0,
+      "explanation": "outcome=success와 outcome=failure는 제한된 두 값입니다. 여기에 주문마다 다른 orderId까지 넣으면 태그 조합이 계속 늘어 별도 지표를 수집·저장해야 합니다. 타입 오류나 트랜잭션 변경이 아니라 관측 데이터의 수와 운영 비용 문제입니다."
+    },
+    {
+      "id": "observability-q2",
+      "question": "관측을 추가한 뒤 업무 예외를 잡아 정상 반환하면 생기는 문제는?",
+      "options": [
+        "호출자의 실패·롤백·재시도 계약을 바꿀 수 있다.",
+        "지표 이름만 바뀐다.",
+        "실패를 기록했으므로 항상 안전하다.",
+        "Observation이 자동으로 원래 예외를 다시 던진다."
+      ],
+      "correctIndex": 0,
+      "explanation": "catch에서 failure를 기록하고 return하면 호출자는 성공으로 볼 수 있습니다. 이 예제는 observation.error(failure) 뒤 throw failure를 실행하므로 관측 도구가 정상 동작하는 테스트 조건에서 원래 실패를 보존합니다. Observation이 대신 예외를 던져 줄 것이라고 가정하지 않습니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "주문 장애가 났는데 성공한 요청의 처리 시간만 남아 원인을 찾기 어렵습니다. 실패도 집계하되, 실패를 기록하는 코드 때문에 호출자가 성공으로 오해하지 않도록 흐름을 점검합니다.",
+    "tasks": [
+      "성공한 work와 예외를 던진 work에서 outcome이 각각 어떤 값으로 finally에 도착하는지 따라가세요.",
+      "calls Counter와 duration Timer가 성공·실패 각각 한 번 기록되는 테스트 조건을 설명하세요. Timer의 기록 수와 실제 시간 수치를 구분하세요.",
+      "observation.error(failure), throw failure, observation.stop()의 역할을 나누어 설명하세요.",
+      "orderId를 인수로 받아도 지표 태그에 넣지 않은 이유를 적으세요. 원격 exporter와 Actuator의 운영 공개는 이번 검사 범위가 아닙니다.",
+      "지표 저장 자체가 실패하는 경우 원래 업무 예외와 결과에 미칠 영향을 별도 미검증 사항으로 적으세요."
+    ],
+    "takeaway": "실패도 수와 시간으로 남기되 원래 실패는 호출자에게 전달합니다. 남길 데이터의 종류와 값의 가짓수도 함께 설계합니다."
+  },
+  "sources": [
+    {
+      "title": "Micrometer Counters",
+      "url": "https://docs.micrometer.io/micrometer/reference/concepts/counters.html",
+      "edition": "Micrometer",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Micrometer Timers",
+      "url": "https://docs.micrometer.io/micrometer/reference/concepts/timers.html",
+      "edition": "Micrometer",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Micrometer Observation",
+      "url": "https://docs.micrometer.io/micrometer/reference/observation/introduction.html",
+      "edition": "Micrometer",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Observability",
+    "Micrometer"
+  ],
+  "exerciseId": "observability-project",
+  "professionalExercise": {
+    "id": "observability-project",
+    "profileId": "professional-observability",
+    "mode": "project",
+    "instructions": [
+      "성공과 실패 각각 calls Counter와 duration Timer를 outcome 태그로 기록합니다.",
+      "업무 예외는 바꾸거나 삼키지 않고 그대로 전달합니다.",
+      "Observation은 성공·실패 모두 종료하며 실패 원인을 error로 알립니다.",
+      "orderId를 지표 태그에 넣지 않습니다. 원격 exporter나 Actuator 운영 공개는 이 과제 범위가 아닙니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/OrderTelemetry.java"
+    ],
+    "template": "package edu.lab;\nimport java.util.Objects;\nimport io.micrometer.core.instrument.*;\nimport io.micrometer.observation.*;\npublic final class OrderTelemetry {\n    private final MeterRegistry meters; private final ObservationRegistry observations;\n    public OrderTelemetry(MeterRegistry meters, ObservationRegistry observations) { this.meters=Objects.requireNonNull(meters); this.observations=Objects.requireNonNull(observations); }\n    public void run(String orderId, Runnable work) {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrderTelemetry.java",
+        "templatePath": "lessons/observability/starter/src/main/java/edu/lab/OrderTelemetry.java",
+        "referencePath": "lessons/observability/reference/src/main/java/edu/lab/OrderTelemetry.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/observability/starter/pom.xml",
+        "referencePath": "lessons/observability/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/observability/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "성공·실패 계수",
+      "성공·실패 타이머 기록",
+      "예외 보존과 Observation 종료",
+      "주문 ID 태그 제외"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "spring-di",
+    "test-collaborators"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 1,
+    "starterSatisfied": false,
+    "sourceFingerprint": "92e8fff2dd813d24d2a77243bf640196e2bbabcde8ec61f95343ce9e953a3c2e",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

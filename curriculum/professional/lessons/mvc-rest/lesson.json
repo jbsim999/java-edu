@@ -1,0 +1,207 @@
+{
+  "id": "mvc-rest",
+  "title": "MVC·REST의 상태 코드와 자원 계약",
+  "description": "GET /orders/A-1이 어떤 메서드로 들어가 200과 JSON이 되는지 따라갑니다. 없는 주문의 404 응답과 반복 조회에서 주문 수량이 그대로인 이유도 확인합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "URL의 A-1이 find의 id로 전달되고 Summary가 JSON 응답이 되는 순서를 설명한다.",
+    "존재하는 A-1 주문은 200과 id·quantity를 반환하게 한다.",
+    "없는 주문은 404로 표현하고 서버 오류와 구분한다.",
+    "조회 세 번 뒤에도 수량 2를 유지하는지 확인한다."
+  ],
+  "theory": [
+    {
+      "heading": "전송 계약과 업무 계약",
+      "text": "클라이언트는 자바 반환 객체를 직접 보지 못하고 HTTP 상태 코드와 응답 본문을 봅니다. 이것이 전송 계약, 즉 요청을 보낸 쪽과 주고받기로 한 형식입니다. GET /orders/A-1은 클래스의 /orders와 메서드의 /{id}에 연결되고 @PathVariable이 A-1을 id 인수로 전달합니다. find는 orders.get(id)의 결과를 보고 있으면 ResponseEntity.ok(order), 없으면 notFound().build()를 반환합니다.\n\n업무 계약은 주문을 읽을 때 기존 수량을 바꾸지 않는다는 규칙입니다. 이 코드에는 Map을 읽는 get만 있으며 수량을 줄이는 동작이 없습니다. @GetMapping을 붙였다고 이런 규칙이 자동으로 지켜지는 것은 아닙니다. 메서드 본문과 반복 호출 결과를 함께 확인해야 합니다."
+    },
+    {
+      "heading": "컨트롤러의 책임",
+      "text": "컨트롤러는 HTTP 요청을 자바 호출로 연결하고 결과를 응답으로 표현하는 역할을 합니다. 이 예제에서 @RestController와 응답 변환기가 Summary의 id·quantity를 JSON으로 전달합니다. 가격 계산이나 재고 예약까지 이곳에 섞으면 HTTP 처리와 주문 규칙을 각각 테스트하기 어려워집니다.\n\norders는 A-1 한 건을 담은 고정 Map입니다. 데이터베이스 조회나 저장을 구현한 것이 아니라 “존재하면 200, 없으면 404”라는 응답 선택을 보여 줍니다. DB 실패도 null로 바꿔 404를 주는 구현을 이 코드에서 도출하면 안 됩니다. 주문 부재와 저장소 장애는 클라이언트가 다르게 처리해야 할 상황입니다."
+    },
+    {
+      "heading": "MockMvc의 경계",
+      "text": "기존 ContractTest는 standaloneSetup(new OrdersController())로 MockMvc를 준비합니다. MockMvc는 실제 서버 포트를 열지 않고 요청·응답 객체를 통해 Spring MVC 처리를 실행하는 검사 도구입니다. 단순히 find(\"A-1\")을 직접 호출하는 것과 달리 URL 연결, 상태 코드, JSON의 id·quantity까지 확인할 수 있습니다.\n\n반복 GET 검사는 세 번 모두 quantity가 2인지 봅니다. 그러나 실제 TLS 인증서·역방향 프록시·서블릿 서버 설정은 이 경로에 없습니다. 이 검사가 통과했다는 말과 배포된 URL에 실제로 접속해 확인했다는 말을 구분합니다."
+    }
+  ],
+  "example": {
+    "title": "OrdersController 기준 구현",
+    "code": "package edu.lab;\nimport java.util.Map;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.web.bind.annotation.*;\n@RestController\n@RequestMapping(\"/orders\")\npublic class OrdersController {\n    public record Summary(String id, int quantity) {}\n    private final Map<String, Summary> orders = Map.of(\"A-1\", new Summary(\"A-1\", 2));\n    @GetMapping(\"/{id}\")\n    public ResponseEntity<Summary> find(@PathVariable(\"id\") String id) {\n        // BEGIN EXERCISE\n        Summary order = orders.get(id);\n        return order == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(order);\n        // END EXERCISE\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 3개 JUnit 테스트 통과.\n검증 항목: 기존 주문 조회 200 · 부재 주문 404 · 반복 조회 상태 보존.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "orders에는 \"A-1\"을 키로 Summary(\"A-1\", 2)가 들어 있습니다. GET /orders/A-1의 id가 find로 전달되면 orders.get이 그 객체를 찾고 ResponseEntity.ok가 200 응답을 선택합니다. MVC의 JSON 변환을 거쳐 id는 A-1, quantity는 2로 보입니다. /orders/missing은 조회 결과가 null이므로 404를 선택합니다. find는 Map을 바꾸지 않아 같은 조회를 반복해도 수량 2가 유지됩니다.\n\n공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrdersController.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport java.util.Map;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.web.bind.annotation.*;\n@RestController\n@RequestMapping(\"/orders\")\npublic class OrdersController {\n    public record Summary(String id, int quantity) {}\n    private final Map<String, Summary> orders = Map.of(\"A-1\", new Summary(\"A-1\", 2));\n    @GetMapping(\"/{id}\")\n    public ResponseEntity<Summary> find(@PathVariable(\"id\") String id) {\n        // BEGIN EXERCISE\n        Summary order = orders.get(id);\n        return order == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(order);\n        // END EXERCISE\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>mvc-rest</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "mvc-rest-q1",
+      "question": "없는 주문의 조회 응답을 결정하는 올바른 기준은?",
+      "options": [
+        "항상 200과 빈 객체를 반환한다.",
+        "서버 오류이므로 항상 500이다.",
+        "조회가 실패하면 새 주문을 생성한다.",
+        "자원 부재를 404로 표현한다."
+      ],
+      "correctIndex": 3,
+      "explanation": "orders.get(\"missing\")이 null이라는 것은 이 저장소에 해당 주문이 없다는 뜻입니다. 이 수업은 그 경우를 404로 약속했습니다. 200의 빈 객체는 정상 주문과 부재를 구분하기 어렵게 하고, 500은 정상적인 부재를 서버 장애처럼 보이게 합니다."
+    },
+    {
+      "id": "mvc-rest-q2",
+      "question": "이 수업의 MockMvc 검사만으로 확인할 수 없는 것은?",
+      "options": [
+        "요청 경로의 매핑",
+        "JSON 응답 필드",
+        "실제 TLS와 네트워크 프록시 설정",
+        "부재 주문의 상태 코드"
+      ],
+      "correctIndex": 2,
+      "explanation": "MockMvc는 실제 OrdersController를 MVC 처리 과정으로 호출해 경로·상태 코드·JSON 필드를 검사합니다. 실제 서버 소켓을 열지 않으므로 TLS 연결과 외부 네트워크 프록시 설정은 그 검사에 참여하지 않습니다."
+    }
+  ],
+  "practice": {
+    "title": "주문 조회의 성공·부재·반복을 구분하기",
+    "scenario": "주문 상세 화면은 A-1이면 수량 2를 보여 주고, 없는 주문이면 부재 안내를 보여 줘야 합니다. 새로고침을 여러 번 해도 재고나 주문 수량을 소비하면 안 됩니다.",
+    "tasks": [
+      "GET /orders/A-1에서 id A-1, quantity 2인 JSON과 200을 반환하는 분기를 완성하세요.",
+      "orders에 없는 ID는 404를 반환하세요. 저장소 장애를 404로 취급하는 것과 이 코드의 단순 부재를 구분하세요.",
+      "반복 GET 세 번의 quantity가 모두 2인 기존 테스트를 읽고, find 안에서 상태를 바꾸는 코드가 없는지 확인하세요. 새 주문 생성은 이 수업 범위에 없습니다.",
+      "find를 직접 호출하는 검사, MockMvc 검사, 배포된 URL 호출이 각각 무엇을 거치는지 설명하세요. 여기서 실행된 기준 검사는 MockMvc 범위입니다."
+    ],
+    "takeaway": "조회 API를 읽을 때 URL → 인수 → 조회값 → 상태 코드 → JSON 순서로 따라갑니다. 성공 응답뿐 아니라 부재의 표현과 반복 호출 뒤 상태도 함께 확인합니다."
+  },
+  "sources": [
+    {
+      "title": "Spring MVC annotated controllers",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/web/webmvc/mvc-controller.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "MockMvc",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/testing/mockmvc.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Spring MVC",
+    "REST"
+  ],
+  "exerciseId": "mvc-rest-project",
+  "professionalExercise": {
+    "id": "mvc-rest-project",
+    "profileId": "professional-spring-web",
+    "mode": "project",
+    "instructions": [
+      "GET /orders/A-1은 id A-1, quantity 2인 JSON과 200을 반환합니다.",
+      "존재하지 않는 ID는 빈 주문이나 null의 200 대신 404를 반환합니다.",
+      "반복 GET은 데이터를 변경하지 않습니다. 새 주문 생성은 이 수업 범위에 없습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/OrdersController.java"
+    ],
+    "template": "package edu.lab;\nimport java.util.Map;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.web.bind.annotation.*;\n@RestController\n@RequestMapping(\"/orders\")\npublic class OrdersController {\n    public record Summary(String id, int quantity) {}\n    private final Map<String, Summary> orders = Map.of(\"A-1\", new Summary(\"A-1\", 2));\n    @GetMapping(\"/{id}\")\n    public ResponseEntity<Summary> find(@PathVariable(\"id\") String id) {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrdersController.java",
+        "templatePath": "lessons/mvc-rest/starter/src/main/java/edu/lab/OrdersController.java",
+        "referencePath": "lessons/mvc-rest/reference/src/main/java/edu/lab/OrdersController.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/mvc-rest/starter/pom.xml",
+        "referencePath": "lessons/mvc-rest/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/mvc-rest/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "기존 주문 조회 200",
+      "부재 주문 404",
+      "반복 조회 상태 보존"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "spring-di"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 3,
+    "starterSatisfied": false,
+    "sourceFingerprint": "cf818104cfb16da2cfc56a8a887429f7354bfbaf23b2edb5db949abe45065bdf",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  },
+  "learningGuide": {
+    "scenario": "주문 상세 화면을 새로고침할 때 같은 주문이 계속 보이고, 존재하지 않는 ID에는 분명한 부재 응답이 필요합니다. 고정된 A-1 주문으로 이 흐름을 좁혀 살펴봅니다.",
+    "question": "orders.get(id)의 값 하나가 어떻게 200 또는 404 응답으로 이어질까요?",
+    "terms": [
+      {
+        "term": "라우팅",
+        "meaning": "요청 경로와 처리 메서드를 연결하는 일입니다. /orders와 /{id}가 합쳐져 GET /orders/A-1을 find로 보냅니다."
+      },
+      {
+        "term": "경로 변수",
+        "meaning": "URL의 일부를 메서드 인수로 받는 값입니다. @PathVariable(\"id\")는 A-1을 String id에 전달합니다."
+      },
+      {
+        "term": "ResponseEntity",
+        "meaning": "응답 본문과 상태 코드 등을 정하는 객체입니다. 여기서는 ok(order)가 200과 주문을, notFound().build()가 본문 없는 404를 만듭니다."
+      },
+      {
+        "term": "직렬화",
+        "meaning": "자바 객체를 전송할 표현으로 바꾸는 일입니다. 이 MVC 설정은 Summary의 id·quantity를 JSON 필드로 보냅니다."
+      }
+    ],
+    "walkthrough": [
+      "@RequestMapping(\"/orders\")와 @GetMapping(\"/{id}\")가 GET /orders/A-1을 find 메서드에 연결합니다.",
+      "@PathVariable(\"id\")가 URL의 A-1을 id에 전달합니다. orders.get(id)는 저장된 Summary(\"A-1\", 2)를 찾습니다.",
+      "order가 null이 아니므로 ResponseEntity.ok(order)를 반환합니다. MVC가 이 본문을 JSON으로 바꿔 200과 함께 전달합니다.",
+      "id가 missing이면 orders.get의 결과가 null입니다. 삼항식의 다른 분기가 본문 없는 404를 선택합니다.",
+      "어느 분기에도 orders나 quantity를 바꾸는 코드가 없습니다. 기존 반복 조회 테스트는 A-1을 세 번 읽어도 quantity가 2인지 확인합니다."
+    ],
+    "prediction": {
+      "question": "같은 컨트롤러에 GET /orders/A-1을 세 번 보내고 GET /orders/missing을 한 번 보내면 어떤 결과인가요?",
+      "answer": "A-1 세 번은 모두 200과 quantity 2이며, missing은 404입니다.",
+      "explanation": "find는 저장된 값을 조회해 응답을 고를 뿐 값을 변경하지 않습니다. 고정 Map에 missing 키가 없으므로 마지막 요청은 부재 분기로 갑니다."
+    },
+    "takeaway": "HTTP 응답을 이해하려면 애너테이션부터 반환 객체까지 연결해 읽습니다. 메서드 호출 결과와 클라이언트가 보는 상태 코드·JSON은 MVC가 이어 줍니다.",
+    "code": {
+      "file": "src/main/java/edu/lab/OrdersController.java",
+      "source": "@RestController\n@RequestMapping(\"/orders\")\npublic class OrdersController {\n    public record Summary(String id, int quantity) {}\n    private final Map<String, Summary> orders = Map.of(\"A-1\", new Summary(\"A-1\", 2));\n    @GetMapping(\"/{id}\")\n    public ResponseEntity<Summary> find(@PathVariable(\"id\") String id) {\n        // BEGIN EXERCISE\n        Summary order = orders.get(id);\n        return order == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(order);\n        // END EXERCISE\n    }\n}\n"
+    }
+  }
+}

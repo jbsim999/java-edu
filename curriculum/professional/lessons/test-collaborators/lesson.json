@@ -1,0 +1,207 @@
+{
+  "id": "test-collaborators",
+  "title": "Mockito로 외부 협력의 실패를 통제",
+  "description": "잘못된 주문이 결제 요청까지 도달하거나 결제 실패가 성공처럼 처리되는 일을 막습니다. Mockito 대역으로 charge의 입력·횟수·예외 전달을 확인합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "실제 Checkout을 검사하면서 PaymentPort만 대역으로 바꾸는 이유를 설명한다.",
+    "submit(\"o-1\", 500)이 charge에 같은 주문 ID와 금액을 한 번 전달하는지 확인한다.",
+    "빈 주문 ID를 거절할 때 결제 호출이 추가되지 않아야 함을 확인한다.",
+    "charge가 던진 예외를 호출자에게 전달하고 대역 테스트의 한계를 구분한다."
+  ],
+  "theory": [
+    {
+      "heading": "대역의 범위",
+      "text": "Checkout은 스스로 결제 통신을 만들지 않고 생성자로 받은 PaymentPort에 charge를 요청합니다. 이렇게 필요한 객체를 밖에서 전달하는 방식을 주입이라고 부릅니다. 테스트에서는 실제 결제 대신 Mockito가 만든 PaymentPort 대역을 넣습니다. 대역은 호출을 기록하고 원하는 예외를 내도록 설정할 수 있으므로 돈을 결제하지 않고 실패 상황을 반복해서 확인할 수 있습니다.\n\n기존 propagatesFailure는 charge(\"o-1\", 500)가 IllegalStateException을 던지도록 설정합니다. 검사 대상은 대역이 아닌 실제 Checkout.submit입니다. 이 검사는 Checkout이 예외를 전달하는지는 보여 주지만 실제 결제 서버의 응답 형식·네트워크 지연·결제 확정 여부까지 확인하지는 않습니다."
+    },
+    {
+      "heading": "행동 중심 검증",
+      "text": "이 수업에서 중요한 약속은 “유효한 주문만 지정한 금액으로 한 번 요청하고 실패를 숨기지 않는다”입니다. submit은 orderId가 null·공백인지, cents가 양수인지 확인한 뒤 payments.charge를 호출합니다. 기존 oneCallAndInvalidInput은 정상 호출의 ID와 금액을 verify로 확인하고, 빈 ID 제출 후 호출이 더 생기지 않았는지 verifyNoMoreInteractions로 확인합니다.\n\n이 약속은 submit 한 번에 대한 호출 횟수입니다. submit을 두 번 부를 때 한 번만 결제된다는 뜻은 아닙니다. 네트워크 응답이 끊겨 실제 결제 여부를 모르는 상황에서는 무작정 재시도할 수 없습니다. 같은 요청을 다시 보내도 효과를 중복 적용하지 않는 멱등성 정책은 외부 결제 API와 함께 정해야 하며 이 코드에는 구현돼 있지 않습니다."
+    }
+  ],
+  "example": {
+    "title": "Checkout 기준 구현",
+    "code": "package edu.lab;\npublic final class Checkout {\n public interface PaymentPort { void charge(String orderId, int cents); }\n private final PaymentPort payments;\n public Checkout(PaymentPort payments) { this.payments=java.util.Objects.requireNonNull(payments); }\n public void submit(String orderId, int cents) {\n  // BEGIN EXERCISE\n  if (orderId == null || orderId.isBlank() || cents <= 0) throw new IllegalArgumentException();\n  payments.charge(orderId, cents);\n  // END EXERCISE\n }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 결제 한 번 호출 · 잘못된 입력에서 미호출 · 협력 오류 전파.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "생성자는 null이 아닌 PaymentPort를 payments에 보관합니다. submit(\"o-1\", 500)은 if를 통과해 payments.charge(\"o-1\", 500)를 한 번 호출합니다. 빈 주문 ID는 charge에 도달하기 전에 IllegalArgumentException으로 끝납니다. charge 주변에 예외를 삼키는 catch가 없으므로 결제 포트가 던진 예외는 submit 호출자에게 전달됩니다. 이 코드는 한 번의 제출을 검사하며 중복 제출을 막는 저장소나 재시도 로직은 포함하지 않습니다.\n\n공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/Checkout.java",
+        "language": "java",
+        "code": "package edu.lab;\npublic final class Checkout {\n public interface PaymentPort { void charge(String orderId, int cents); }\n private final PaymentPort payments;\n public Checkout(PaymentPort payments) { this.payments=java.util.Objects.requireNonNull(payments); }\n public void submit(String orderId, int cents) {\n  // BEGIN EXERCISE\n  if (orderId == null || orderId.isBlank() || cents <= 0) throw new IllegalArgumentException();\n  payments.charge(orderId, cents);\n  // END EXERCISE\n }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>test-collaborators</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.mockito</groupId><artifactId>mockito-core</artifactId><scope>test</scope></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "test-collaborators-q1",
+      "question": "외부 결제 협력자를 Mockito로 대체할 때 이 과제의 핵심 검증은?",
+      "options": [
+        "서비스의 모든 private 메서드를 mock한다.",
+        "호출 횟수만 맞으면 잘못된 금액 전달은 허용한다.",
+        "외부 포트의 예외는 항상 성공으로 바꾼다.",
+        "유효 입력에서 한 번 호출하고 잘못된 입력에서는 호출하지 않는다."
+      ],
+      "correctIndex": 3,
+      "explanation": "submit이 정상 주문을 한 번 요청했는지 확인할 때 횟수만 아니라 \"o-1\"과 500이 그대로 전달됐는지도 봅니다. 빈 ID의 제출은 charge 앞에서 끝나야 합니다. Checkout까지 mock하면 이 if와 charge의 연결을 실행하지 않아 그 사이의 결함을 놓칠 수 있습니다."
+    },
+    {
+      "id": "test-collaborators-q2",
+      "question": "결제 포트가 실패했다고 자동으로 무제한 재시도하면 왜 위험한가?",
+      "options": [
+        "첫 요청이 실제 처리됐는지 모르면 중복 결제가 생길 수 있다.",
+        "Mockito가 숫자를 비교하지 못한다.",
+        "인터페이스가 있으면 예외를 던질 수 없다.",
+        "생성자 주입을 사용하면 재시도가 금지된다."
+      ],
+      "correctIndex": 0,
+      "explanation": "결제 서버가 처리한 직후 응답만 사라졌다면 호출자는 실패로 보아도 돈은 이미 결제됐을 수 있습니다. 다시 charge하면 중복 결제가 생길 수 있으므로 요청 식별 키와 결과 조회·재시도 규칙이 필요합니다. 현재 Checkout의 한 번 호출 테스트만으로 그런 멱등성이 확보되지는 않습니다."
+    }
+  ],
+  "practice": {
+    "title": "실패한 결제를 성공으로 숨기지 않기",
+    "scenario": "주문 제출이 결제 포트를 호출합니다. 주문 ID가 비어 있으면 결제를 시작하지 말아야 하고, 결제 포트의 실패는 화면에서 실패로 처리할 수 있도록 호출자까지 전달되어야 합니다.",
+    "tasks": [
+      "Checkout.submit(String orderId, int cents)를 완성하고 \"o-1\", 500이 PaymentPort.charge에 그대로 한 번 전달되는지 확인하세요.",
+      "orderId는 null·공백이 아니고 cents는 양수여야 합니다. 잘못된 입력을 charge 전에 거절하는 줄을 짚으세요.",
+      "기존 테스트가 charge에서 던지게 한 failure와 submit에서 받은 예외가 같은 객체인지 확인하는 이유를 설명하세요.",
+      "현재 테스트가 증명하는 한 번 호출과, submit을 반복해도 결제를 한 번만 하는 멱등성의 차이를 적으세요. 실제 결제 서버·타임아웃·중복 제출 검증은 이 대역 검사에 포함되지 않습니다."
+    ],
+    "takeaway": "협력 대역은 실제 서비스의 결정을 검사하기 위한 도구입니다. 호출하지 않아야 할 때·전달할 값·실패를 알릴 방법을 확인하고 실제 외부 결제의 보장은 따로 검증합니다."
+  },
+  "sources": [
+    {
+      "title": "Mockito documentation",
+      "url": "https://javadoc.io/doc/org.mockito/mockito-core/latest/org/mockito/Mockito.html",
+      "edition": "Mockito 5; BOM resolved version",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "JUnit user guide",
+      "url": "https://docs.junit.org/5.11.4/user-guide/",
+      "edition": "JUnit 5",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Java"
+  ],
+  "exerciseId": "test-collaborators-project",
+  "professionalExercise": {
+    "id": "test-collaborators-project",
+    "profileId": "professional-mockito",
+    "mode": "project",
+    "instructions": [
+      "Checkout.submit(String orderId, int cents)를 완성하세요.",
+      "orderId는 비어 있지 않고 cents는 양수여야 합니다. 잘못된 입력은 외부 호출 전에 거절합니다.",
+      "PaymentPort.charge를 한 번 호출하고 실패를 삼키지 않습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/Checkout.java"
+    ],
+    "template": "package edu.lab;\npublic final class Checkout {\n public interface PaymentPort { void charge(String orderId, int cents); }\n private final PaymentPort payments;\n public Checkout(PaymentPort payments) { this.payments=java.util.Objects.requireNonNull(payments); }\n public void submit(String orderId, int cents) {\n  throw new UnsupportedOperationException(\"실습 구현 필요\");\n }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/Checkout.java",
+        "templatePath": "lessons/test-collaborators/starter/src/main/java/edu/lab/Checkout.java",
+        "referencePath": "lessons/test-collaborators/reference/src/main/java/edu/lab/Checkout.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/test-collaborators/starter/pom.xml",
+        "referencePath": "lessons/test-collaborators/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/test-collaborators/grader/src/test/java/edu/lab/ContractTest.java"
+      },
+      {
+        "path": "src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker",
+        "sourcePath": "lessons/test-collaborators/grader/src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker"
+      }
+    ],
+    "behaviorCriteria": [
+      "결제 한 번 호출",
+      "잘못된 입력에서 미호출",
+      "협력 오류 전파"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "test-contracts",
+    "core:polymorphism"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 2,
+    "starterSatisfied": false,
+    "sourceFingerprint": "9b36daa6c1fdc7557702c6825819f8b92f1384bb562f8b95e8b9f79368bab733",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  },
+  "learningGuide": {
+    "scenario": "빈 주문 ID로 결제까지 요청되거나, 결제 서버의 오류를 삼켜 주문이 성공한 것처럼 보이면 곤란합니다. 실제 결제를 하지 않고 Checkout이 어느 지점에서 멈추는지 확인하려 합니다.",
+    "question": "PaymentPort를 대역으로 바꾸어도 Checkout의 어떤 동작은 실제로 검사할 수 있을까요?",
+    "terms": [
+      {
+        "term": "협력 객체",
+        "meaning": "일부 작업을 부탁하는 다른 객체입니다. Checkout은 금액 결제를 PaymentPort의 charge에 부탁합니다."
+      },
+      {
+        "term": "주입",
+        "meaning": "객체가 필요한 도구를 내부에서 만들지 않고 밖에서 받는 방식입니다. Checkout(PaymentPort payments)가 그 전달 지점입니다."
+      },
+      {
+        "term": "테스트 대역",
+        "meaning": "실제 외부 시스템 대신 테스트에 넣는 객체입니다. Mockito로 만든 PaymentPort는 charge의 호출을 기록하거나 미리 정한 예외를 던집니다."
+      },
+      {
+        "term": "실패 전파",
+        "meaning": "발생한 오류를 호출자가 알 수 있도록 밖으로 전달하는 일입니다. 이 submit은 charge의 예외를 성공으로 바꾸지 않습니다."
+      }
+    ],
+    "walkthrough": [
+      "Checkout의 생성자가 전달받은 PaymentPort를 payments에 저장합니다. null이면 requireNonNull에서 바로 실패합니다.",
+      "submit의 if가 orderId와 cents를 검사합니다. 빈 ID는 payments.charge까지 내려가기 전에 IllegalArgumentException으로 거절됩니다.",
+      "submit(\"o-1\", 500)은 payments.charge(orderId, cents) 한 줄을 실행합니다. 테스트는 verify(port).charge(\"o-1\", 500)으로 이 호출의 값과 기본 한 번 호출을 확인합니다.",
+      "propagatesFailure 테스트의 대역은 charge에서 failure 예외를 던집니다. submit에 이를 잡는 코드가 없어서 같은 예외가 호출자에게 전달됩니다.",
+      "대역은 네트워크나 실제 결제를 실행하지 않습니다. 이 결과로 확인하는 것은 Checkout의 검사 순서와 호출·실패 전달입니다."
+    ],
+    "prediction": {
+      "question": "결제 대역의 charge가 failure 예외를 던지도록 설정하고 submit(\"o-1\", 500)을 호출하면 정상 종료할까요?",
+      "answer": "정상 종료하지 않고 charge가 던진 같은 failure 예외가 호출자에게 전달됩니다.",
+      "explanation": "입력 검사는 통과하지만 charge에서 실행이 중단됩니다. submit에는 예외를 잡거나 재시도하는 코드가 없으므로 실패가 그대로 드러납니다."
+    },
+    "takeaway": "결제를 실제로 하지 않아도 “검사 후 요청하는가, 정확히 무엇을 전달하는가, 실패를 숨기는가”를 확인할 수 있습니다. 그 범위를 외부 결제 성공 보장과 구분합니다.",
+    "code": {
+      "file": "src/main/java/edu/lab/Checkout.java",
+      "source": " public interface PaymentPort { void charge(String orderId, int cents); }\n private final PaymentPort payments;\n public Checkout(PaymentPort payments) { this.payments=java.util.Objects.requireNonNull(payments); }\n public void submit(String orderId, int cents) {\n  // BEGIN EXERCISE\n  if (orderId == null || orderId.isBlank() || cents <= 0) throw new IllegalArgumentException();\n  payments.charge(orderId, cents);\n  // END EXERCISE\n }\n}\n"
+    }
+  }
+}

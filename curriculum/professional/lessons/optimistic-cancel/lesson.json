@@ -1,0 +1,229 @@
+{
+  "id": "optimistic-cancel",
+  "title": "낙관적 잠금과 중복 취소의 의미",
+  "description": "취소 버튼을 두 번 누르거나 두 작업이 같은 주문을 읽으면 재고를 두 번 돌려줄 수 있습니다. 객체의 취소 표시와 DB의 버전 검사가 각각 막는 문제를 나누어 읽습니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "cancelAndReturnQuantity의 첫 호출과 두 번째 호출이 다른 수량을 반환하는 이유를 설명한다.",
+    "cancelled가 false에서 true로 바뀌는 지점을 찾는다.",
+    "같은 객체의 중복 취소를 막는 if 문과 DB 저장 충돌을 잡는 @Version의 역할을 구분한다.",
+    "반환 수량만으로 외부 재고 복원이 완료됐다고 판단할 수 없는 이유를 설명한다."
+  ],
+  "learningGuide": {
+    "scenario": "수량 3인 주문을 취소한 뒤 같은 객체에 취소를 다시 요청합니다. 매번 3을 돌려주면 이를 믿는 호출자가 재고를 두 번 늘릴 수 있습니다.",
+    "question": "이미 처리한 취소를 메서드가 어떻게 기억하고 두 번째 반환값을 바꿀까요?",
+    "terms": [
+      {
+        "term": "상태 전이",
+        "meaning": "객체가 한 상태에서 다음 상태로 바뀌는 것입니다. 여기서는 cancelled=false가 true로 바뀝니다."
+      },
+      {
+        "term": "멱등성",
+        "meaning": "같은 요청을 반복해도 업무 효과가 추가로 생기지 않는 성질입니다. 이미 취소된 객체는 복원 후보 수량을 0으로 돌려줍니다."
+      },
+      {
+        "term": "낙관적 잠금",
+        "meaning": "DB에 저장할 때 version을 비교해, 읽은 뒤 다른 작업이 먼저 바꾼 상태를 감지하는 방법입니다."
+      }
+    ],
+    "code": {
+      "file": "src/main/java/edu/lab/CancellableOrder.java",
+      "source": "    @Version private long version;\n    private int quantity;\n    private boolean cancelled;\n    protected CancellableOrder() {}\n    public CancellableOrder(String id, int quantity) {\n        if (id == null || id.isBlank() || quantity <= 0) throw new IllegalArgumentException(\"invalid order\");\n        this.id = id; this.quantity = quantity;\n    }\n    public long version() { return version; }\n    public boolean cancelled() { return cancelled; }\n    public int cancelAndReturnQuantity() {\n        // BEGIN EXERCISE\n        if (cancelled) return 0;\n        cancelled = true;\n        return quantity;\n        // END EXERCISE"
+    },
+    "walkthrough": [
+      "@Version private long version은 JPA가 DB 저장 충돌을 확인할 때 쓰는 필드입니다. quantity와 cancelled는 주문 수량과 취소 여부를 기억합니다.",
+      "생성자의 if는 비어 있는 id와 0 이하 수량을 거절합니다. this.quantity = quantity로 받은 수량을 객체에 저장합니다.",
+      "cancelAndReturnQuantity의 if (cancelled) return 0은 이미 취소한 객체의 실행을 여기서 끝냅니다.",
+      "처음에는 if를 지나 cancelled=true로 바꾸고 quantity를 반환합니다. 이 순서 때문에 같은 객체의 다음 호출은 0을 반환합니다.",
+      "이 메서드에는 재고를 수정하는 SQL이나 API 호출이 없습니다. 별도 객체끼리의 DB 저장 충돌은 위의 @Version이 담당하고, 실제 재고 반영은 이 발췌 밖의 설계 과제입니다."
+    ],
+    "prediction": {
+      "question": "수량 3인 같은 객체에 cancelAndReturnQuantity를 연속 두 번 호출하면 반환값과 마지막 cancelled는 무엇일까요?",
+      "answer": "반환값은 3, 0이며 마지막 cancelled는 true입니다.",
+      "explanation": "첫 호출이 true를 저장한 뒤 3을 반환합니다. 두 번째 호출은 그 true를 읽고 즉시 0을 반환합니다. 이는 같은 객체의 결과이며 외부 재고가 실제로 3개 복원됐다는 뜻은 아닙니다."
+    },
+    "takeaway": "객체에서 취소를 결정한 순간과 DB·외부 시스템에서 그 취소를 확정한 순간을 구분합니다."
+  },
+  "theory": [
+    {
+      "heading": "중복 호출의 업무 의미",
+      "text": "수량 3인 주문에서 cancelAndReturnQuantity를 처음 호출하면 cancelled는 false입니다. if를 지나 true로 바꾸고 3을 반환합니다. 같은 객체를 다시 호출하면 if (cancelled)에서 0을 반환해 복원 수량을 중복 계산하지 않습니다. 같은 요청을 반복해도 업무 효과를 추가로 만들지 않는 성질을 멱등성이라고 합니다. 다만 두 작업이 각각 읽은 별도 객체에는 cancelled=false가 남아 있을 수 있으므로 이 if만으로 DB의 동시 변경까지 해결하지는 못합니다."
+    },
+    {
+      "heading": "버전 비교로 충돌 발견",
+      "text": "낙관적 잠금은 저장할 때 읽었던 버전과 DB의 현재 버전을 비교해 다른 작업의 선행 변경을 발견하는 방식입니다. 이 엔티티의 @Version long version이 그 비교에 쓰입니다. 영속성 컨텍스트는 JPA가 읽어 온 객체와 변경을 관리하는 작업 공간입니다. 테스트의 first와 stale이 같은 주문을 각각 읽고 취소한 뒤 first가 먼저 커밋하면, 오래된 버전을 가진 stale의 커밋은 실패합니다. 커밋은 변경을 확정하는 단계입니다. 충돌을 잡은 호출자는 최신 상태를 다시 읽고 취소가 여전히 필요한지 판단해야 합니다."
+    },
+    {
+      "heading": "외부 효과와 트랜잭션",
+      "text": "cancelAndReturnQuantity가 2를 반환한 순간에는 객체의 상태와 복원할 후보 수량만 정해졌습니다. 그 뒤 DB 커밋이 실패할 수도 있습니다. 반환 직후 외부 재고 API에 2개를 더했다면 주문은 취소되지 않았는데 재고만 늘어날 수 있습니다. 이번 검사는 객체 동작과 H2의 버전 충돌까지이며 외부 재고·결제는 호출하지 않습니다. 실제 복원은 같은 DB 트랜잭션에 묶거나, 보낼 이벤트를 DB에 함께 기록하는 outbox 등의 방법을 따로 설계합니다."
+    }
+  ],
+  "example": {
+    "title": "CancellationLab 기준 구현",
+    "code": "package edu.lab;\nimport jakarta.persistence.*;\nimport java.util.Map;\nimport java.util.UUID;\npublic final class CancellationLab {\n    public static EntityManagerFactory open() {\n        return Persistence.createEntityManagerFactory(\"cancellations\", Map.of(\n            \"jakarta.persistence.jdbc.url\", \"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"));\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 취소 상태 전이 · 반복 취소 복원량 0 · 오래된 버전 커밋 거절.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "CancellableOrder의 cancelled 필드는 이미 취소했는지 기억하고, cancelAndReturnQuantity는 처음에만 quantity를 반환합니다. @Version은 이 if와 별도로 DB에 저장할 때 오래된 객체의 덮어쓰기를 막습니다. 테스트 하나는 수량 3인 객체를 두 번 호출해 3, 0을 확인하고, 다른 하나는 두 EntityManager에서 같은 주문을 읽어 두 번째 커밋이 실패하는지 확인합니다. 반환값을 실제 재고 DB에 더하는 코드는 없습니다. 기존 기준 구현의 검증 기록은 JDK 21·Java 17 대상·Maven 3.10.0에서의 JUnit 검사입니다. 미완성 실습은 기준 테스트를 통과하지 않습니다. 설치형에서는 등록한 로컬 JDK로 자신의 코드를 별도로 실행·제출하며, 기준 구현의 기록과 자신의 실행 결과를 구분합니다.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/CancellationLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport jakarta.persistence.*;\nimport java.util.Map;\nimport java.util.UUID;\npublic final class CancellationLab {\n    public static EntityManagerFactory open() {\n        return Persistence.createEntityManagerFactory(\"cancellations\", Map.of(\n            \"jakarta.persistence.jdbc.url\", \"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"));\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>optimistic-cancel</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.hibernate.orm</groupId><artifactId>hibernate-core</artifactId></dependency>\n<dependency><groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId></dependency>\n<dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId></dependency></dependencies></project>\n"
+      },
+      {
+        "path": "src/main/resources/META-INF/persistence.xml",
+        "language": "xml",
+        "code": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<persistence xmlns=\"https://jakarta.ee/xml/ns/persistence\" version=\"3.0\">\n  <persistence-unit name=\"cancellations\" transaction-type=\"RESOURCE_LOCAL\">\n    <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider><class>edu.lab.CancellableOrder</class>\n    <exclude-unlisted-classes>true</exclude-unlisted-classes>\n    <properties>\n      <property name=\"jakarta.persistence.jdbc.driver\" value=\"org.h2.Driver\"/>\n      <property name=\"jakarta.persistence.jdbc.user\" value=\"sa\"/>\n      <property name=\"jakarta.persistence.jdbc.password\" value=\"\"/>\n      <property name=\"hibernate.hbm2ddl.auto\" value=\"create-drop\"/>\n      <property name=\"hibernate.show_sql\" value=\"false\"/>\n    </properties>\n  </persistence-unit>\n</persistence>\n"
+      },
+      {
+        "path": "src/main/java/edu/lab/CancellableOrder.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport jakarta.persistence.*;\n@Entity\n@Table(name=\"cancellable_orders\")\npublic class CancellableOrder {\n    @Id private String id;\n    @Version private long version;\n    private int quantity;\n    private boolean cancelled;\n    protected CancellableOrder() {}\n    public CancellableOrder(String id, int quantity) {\n        if (id == null || id.isBlank() || quantity <= 0) throw new IllegalArgumentException(\"invalid order\");\n        this.id = id; this.quantity = quantity;\n    }\n    public long version() { return version; }\n    public boolean cancelled() { return cancelled; }\n    public int cancelAndReturnQuantity() {\n        // BEGIN EXERCISE\n        if (cancelled) return 0;\n        cancelled = true;\n        return quantity;\n        // END EXERCISE\n    }\n}\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "optimistic-cancel-q1",
+      "question": "@Version 충돌이 발생한 뒤 올바른 설명은?",
+      "options": [
+        "항상 무제한으로 재시도한다.",
+        "충돌한 객체의 값을 강제로 저장하면 안전하다.",
+        "충돌을 호출자가 처리하고 업무 의미에 맞는 재조회·재시도를 검토한다.",
+        "버전 필드를 직접 0으로 바꾸면 해결된다."
+      ],
+      "correctIndex": 2,
+      "explanation": "stale이 들고 있던 주문은 first가 저장한 최신 상태를 반영하지 않습니다. 충돌한 객체를 그대로 다시 저장하거나 version을 바꾸면 문제를 숨깁니다. 새 작업에서 주문을 다시 읽고 이미 취소되었는지 확인한 뒤 제한된 재시도나 거절을 결정해야 합니다."
+    },
+    {
+      "id": "optimistic-cancel-q2",
+      "question": "cancelAndReturnQuantity가 2를 반환했다는 사실만으로 보장되지 않는 것은?",
+      "options": [
+        "해당 객체가 취소 상태로 바뀜",
+        "같은 객체의 다음 취소가 0을 반환함",
+        "외부 재고 시스템에 2개가 원자적으로 복원됨",
+        "해당 메서드가 계산한 복원 후보 수량"
+      ],
+      "correctIndex": 2,
+      "explanation": "메서드 본문에는 cancelled=true와 return quantity만 있습니다. 외부 재고 API나 재고 UPDATE가 없고 DB 커밋 전일 수도 있습니다. 따라서 2는 복원할 후보 수량이며 외부 재고 2개 복원이 완료되었다는 증거가 아닙니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "취소 요청의 응답이 늦어 사용자가 다시 누릅니다. 한 객체에서의 반복 호출과 서로 다른 요청이 각자 읽은 주문의 경쟁을 나누어, 재고 복원이 중복될 위치를 찾습니다.",
+    "tasks": [
+      "수량 3인 CancellableOrder에서 첫 호출의 cancelled 변화와 반환값, 두 번째 호출이 멈추는 if를 설명하세요.",
+      "first와 stale이 취소 전 주문 A를 각각 읽은 경우, 양쪽 메서드가 수량을 반환할 수 있어도 두 커밋이 모두 성공하지 않는 이유를 @Version과 연결하세요.",
+      "두 번째 커밋 충돌 뒤에는 최신 주문을 다시 읽어 이미 취소됐는지 판단해야 하는 이유를 적으세요.",
+      "반환 수량을 바로 외부 재고 API에 적용했을 때 DB 커밋 실패가 만드는 불일치를 설명하세요. 이 예제는 재고 DB나 결제 API를 실제로 호출하지 않습니다.",
+      "객체의 반복 호출 검사와 두 영속성 컨텍스트의 버전 충돌 검사에서 각각 확인한 상태를 구분하세요."
+    ],
+    "takeaway": "if (cancelled)는 같은 객체의 반복을 막고 @Version은 오래된 DB 상태의 덮어쓰기를 잡습니다. 실제 재고 복원은 별도의 확정 단계까지 설계해야 합니다."
+  },
+  "sources": [
+    {
+      "title": "Hibernate optimistic locking",
+      "url": "https://docs.hibernate.org/orm/6.6/userguide/html_single/#locking-optimistic",
+      "edition": "Hibernate ORM 6.6",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Jakarta Persistence",
+      "url": "https://jakarta.ee/specifications/persistence/3.1/",
+      "edition": "Jakarta Persistence 3.1",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "JPA",
+    "Transaction",
+    "Concurrency"
+  ],
+  "exerciseId": "optimistic-cancel-project",
+  "professionalExercise": {
+    "id": "optimistic-cancel-project",
+    "profileId": "professional-jpa",
+    "mode": "project",
+    "instructions": [
+      "첫 cancelAndReturnQuantity 호출은 주문 수량을 반환하고 cancelled=true로 바꿉니다.",
+      "이미 취소된 객체에서는 0을 반환합니다.",
+      "@Version으로 stale 영속성 컨텍스트의 두 번째 커밋이 실패해야 합니다.",
+      "이 예제의 반환 수량은 재고 DB나 결제 API에 실제로 적용되지 않습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/CancellableOrder.java"
+    ],
+    "template": "package edu.lab;\nimport jakarta.persistence.*;\nimport java.util.Map;\nimport java.util.UUID;\npublic final class CancellationLab {\n    public static EntityManagerFactory open() {\n        return Persistence.createEntityManagerFactory(\"cancellations\", Map.of(\n            \"jakarta.persistence.jdbc.url\", \"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"));\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/CancellationLab.java",
+        "templatePath": "lessons/optimistic-cancel/starter/src/main/java/edu/lab/CancellationLab.java",
+        "referencePath": "lessons/optimistic-cancel/reference/src/main/java/edu/lab/CancellationLab.java",
+        "editable": false
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/optimistic-cancel/starter/pom.xml",
+        "referencePath": "lessons/optimistic-cancel/reference/pom.xml",
+        "editable": false
+      },
+      {
+        "path": "src/main/resources/META-INF/persistence.xml",
+        "templatePath": "lessons/optimistic-cancel/starter/src/main/resources/META-INF/persistence.xml",
+        "referencePath": "lessons/optimistic-cancel/reference/src/main/resources/META-INF/persistence.xml",
+        "editable": false
+      },
+      {
+        "path": "src/main/java/edu/lab/CancellableOrder.java",
+        "templatePath": "lessons/optimistic-cancel/starter/src/main/java/edu/lab/CancellableOrder.java",
+        "referencePath": "lessons/optimistic-cancel/reference/src/main/java/edu/lab/CancellableOrder.java",
+        "editable": true
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/optimistic-cancel/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "취소 상태 전이",
+      "반복 취소 복원량 0",
+      "오래된 버전 커밋 거절"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "jpa-state",
+    "tx-proxy"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 2,
+    "starterSatisfied": false,
+    "sourceFingerprint": "e5e66d061683ca073cec3b47255908664a8be1efbe2f2223808aa499c2b23ec0",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

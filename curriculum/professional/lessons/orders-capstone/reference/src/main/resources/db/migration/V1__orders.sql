@@ -1,0 +1,3 @@
+CREATE TABLE inventory(sku VARCHAR(30) PRIMARY KEY, stock INT NOT NULL CHECK(stock >= 0));
+CREATE TABLE orders(id VARCHAR(60) PRIMARY KEY, buyer VARCHAR(60) NOT NULL, sku VARCHAR(30) NOT NULL, quantity INT NOT NULL CHECK(quantity > 0), status VARCHAR(20) NOT NULL CHECK(status IN ('RESERVED','CANCELLED')));
+INSERT INTO inventory(sku,stock) VALUES('BOOK',5);

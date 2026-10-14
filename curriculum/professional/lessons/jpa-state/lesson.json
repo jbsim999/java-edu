@@ -1,0 +1,238 @@
+{
+  "id": "jpa-state",
+  "title": "JPA·Hibernate의 상태와 변경 감지",
+  "description": "같은 changeQuantity를 호출해도 어떤 객체는 DB가 바뀌고 어떤 객체는 메모리 값만 바뀝니다. EntityManager가 관리하는 동안과 닫힌 뒤를 기존 테스트 값으로 비교합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "OrderEntity의 메서드 호출과 DB에 SQL이 반영되는 시점을 구분한다.",
+    "관리 중인 주문 수량 2를 4로 바꾸고 commit하면 새 조회에서 4가 보이는 흐름을 설명한다.",
+    "EntityManager를 닫은 뒤 객체 수량을 7로 바꿔도 DB에는 2가 남는 이유를 설명한다.",
+    "changeQuantity(0)이 실패할 때 객체의 이전 수량이 보존되도록 검사 순서를 지킨다."
+  ],
+  "theory": [
+    {
+      "heading": "영속성 컨텍스트와 변경 감지",
+      "text": "영속성 컨텍스트는 EntityManager가 현재 추적하는 엔티티들을 관리하는 범위입니다. 그 안에 있는 객체를 관리 상태라고 합니다. 기존 managedChangesAreFlushed 테스트는 트랜잭션을 시작하고 em.find로 A 주문을 가져온 뒤 changeQuantity(4)를 호출합니다. 이 메서드 자체에는 UPDATE가 없지만 Hibernate가 관리 객체의 변경을 DB와 맞추면서 commit 뒤 새 EntityManager 조회에서 4를 읽게 됩니다.\n\n메모리 변경을 SQL로 동기화하는 flush와 트랜잭션을 확정하는 commit은 다른 일입니다. flush가 됐어도 커밋 전 변경은 롤백될 수 있고, SQL이 메서드 호출 바로 그 순간에 실행된다고 단정할 수 없습니다. 반대로 EntityManager를 닫아 관리에서 벗어난 분리(detached) 객체는 changeQuantity(7)를 불러도 그 변경이 자동으로 DB에 전달되지 않습니다."
+    },
+    {
+      "heading": "엔티티와 값 객체의 차이",
+      "text": "OrderEntity는 @Id의 id로 DB 주문 한 건을 식별합니다. 수량이 2에서 4로 바뀌어도 A 주문이라는 식별은 유지됩니다. 같은 필드값 전체를 비교하는 값과 달리 엔티티는 어느 DB 행을 나타내며 누가 관리 중인지도 중요합니다.\n\n수량처럼 바뀌는 필드까지 equals·hashCode에 넣으면 컬렉션에서 찾는 기준이 바뀔 수 있습니다. 연관관계가 있는 엔티티의 자동 생성 메서드는 연결된 객체를 따라 읽거나 지연 로딩을 일으킬 수도 있습니다. 이 예제는 그런 일반 전략을 자동 결정하려고 @Data를 붙이지 않고 changeQuantity의 변경 규칙에 집중합니다. 실제 엔티티의 동등성은 ID가 정해지는 시점·프록시·관계를 함께 검토해야 합니다."
+    },
+    {
+      "heading": "캡슐화와 ORM 제약",
+      "text": "캡슐화는 이 코드에서 “quantity를 아무 값으로나 대입하게 하지 않고 changeQuantity를 통해 바꾸게 한다”는 뜻입니다. changeQuantity는 quantity <= 0이면 this.quantity에 대입하기 전에 예외를 던집니다. 그래서 수량 3인 주문에 0을 요청해도 실패 뒤 수량은 3입니다. 공개 생성자도 changeQuantity를 거쳐 초기 수량에 같은 규칙을 적용합니다.\n\nprotected 무인자 생성자는 ORM이 객체를 복원할 때 쓸 생성 경로입니다. 이 코드의 @Id가 필드에 있으므로 JPA는 필드를 통해 값을 읽고 채울 수 있으며 모든 필드에 공개 setter가 필요한 것은 아닙니다. 자바 메서드의 검사만으로 DB를 직접 갱신하는 다른 경로까지 막지는 못하므로 실제 시스템에서는 DB 제약도 함께 설계해야 합니다. create-drop은 이 학습용 H2 DB를 만들고 폐기하기 위한 설정입니다."
+    }
+  ],
+  "example": {
+    "title": "JpaLab 기준 구현",
+    "code": "package edu.lab;\nimport jakarta.persistence.*;\nimport java.util.Map;\nimport java.util.UUID;\npublic final class JpaLab {\n    private JpaLab() {}\n    public static EntityManagerFactory open() {\n        return Persistence.createEntityManagerFactory(\"orders\", Map.of(\n            \"jakarta.persistence.jdbc.url\", \"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"));\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 3개 JUnit 테스트 통과.\n검증 항목: 관리 엔티티 변경 감지 · 분리 객체 변경 비반영 · 실패 시 객체 수량 보존.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "JpaLab.open은 테스트마다 별도 이름의 H2 DB를 사용하는 EntityManagerFactory를 만듭니다. 실제 수량 변경은 함께 제공된 OrderEntity.java의 changeQuantity가 맡습니다. 이 메서드는 양수인지 확인한 뒤 필드에 대입할 뿐 SQL을 직접 실행하지 않습니다. 관리 중인 A의 수량 2를 4로 바꾸고 commit하면 새 조회는 4를 읽지만, EntityManager를 닫은 뒤 A 객체를 7로 바꾸면 DB는 2 그대로입니다. 수량 3인 B를 0으로 바꾸려는 시도는 대입 전에 예외가 나서 객체 값도 3으로 남습니다.\n\n공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/JpaLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport jakarta.persistence.*;\nimport java.util.Map;\nimport java.util.UUID;\npublic final class JpaLab {\n    private JpaLab() {}\n    public static EntityManagerFactory open() {\n        return Persistence.createEntityManagerFactory(\"orders\", Map.of(\n            \"jakarta.persistence.jdbc.url\", \"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"));\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>jpa-state</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.hibernate.orm</groupId><artifactId>hibernate-core</artifactId></dependency>\n<dependency><groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId></dependency>\n<dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId></dependency></dependencies></project>\n"
+      },
+      {
+        "path": "src/main/resources/META-INF/persistence.xml",
+        "language": "xml",
+        "code": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<persistence xmlns=\"https://jakarta.ee/xml/ns/persistence\" version=\"3.0\">\n  <persistence-unit name=\"orders\" transaction-type=\"RESOURCE_LOCAL\">\n    <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider><class>edu.lab.OrderEntity</class>\n    <exclude-unlisted-classes>true</exclude-unlisted-classes>\n    <properties>\n      <property name=\"jakarta.persistence.jdbc.driver\" value=\"org.h2.Driver\"/>\n      <property name=\"jakarta.persistence.jdbc.user\" value=\"sa\"/>\n      <property name=\"jakarta.persistence.jdbc.password\" value=\"\"/>\n      <property name=\"hibernate.hbm2ddl.auto\" value=\"create-drop\"/>\n      <property name=\"hibernate.show_sql\" value=\"false\"/>\n    </properties>\n  </persistence-unit>\n</persistence>\n"
+      },
+      {
+        "path": "src/main/java/edu/lab/OrderEntity.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport jakarta.persistence.*;\n@Entity\n@Table(name=\"purchase_orders\")\npublic class OrderEntity {\n    @Id private String id;\n    private int quantity;\n    protected OrderEntity() {}\n    public OrderEntity(String id, int quantity) {\n        if (id == null || id.isBlank()) throw new IllegalArgumentException(\"id\");\n        this.id = id; changeQuantity(quantity);\n    }\n    public String id() { return id; }\n    public int quantity() { return quantity; }\n    public void changeQuantity(int quantity) {\n        // BEGIN EXERCISE\n        if (quantity <= 0) throw new IllegalArgumentException(\"quantity\");\n        this.quantity = quantity;\n        // END EXERCISE\n    }\n}\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "jpa-state-q1",
+      "question": "EntityManager를 닫은 뒤 detached 주문의 수량을 바꾸면?",
+      "options": [
+        "setter 호출만으로 항상 UPDATE된다.",
+        "모든 엔티티는 JVM 종료까지 관리 상태다.",
+        "@Entity가 있으면 트랜잭션이 필요 없다.",
+        "다시 영속화하는 별도 과정 없이는 DB에 자동 반영되지 않는다."
+      ],
+      "correctIndex": 3,
+      "explanation": "EntityManager를 닫으면 그 객체는 더 이상 해당 관리 범위에서 변경 추적되지 않습니다. 기존 테스트의 detached.changeQuantity(7)는 자바 필드를 7로 바꾸지만 storedQuantity()가 새 EntityManager로 읽는 DB 값은 2입니다. @Entity 표시가 있다는 이유만으로 모든 객체 변경이 자동 저장되지는 않습니다."
+    },
+    {
+      "id": "jpa-state-q2",
+      "question": "엔티티에 모든 필드 기반 equals/hashCode를 적용하기 전에 확인할 사항은?",
+      "options": [
+        "들여쓰기만 확인한다.",
+        "변경 가능한 필드·연관관계·프록시와 식별자 전략을 검토한다.",
+        "DB 컬럼 순서만 확인한다.",
+        "record로 바꾸면 모든 JPA 제약이 없어진다."
+      ],
+      "correctIndex": 1,
+      "explanation": "OrderEntity의 quantity는 정상적으로 바뀔 수 있는 값입니다. 이를 해시 계산에 넣었을 때 컬렉션 조회가 안정적인지, 저장 전후 ID가 같게 유지되는지, 연관관계나 프록시를 읽는 영향이 있는지 따져야 합니다. 코드 줄 수나 DB 열 순서만으로 equals·hashCode 전략을 결정할 수는 없습니다."
+    }
+  ],
+  "practice": {
+    "title": "객체 수량과 DB 수량을 따로 확인하기",
+    "scenario": "주문 수량 변경 메서드를 실행했는데 새로 조회하면 옛 수량이 보입니다. 메서드 본문뿐 아니라 그 객체를 읽은 EntityManager가 아직 관리 중인지, 트랜잭션을 확정했는지 확인하려 합니다.",
+    "tasks": [
+      "OrderEntity.changeQuantity에서 양수 검사를 대입보다 먼저 하세요. 수량 3에서 0 변경이 실패하면 객체 값도 3이어야 합니다.",
+      "기존 managedChangesAreFlushed의 begin → find → changeQuantity(4) → commit → 새 EntityManager 조회를 따라 DB 수량이 4인 이유를 설명하세요.",
+      "detachedChangesAreNotAutomaticallySaved의 find → close → changeQuantity(7) 순서를 비교하고, 메모리 객체와 DB 수량 2를 구분하세요.",
+      "persistence.xml의 create-drop은 폐기 가능한 학습 DB용이며 운영 마이그레이션 정책이 아닙니다.",
+      "flush가 SQL 동기화이고 commit은 트랜잭션 확정이라는 차이를 설명하세요. 이 테스트에는 여러 요청의 동시 수정 충돌이나 운영 DB의 잠금 검증이 없습니다."
+    ],
+    "takeaway": "필드를 바꾸는 메서드와 DB에 반영하는 관리 상태를 함께 읽습니다. 값이 바뀌었다는 사실만으로 저장을 판단하지 말고 새 EntityManager의 조회 결과와 트랜잭션 종료를 확인합니다."
+  },
+  "sources": [
+    {
+      "title": "Hibernate persistence context",
+      "url": "https://docs.hibernate.org/orm/6.6/userguide/html_single/#pc",
+      "edition": "Hibernate ORM 6.6",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Jakarta Persistence",
+      "url": "https://jakarta.ee/specifications/persistence/3.1/",
+      "edition": "Jakarta Persistence 3.1",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Lombok EqualsAndHashCode",
+      "url": "https://projectlombok.org/features/EqualsAndHashCode",
+      "edition": "Lombok",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "JPA",
+    "Hibernate"
+  ],
+  "exerciseId": "jpa-state-project",
+  "professionalExercise": {
+    "id": "jpa-state-project",
+    "profileId": "professional-jpa",
+    "mode": "project",
+    "instructions": [
+      "OrderEntity.changeQuantity는 양수만 허용하고 실패하면 기존 수량을 유지합니다.",
+      "관리 상태에서 수량을 변경하고 commit한 뒤 새 EntityManager로 읽으면 변경이 보입니다.",
+      "EntityManager를 닫은 뒤 detached 엔티티를 변경해도 DB 값은 바뀌지 않습니다.",
+      "create-drop 설정은 폐기 가능한 학습 DB용이며 운영 마이그레이션 정책이 아닙니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/OrderEntity.java"
+    ],
+    "template": "package edu.lab;\nimport jakarta.persistence.*;\nimport java.util.Map;\nimport java.util.UUID;\npublic final class JpaLab {\n    private JpaLab() {}\n    public static EntityManagerFactory open() {\n        return Persistence.createEntityManagerFactory(\"orders\", Map.of(\n            \"jakarta.persistence.jdbc.url\", \"jdbc:h2:mem:\" + UUID.randomUUID() + \";DB_CLOSE_DELAY=-1\"));\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/JpaLab.java",
+        "templatePath": "lessons/jpa-state/starter/src/main/java/edu/lab/JpaLab.java",
+        "referencePath": "lessons/jpa-state/reference/src/main/java/edu/lab/JpaLab.java",
+        "editable": false
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/jpa-state/starter/pom.xml",
+        "referencePath": "lessons/jpa-state/reference/pom.xml",
+        "editable": false
+      },
+      {
+        "path": "src/main/resources/META-INF/persistence.xml",
+        "templatePath": "lessons/jpa-state/starter/src/main/resources/META-INF/persistence.xml",
+        "referencePath": "lessons/jpa-state/reference/src/main/resources/META-INF/persistence.xml",
+        "editable": false
+      },
+      {
+        "path": "src/main/java/edu/lab/OrderEntity.java",
+        "templatePath": "lessons/jpa-state/starter/src/main/java/edu/lab/OrderEntity.java",
+        "referencePath": "lessons/jpa-state/reference/src/main/java/edu/lab/OrderEntity.java",
+        "editable": true
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/jpa-state/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "관리 엔티티 변경 감지",
+      "분리 객체 변경 비반영",
+      "실패 시 객체 수량 보존"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "sql-jdbc",
+    "lombok-values"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 3,
+    "starterSatisfied": false,
+    "sourceFingerprint": "c721dc8a92215ad6b837e104656f0ba8defb5781844f845447f5194a1737332c",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  },
+  "learningGuide": {
+    "scenario": "수량 2인 A 주문을 읽고 changeQuantity를 호출합니다. 관리 중에 4로 바꾼 경우와 EntityManager를 닫은 뒤 7로 바꾼 경우는 같은 메서드를 써도 DB 결과가 다릅니다.",
+    "question": "changeQuantity에 SQL이 없는데 언제 DB 수량이 바뀌고, 언제 객체 값만 바뀔까요?",
+    "terms": [
+      {
+        "term": "영속성 컨텍스트",
+        "meaning": "EntityManager가 현재 추적하는 엔티티들을 관리하는 범위입니다. em.find로 읽은 OrderEntity가 이 범위 안에 있는지에 따라 자동 변경 반영 여부가 달라집니다."
+      },
+      {
+        "term": "관리 상태와 분리 상태",
+        "meaning": "관리 상태는 EntityManager가 추적 중인 상태이고, 분리 상태는 그 관리에서 벗어난 상태입니다. 기존 테스트는 em.close()로 두 상황을 나눕니다."
+      },
+      {
+        "term": "변경 감지",
+        "meaning": "관리 객체의 값이 바뀐 것을 확인해 DB에 맞추는 동작입니다. changeQuantity(4)의 필드 대입이 관리 상태에서는 SQL 반영으로 이어집니다."
+      },
+      {
+        "term": "flush와 commit",
+        "meaning": "flush는 변경을 SQL로 동기화하는 일이고 commit은 트랜잭션을 확정하는 일입니다. SQL이 나갔다는 것만으로 확정된 것은 아닙니다."
+      }
+    ],
+    "walkthrough": [
+      "공개 OrderEntity 생성자는 id를 확인하고 changeQuantity(quantity)를 호출합니다. 처음 만들 때도 수량 규칙을 같은 메서드로 검사합니다.",
+      "changeQuantity는 0 이하인지 먼저 확인하고, 통과한 경우에만 this.quantity에 새 값을 넣습니다. 이 본문 자체에는 SQL 호출이 없습니다.",
+      "기존 관리 상태 테스트는 begin 후 em.find로 A를 읽고 changeQuantity(4)를 부릅니다. commit 때 필요한 변경이 DB에 동기화·확정되어 새 조회가 4를 읽습니다.",
+      "분리 상태 테스트는 A를 읽은 em을 먼저 닫습니다. 이후 detached.changeQuantity(7)은 객체의 필드만 바꾸고, 새 EntityManager가 읽는 DB 수량은 2입니다.",
+      "기존 실패 테스트의 B는 수량 3입니다. changeQuantity(0)은 if에서 예외를 던져 대입을 건너뛰므로 order.quantity()는 계속 3입니다."
+    ],
+    "prediction": {
+      "question": "DB 수량 2인 A를 em.find로 읽고 em.close()한 뒤 그 객체에서 changeQuantity(7)를 호출합니다. 새 EntityManager로 A를 읽으면 수량은 얼마인가요?",
+      "answer": "2입니다. 바꾼 분리 객체의 수량만 7입니다.",
+      "explanation": "changeQuantity의 자바 대입은 실행됐지만 원래 EntityManager는 닫혔습니다. 그 뒤 변경을 DB에 반영하는 별도 과정이 없으므로 자동 UPDATE가 일어나지 않습니다."
+    },
+    "takeaway": "“메서드가 실행됐다”와 “DB에 저장됐다”는 확인 지점이 다릅니다. 엔티티를 누가 관리하는지, 어느 트랜잭션에서 확정하는지를 함께 추적합니다.",
+    "code": {
+      "file": "src/main/java/edu/lab/OrderEntity.java",
+      "source": "    public OrderEntity(String id, int quantity) {\n        if (id == null || id.isBlank()) throw new IllegalArgumentException(\"id\");\n        this.id = id; changeQuantity(quantity);\n    }\n    public String id() { return id; }\n    public int quantity() { return quantity; }\n    public void changeQuantity(int quantity) {\n        // BEGIN EXERCISE\n        if (quantity <= 0) throw new IllegalArgumentException(\"quantity\");\n        this.quantity = quantity;\n        // END EXERCISE\n    }\n}\n"
+    }
+  }
+}

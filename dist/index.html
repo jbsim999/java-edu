@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#173d35" />
+    <meta name="description" content="Java 8·11·17·21 공식 문서를 바탕으로 개념, 예제, 문제와 코드 실습을 연결하는 Java 학습실." />
+    <title>Java Edu — 이해에서 설계까지</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#lesson-title">수업 본문으로 이동</a>
+    <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6" /></symbol>
+      <symbol id="icon-book" viewBox="0 0 24 24"><path d="M12 6v15M3 4h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5v15h-5a4 4 0 0 0-4 2 4 4 0 0 0-4-2H3z" /></symbol>
+      <symbol id="icon-code" viewBox="0 0 24 24"><path d="m7 7-5 5 5 5m10-10 5 5-5 5m-3-14-4 18" /></symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></symbol>
+      <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2" /><path d="M16 8V3H3v13h5" /></symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></symbol>
+      <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6" /></symbol>
+      <symbol id="icon-external" viewBox="0 0 24 24"><path d="M14 3h7v7m0-7L10 14m0-11H3v18h18v-7" /></symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24"><path d="m8 4 12 8-12 8z" /></symbol>
+      <symbol id="icon-terminal" viewBox="0 0 24 24"><path d="m4 6 6 6-6 6m9 0h7" /></symbol>
+      <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></symbol>
+    </svg>
+
+    <header class="site-header" id="site-header">
+      <a class="brand" href="./" aria-label="Java Edu 학습실 처음으로"><span class="brand-mark" aria-hidden="true">j<span>.</span></span><span>java<span class="brand-light">edu.</span></span></a>
+      <nav class="header-navigation" aria-label="서비스 메뉴"><a class="header-link is-current" href="#learning-workspace">학습실</a><button class="header-link" id="guide-open" type="button">학습 안내</button><button class="header-link" id="desktop-settings-open" type="button" hidden>실행 설정</button><button class="header-link" id="desktop-install-open" type="button">Windows 앱</button></nav>
+      <div class="header-tools"><button class="icon-button mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="curriculum-sidebar" aria-label="수업 목차 열기"><svg class="icon"><use href="#icon-menu"></use></svg><span>목차</span></button></div>
+    </header>
+
+    <div class="page-shell" id="app-shell">
+      <section class="intro" id="intro" aria-labelledby="page-title">
+        <div class="learning-status-heading"><h1 id="page-title">Java 학습실</h1><span class="journey-count"><strong id="overall-completed">0</strong><span id="overall-denominator"> / 34</span> 완료</span></div>
+        <div class="progress-track" id="overall-progress" role="progressbar" aria-label="전체 수업 완료" aria-valuemin="0" aria-valuemax="34" aria-valuenow="0"><span id="overall-progress-fill"></span></div>
+        <button class="continue-button" id="continue-button" type="button"><span><span class="continue-label" id="continue-label">학습 시작하기</span><strong id="continue-title">첫 수업을 준비하고 있습니다</strong></span><svg class="icon"><use href="#icon-arrow"></use></svg></button>
+        <span class="storage-indicator" id="storage-indicator"><span class="status-dot"></span><span id="storage-label">이 브라우저에 저장</span></span>
+      </section>
+
+      <main id="learning-workspace" class="learning-workspace">
+        <div id="loading-state" class="loading-state" role="status">학습 콘텐츠를 불러오고 있습니다…</div>
+        <div class="workspace-grid" id="workspace-grid" hidden>
+          <aside class="curriculum-sidebar" id="curriculum-sidebar" aria-label="수업 목차">
+            <div class="sidebar-heading"><div><p class="small-label">CURRICULUM</p><h2>학습 로드맵</h2></div><button type="button" class="icon-button mobile-menu-close" id="mobile-menu-close" aria-label="수업 목차 닫기"><svg class="icon"><use href="#icon-close"></use></svg></button></div>
+            <div class="version-control"><label for="version-select">학습 기준 버전</label><select id="version-select" data-testid="version-select"><option value="8">Java 8</option><option value="11">Java 11</option><option value="17">Java 17</option><option value="21" selected>Java 21</option></select><p>선택 버전에서 사용할 수 있는 수업</p></div>
+            <div class="track-filter" role="group" aria-label="학습 트랙"><button type="button" data-track="all" aria-pressed="true">전체</button><button type="button" data-track="transition" aria-pressed="false">Java 전환</button><button type="button" data-track="advanced" aria-pressed="false">실무 심화</button><button type="button" data-track="project" aria-pressed="false">프로젝트만</button></div>
+            <label class="search-field" for="lesson-search"><svg class="icon"><use href="#icon-search"></use></svg><input id="lesson-search" type="search" placeholder="수업·키워드 검색" autocomplete="off" aria-label="수업과 키워드 검색" /></label>
+            <div class="filtered-progress"><span id="filtered-count">현재 조건의 수업</span><span id="filtered-completed">0 / 12 완료</span></div>
+            <nav id="lesson-list" class="lesson-list" aria-label="수업 목록"></nav>
+            <div class="sidebar-footnote"><svg class="icon"><use href="#icon-book"></use></svg><p>기본 문법 경험이 있는 학습자를 위한 과정입니다. 개념과 설계의 연결에 집중합니다.</p></div>
+            <button type="button" class="text-button reset-records" id="reset-progress-open">학습 기록 초기화</button>
+          </aside>
+
+          <article class="lesson-card" id="lesson-card" aria-labelledby="lesson-title">
+            <header class="lesson-header"><div class="lesson-heading-row"><h2 id="lesson-title" tabindex="-1">학습을 준비하고 있습니다</h2></div><div class="lesson-status-row"><div id="lesson-meta" class="lesson-meta"></div><div class="achievement-row" id="lesson-achievements"></div><span class="lesson-position" id="lesson-position">01 / 34</span></div></header>
+            <div class="lesson-support" id="lesson-support">
+              <details class="lesson-details" id="lesson-info"><summary>수업 정보와 학습 목표</summary><div class="lesson-information"><p class="small-label" id="lesson-category">JAVA CORE</p><p id="lesson-description" class="lesson-description"></p><div class="lesson-detail-meta" id="lesson-detail-meta"></div><div class="learning-goals" id="lesson-goals"></div></div></details>
+              <details class="lesson-details reference-column" id="reference-column"><summary>공식 문서와 실무 사례</summary><div class="reference-content"><section class="reference-card source-card"><div class="reference-card-heading"><svg class="icon"><use href="#icon-book"></use></svg><h3>공식 문서</h3></div><div id="source-list" class="source-list"></div></section><section class="reference-card evidence-card"><h3>실무 사례</h3><p class="reference-description">공고 원문에서 관찰한 기술과 역할</p><div id="evidence-list"></div><p class="evidence-disclaimer">선별한 공고 사례이며 채용시장 통계가 아닙니다. 확인일은 게시일·현재 채용 여부를 의미하지 않습니다.</p></section></div></details>
+            </div>
+            <div class="lesson-tabs" role="tablist" aria-label="수업 학습 단계"><button type="button" id="tab-theory" role="tab" data-step="theory" aria-controls="lesson-panel" aria-selected="true" tabindex="0"><span class="tab-number">01</span> 이론</button><button type="button" id="tab-example" role="tab" data-step="example" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">02</span> 예제</button><button type="button" id="tab-quiz" role="tab" data-step="quiz" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">03</span> 문제</button><button type="button" id="tab-practice" role="tab" data-step="practice" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">04</span> 실무</button><button type="button" id="tab-lab" role="tab" data-step="lab" aria-controls="lesson-panel" aria-selected="false" tabindex="-1"><span class="tab-number">05</span> 코드 실습</button></div>
+            <section class="lesson-panel" id="lesson-panel" role="tabpanel" aria-labelledby="tab-theory" tabindex="0"></section>
+            <footer class="lesson-footer" id="lesson-footer"></footer>
+          </article>
+
+        </div>
+      </main>
+      <footer class="site-footer"><span class="footer-brand">javaedu.</span><p>공식 문서로 이해하고, 코드로 확인하는 시간.</p><button class="text-button" id="footer-guide-open" type="button">학습 기준과 기록 안내 <span aria-hidden="true">↗</span></button></footer>
+    </div>
+
+    <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div class="sr-only" id="announcer" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><div class="dialog-heading"><p class="small-label">LEARNING GUIDE</p><button class="icon-button" type="button" data-close-dialog="guide-dialog" aria-label="학습 안내 닫기"><svg class="icon"><use href="#icon-close"></use></svg></button></div><h2 id="guide-title">이 학습실을 사용하는 방법</h2><p>다른 언어 경험자의 Java 전환과 현직 개발자의 심화 학습을 함께 지원합니다. 이론 → 예제 → 문제 → 실무 → 코드 실습 순서로 진행해 보세요.</p><ul><li><strong>학습 기준:</strong> Java 8·11·17·21. 선택 버전에 맞는 수업을 표시합니다.</li><li><strong>객관식 성취:</strong> 한 수업의 모든 문제에 정답을 제출하면 기록됩니다.</li><li><strong>실습 통과:</strong> 현재 작성 코드로 제출한 테스트가 모두 통과하면 기록됩니다. 두 조건을 모두 충족하면 수업 완료입니다.</li><li><strong>설계 기록:</strong> 나의 판단을 정리하는 메모입니다. 자동 평가나 정답 판정이 아닙니다.</li><li><strong>실행 환경:</strong> 웹의 코어 실습은 실제 JVM 21에서 실행합니다. Windows 통합 패키지에는 Java 21과 Maven이 포함되어 코어와 기본 실무 프로젝트를 실행할 수 있습니다. 실제 Java 8·11·17 JVM이 필요한 경우 고급 설정에서 직접 등록할 수 있습니다. 컴파일 대상과 실제 JVM은 실행 화면에 따로 표시됩니다.</li><li><strong>저장:</strong> 웹은 현재 브라우저에, Windows 앱은 이 PC의 앱 데이터에 코드·메모·진도를 저장합니다. 앱 기록은 재시작 후에도 유지됩니다. 웹과 앱의 기록은 서로 동기화되지 않습니다.</li></ul><p class="dialog-note">코드 예제와 실습에서 Java 구문 강조와 3가지 테마를 사용할 수 있습니다. 실습은 줄 번호·자동 들여쓰기·괄호 짝 표시를 지원합니다. 색상은 코드의 구문을 구분하며 컴파일 결과를 대신하지 않습니다.</p><button class="button button-primary" type="button" data-close-dialog="guide-dialog">학습실로 돌아가기</button></dialog>
+    <dialog id="reset-dialog" class="app-dialog compact-dialog" aria-labelledby="reset-title"><p class="small-label">LEARNING RECORDS</p><h2 id="reset-title">학습 기록을 초기화할까요?</h2><p id="reset-records-description">이 브라우저의 진도, 파일별 작성 코드와 설계 메모를 모두 지웁니다. 현재 학습 기준 버전은 유지됩니다.</p><div class="dialog-actions"><button class="button button-secondary" type="button" data-close-dialog="reset-dialog" autofocus>기록 유지</button><button class="button button-danger" id="confirm-reset-progress" type="button">모든 학습 기록 지우기</button></div></dialog>
+    <dialog id="desktop-settings-dialog" class="app-dialog settings-dialog" aria-labelledby="desktop-settings-title"><div class="dialog-heading"><p class="small-label">LOCAL EXECUTION</p><button class="icon-button" type="button" data-close-dialog="desktop-settings-dialog" aria-label="실행 설정 닫기"><svg class="icon"><use href="#icon-close"></use></svg></button></div><h2 id="desktop-settings-title">내 PC의 실행 환경</h2><p id="desktop-settings-description">실행 도구를 확인하고 있습니다. 코드는 실행·제출 버튼을 눌렀을 때 실행됩니다.</p><div id="desktop-settings-body"></div><div class="dialog-actions"><button class="button button-primary" type="button" data-close-dialog="desktop-settings-dialog">설정 닫기</button></div></dialog>
+    <dialog id="install-dialog" class="app-dialog" aria-labelledby="install-title"><div class="dialog-heading"><p class="small-label">WINDOWS APP</p><button class="icon-button" type="button" data-close-dialog="install-dialog" aria-label="Windows 앱 안내 닫기"><svg class="icon"><use href="#icon-close"></use></svg></button></div><h2 id="install-title">설치 한 번으로 코드 실습까지</h2><p>Windows x64 통합 패키지에 Java 21과 Maven이 함께 들어 있습니다. 도구를 별도로 설치하거나 폴더를 선택하지 않고 코어와 기본 실무 프로젝트 20개를 시작할 수 있습니다.</p><ul><li>EXE로 설치하거나 ZIP의 모든 파일을 풀고 Java Edu.exe를 실행하세요. 실행 파일만 따로 옮기면 동작하지 않습니다.</li><li>앱의 실행 설정에서 권한에 동의하면 코어 실습을 바로 실행할 수 있습니다. 기본 실제 JVM은 Java 21이며 Java 8·11·17·21 컴파일 대상을 지원합니다.</li><li>Spring 등 기본 실무 수업은 처음 환경 준비 시 인터넷 연결이 필요합니다. 필요한 라이브러리를 Maven Central에서 자동 다운로드합니다.</li><li>Redis·Kafka 실제 서비스 연동은 선택 실습입니다. 해당 서버는 패키지에 포함되지 않습니다.</li><li>실제 Java 8·11·17 JVM의 차이를 비교하려면 고급 설정에서 해당 JDK를 선택해 등록할 수 있습니다.</li><li>Java 코드는 PC의 파일·네트워크에 접근할 수 있습니다. 격리된 보안 샌드박스가 아니므로 신뢰하는 코드를 실행하세요.</li></ul><p id="installer-availability" class="dialog-note">통합 패키지의 버전과 다운로드 파일은 GitHub 릴리스에서 확인하세요. 웹과 앱의 학습 기록은 각각 저장됩니다.</p><div class="dialog-actions"><a class="button button-secondary" id="windows-download" href="https://github.com/jbsim999/java-edu/releases" target="_blank" rel="noopener noreferrer">Windows 패키지 다운로드 ↗</a><button class="button button-primary" type="button" data-close-dialog="install-dialog">학습 계속하기</button></div></dialog>
+    <noscript><div class="noscript-note">수업 탐색과 코드 실습을 사용하려면 JavaScript를 켜 주세요.</div></noscript>
+  </body>
+</html>

@@ -1,0 +1,1204 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-12",
+  "status": "source-prepared",
+  "lessons": [
+    {
+      "id": "build-maven",
+      "order": 1,
+      "title": "Maven으로 재현 가능한 주문 계산 빌드",
+      "profileId": "professional-junit",
+      "prerequisites": [
+        "core:oop",
+        "core:testing-design"
+      ],
+      "lessonPath": "lessons/build-maven/lesson.json",
+      "referenceDir": "lessons/build-maven/reference",
+      "starterDir": "lessons/build-maven/starter",
+      "graderDir": "lessons/build-maven/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/OrderAmounts.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/OrderAmounts.java",
+          "templatePath": "lessons/build-maven/starter/src/main/java/edu/lab/OrderAmounts.java",
+          "referencePath": "lessons/build-maven/reference/src/main/java/edu/lab/OrderAmounts.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/build-maven/starter/pom.xml",
+          "referencePath": "lessons/build-maven/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/build-maven/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "build-maven-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 2,
+        "starterSatisfied": false,
+        "sourceFingerprint": "a9d4d663d97d617409faa0998490cce985e0199084dc3fa55e42351f452d2405",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "test-contracts",
+      "order": 2,
+      "title": "JUnit·AssertJ로 경계와 상태 전이 검증",
+      "profileId": "professional-junit",
+      "prerequisites": [
+        "build-maven"
+      ],
+      "lessonPath": "lessons/test-contracts/lesson.json",
+      "referenceDir": "lessons/test-contracts/reference",
+      "starterDir": "lessons/test-contracts/starter",
+      "graderDir": "lessons/test-contracts/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/Reservation.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/Reservation.java",
+          "templatePath": "lessons/test-contracts/starter/src/main/java/edu/lab/Reservation.java",
+          "referencePath": "lessons/test-contracts/reference/src/main/java/edu/lab/Reservation.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/test-contracts/starter/pom.xml",
+          "referencePath": "lessons/test-contracts/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/test-contracts/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "test-contracts-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 2,
+        "starterSatisfied": false,
+        "sourceFingerprint": "cbdeec57521987b40feed67ef6c3af7d4964f6b8804b51c5abae9447dc147028",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "test-collaborators",
+      "order": 3,
+      "title": "Mockito로 외부 협력의 실패를 통제",
+      "profileId": "professional-mockito",
+      "prerequisites": [
+        "test-contracts",
+        "core:polymorphism"
+      ],
+      "lessonPath": "lessons/test-collaborators/lesson.json",
+      "referenceDir": "lessons/test-collaborators/reference",
+      "starterDir": "lessons/test-collaborators/starter",
+      "graderDir": "lessons/test-collaborators/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/Checkout.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/Checkout.java",
+          "templatePath": "lessons/test-collaborators/starter/src/main/java/edu/lab/Checkout.java",
+          "referencePath": "lessons/test-collaborators/reference/src/main/java/edu/lab/Checkout.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/test-collaborators/starter/pom.xml",
+          "referencePath": "lessons/test-collaborators/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/test-collaborators/grader/src/test/java/edu/lab/ContractTest.java"
+        },
+        {
+          "path": "src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker",
+          "sourcePath": "lessons/test-collaborators/grader/src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker"
+        }
+      ],
+      "exerciseId": "test-collaborators-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 2,
+        "starterSatisfied": false,
+        "sourceFingerprint": "9b36daa6c1fdc7557702c6825819f8b92f1384bb562f8b95e8b9f79368bab733",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "lombok-values",
+      "order": 4,
+      "title": "Lombok 생성 코드와 동등성의 범위",
+      "profileId": "professional-lombok",
+      "prerequisites": [
+        "test-contracts",
+        "core:collections"
+      ],
+      "lessonPath": "lessons/lombok-values/lesson.json",
+      "referenceDir": "lessons/lombok-values/reference",
+      "starterDir": "lessons/lombok-values/starter",
+      "graderDir": "lessons/lombok-values/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/OrderKey.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/OrderKey.java",
+          "templatePath": "lessons/lombok-values/starter/src/main/java/edu/lab/OrderKey.java",
+          "referencePath": "lessons/lombok-values/reference/src/main/java/edu/lab/OrderKey.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/lombok-values/starter/pom.xml",
+          "referencePath": "lessons/lombok-values/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/lombok-values/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "lombok-values-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 2,
+        "starterSatisfied": false,
+        "sourceFingerprint": "65bcae5900047877a822e89821af9b5ac4a511c1b6a634d002757f4cee5efa9a",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "spring-di",
+      "order": 5,
+      "title": "Spring IoC·DI와 객체 수명",
+      "profileId": "professional-spring-core",
+      "prerequisites": [
+        "test-collaborators"
+      ],
+      "lessonPath": "lessons/spring-di/lesson.json",
+      "referenceDir": "lessons/spring-di/reference",
+      "starterDir": "lessons/spring-di/starter",
+      "graderDir": "lessons/spring-di/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/DiLab.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/DiLab.java",
+          "templatePath": "lessons/spring-di/starter/src/main/java/edu/lab/DiLab.java",
+          "referencePath": "lessons/spring-di/reference/src/main/java/edu/lab/DiLab.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/spring-di/starter/pom.xml",
+          "referencePath": "lessons/spring-di/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/spring-di/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "spring-di-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 2,
+        "starterSatisfied": false,
+        "sourceFingerprint": "092bd10703609e7a73d032f092ed2ace7c53fdf37819c64a4c41504b156ed844",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "spring-aop",
+      "order": 6,
+      "title": "프록시·AOP 호출 경로의 반례",
+      "profileId": "professional-spring-aop",
+      "prerequisites": [
+        "spring-di"
+      ],
+      "lessonPath": "lessons/spring-aop/lesson.json",
+      "referenceDir": "lessons/spring-aop/reference",
+      "starterDir": "lessons/spring-aop/starter",
+      "graderDir": "lessons/spring-aop/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/AopLab.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/AopLab.java",
+          "templatePath": "lessons/spring-aop/starter/src/main/java/edu/lab/AopLab.java",
+          "referencePath": "lessons/spring-aop/reference/src/main/java/edu/lab/AopLab.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/spring-aop/starter/pom.xml",
+          "referencePath": "lessons/spring-aop/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/spring-aop/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "spring-aop-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 2,
+        "starterSatisfied": false,
+        "sourceFingerprint": "203bd280bfe19ad5cbaef8117c8ab0d00b95d07fe7f1a1f2f5988a187b82bad9",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "mvc-rest",
+      "order": 7,
+      "title": "MVC·REST의 상태 코드와 자원 계약",
+      "profileId": "professional-spring-web",
+      "prerequisites": [
+        "spring-di"
+      ],
+      "lessonPath": "lessons/mvc-rest/lesson.json",
+      "referenceDir": "lessons/mvc-rest/reference",
+      "starterDir": "lessons/mvc-rest/starter",
+      "graderDir": "lessons/mvc-rest/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/OrdersController.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/OrdersController.java",
+          "templatePath": "lessons/mvc-rest/starter/src/main/java/edu/lab/OrdersController.java",
+          "referencePath": "lessons/mvc-rest/reference/src/main/java/edu/lab/OrdersController.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/mvc-rest/starter/pom.xml",
+          "referencePath": "lessons/mvc-rest/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/mvc-rest/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "mvc-rest-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 3,
+        "starterSatisfied": false,
+        "sourceFingerprint": "cf818104cfb16da2cfc56a8a887429f7354bfbaf23b2edb5db949abe45065bdf",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "json-validation",
+      "order": 8,
+      "title": "Jackson·Validation의 입력 경계",
+      "profileId": "professional-spring-web",
+      "prerequisites": [
+        "mvc-rest"
+      ],
+      "lessonPath": "lessons/json-validation/lesson.json",
+      "referenceDir": "lessons/json-validation/reference",
+      "starterDir": "lessons/json-validation/starter",
+      "graderDir": "lessons/json-validation/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/CreateOrderController.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/CreateOrderController.java",
+          "templatePath": "lessons/json-validation/starter/src/main/java/edu/lab/CreateOrderController.java",
+          "referencePath": "lessons/json-validation/reference/src/main/java/edu/lab/CreateOrderController.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/json-validation/starter/pom.xml",
+          "referencePath": "lessons/json-validation/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/json-validation/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "json-validation-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 3,
+        "starterSatisfied": false,
+        "sourceFingerprint": "cb2dd529c781109c07cf6272989e94ab712c38e29484390922d7e38fb4f046b9",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "sql-jdbc",
+      "order": 9,
+      "title": "SQL·JDBC로 재고 변경과 롤백",
+      "profileId": "professional-jdbc",
+      "prerequisites": [
+        "test-contracts",
+        "core:exceptions"
+      ],
+      "lessonPath": "lessons/sql-jdbc/lesson.json",
+      "referenceDir": "lessons/sql-jdbc/reference",
+      "starterDir": "lessons/sql-jdbc/starter",
+      "graderDir": "lessons/sql-jdbc/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/JdbcReservations.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/JdbcReservations.java",
+          "templatePath": "lessons/sql-jdbc/starter/src/main/java/edu/lab/JdbcReservations.java",
+          "referencePath": "lessons/sql-jdbc/reference/src/main/java/edu/lab/JdbcReservations.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/sql-jdbc/starter/pom.xml",
+          "referencePath": "lessons/sql-jdbc/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/sql-jdbc/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "sql-jdbc-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 4,
+        "starterSatisfied": false,
+        "sourceFingerprint": "408fed487770c066b90e1e7c078dc734c57e66818a2bfeb14f65d66372dc02ba",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "mybatis-mapping",
+      "order": 10,
+      "title": "MyBatis 파라미터 바인딩과 XML 매핑",
+      "profileId": "professional-mybatis",
+      "prerequisites": [
+        "sql-jdbc"
+      ],
+      "lessonPath": "lessons/mybatis-mapping/lesson.json",
+      "referenceDir": "lessons/mybatis-mapping/reference",
+      "starterDir": "lessons/mybatis-mapping/starter",
+      "graderDir": "lessons/mybatis-mapping/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/resources/edu/lab/OrderMapper.xml"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/MyBatisLab.java",
+          "templatePath": "lessons/mybatis-mapping/starter/src/main/java/edu/lab/MyBatisLab.java",
+          "referencePath": "lessons/mybatis-mapping/reference/src/main/java/edu/lab/MyBatisLab.java",
+          "editable": false
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/mybatis-mapping/starter/pom.xml",
+          "referencePath": "lessons/mybatis-mapping/reference/pom.xml",
+          "editable": false
+        },
+        {
+          "path": "src/main/resources/edu/lab/OrderMapper.xml",
+          "templatePath": "lessons/mybatis-mapping/starter/src/main/resources/edu/lab/OrderMapper.xml",
+          "referencePath": "lessons/mybatis-mapping/reference/src/main/resources/edu/lab/OrderMapper.xml",
+          "editable": true
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/mybatis-mapping/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "mybatis-mapping-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 2,
+        "starterSatisfied": false,
+        "sourceFingerprint": "127b6b7a7bdcf465e0b3b55b32791f14bef3accc1f246aa163497b27102bb36c",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "jpa-state",
+      "order": 11,
+      "title": "JPA·Hibernate의 상태와 변경 감지",
+      "profileId": "professional-jpa",
+      "prerequisites": [
+        "sql-jdbc",
+        "lombok-values"
+      ],
+      "lessonPath": "lessons/jpa-state/lesson.json",
+      "referenceDir": "lessons/jpa-state/reference",
+      "starterDir": "lessons/jpa-state/starter",
+      "graderDir": "lessons/jpa-state/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/OrderEntity.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/JpaLab.java",
+          "templatePath": "lessons/jpa-state/starter/src/main/java/edu/lab/JpaLab.java",
+          "referencePath": "lessons/jpa-state/reference/src/main/java/edu/lab/JpaLab.java",
+          "editable": false
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/jpa-state/starter/pom.xml",
+          "referencePath": "lessons/jpa-state/reference/pom.xml",
+          "editable": false
+        },
+        {
+          "path": "src/main/resources/META-INF/persistence.xml",
+          "templatePath": "lessons/jpa-state/starter/src/main/resources/META-INF/persistence.xml",
+          "referencePath": "lessons/jpa-state/reference/src/main/resources/META-INF/persistence.xml",
+          "editable": false
+        },
+        {
+          "path": "src/main/java/edu/lab/OrderEntity.java",
+          "templatePath": "lessons/jpa-state/starter/src/main/java/edu/lab/OrderEntity.java",
+          "referencePath": "lessons/jpa-state/reference/src/main/java/edu/lab/OrderEntity.java",
+          "editable": true
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/jpa-state/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "jpa-state-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 3,
+        "starterSatisfied": false,
+        "sourceFingerprint": "c721dc8a92215ad6b837e104656f0ba8defb5781844f845447f5194a1737332c",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "flyway-migrations",
+      "order": 12,
+      "title": "Flyway로 스키마 변경을 기록",
+      "profileId": "professional-flyway",
+      "prerequisites": [
+        "sql-jdbc"
+      ],
+      "lessonPath": "lessons/flyway-migrations/lesson.json",
+      "referenceDir": "lessons/flyway-migrations/reference",
+      "starterDir": "lessons/flyway-migrations/starter",
+      "graderDir": "lessons/flyway-migrations/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/resources/db/migration/V2__request_key.sql"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/MigrationLab.java",
+          "templatePath": "lessons/flyway-migrations/starter/src/main/java/edu/lab/MigrationLab.java",
+          "referencePath": "lessons/flyway-migrations/reference/src/main/java/edu/lab/MigrationLab.java",
+          "editable": false
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/flyway-migrations/starter/pom.xml",
+          "referencePath": "lessons/flyway-migrations/reference/pom.xml",
+          "editable": false
+        },
+        {
+          "path": "src/main/resources/db/migration/V1__create_orders.sql",
+          "templatePath": "lessons/flyway-migrations/starter/src/main/resources/db/migration/V1__create_orders.sql",
+          "referencePath": "lessons/flyway-migrations/reference/src/main/resources/db/migration/V1__create_orders.sql",
+          "editable": false
+        },
+        {
+          "path": "src/main/resources/db/migration/V2__request_key.sql",
+          "templatePath": "lessons/flyway-migrations/starter/src/main/resources/db/migration/V2__request_key.sql",
+          "referencePath": "lessons/flyway-migrations/reference/src/main/resources/db/migration/V2__request_key.sql",
+          "editable": true
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/flyway-migrations/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "flyway-migrations-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 1,
+        "starterSatisfied": false,
+        "sourceFingerprint": "f26b6d4349c223d9c0ee58c03a190193431592dd68baa2cdec3775fcc42ecd6f",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "tx-proxy",
+      "order": 13,
+      "title": "Spring 트랜잭션 프록시와 롤백 경계",
+      "profileId": "professional-spring-tx",
+      "prerequisites": [
+        "spring-aop",
+        "sql-jdbc"
+      ],
+      "recommendedOneOf": [
+        "mybatis-mapping",
+        "jpa-state"
+      ],
+      "lessonPath": "lessons/tx-proxy/lesson.json",
+      "referenceDir": "lessons/tx-proxy/reference",
+      "starterDir": "lessons/tx-proxy/starter",
+      "graderDir": "lessons/tx-proxy/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/TransactionLab.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/TransactionLab.java",
+          "templatePath": "lessons/tx-proxy/starter/src/main/java/edu/lab/TransactionLab.java",
+          "referencePath": "lessons/tx-proxy/reference/src/main/java/edu/lab/TransactionLab.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/tx-proxy/starter/pom.xml",
+          "referencePath": "lessons/tx-proxy/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/tx-proxy/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "tx-proxy-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 2,
+        "starterSatisfied": false,
+        "sourceFingerprint": "bec5b6f575b6d3e3a8875aa5cd5db2b14f6e5e84f99e76bc0a8c435e0339a0ab",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "optimistic-cancel",
+      "order": 14,
+      "title": "낙관적 잠금과 중복 취소의 의미",
+      "profileId": "professional-jpa",
+      "prerequisites": [
+        "jpa-state",
+        "tx-proxy"
+      ],
+      "lessonPath": "lessons/optimistic-cancel/lesson.json",
+      "referenceDir": "lessons/optimistic-cancel/reference",
+      "starterDir": "lessons/optimistic-cancel/starter",
+      "graderDir": "lessons/optimistic-cancel/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/CancellableOrder.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/CancellationLab.java",
+          "templatePath": "lessons/optimistic-cancel/starter/src/main/java/edu/lab/CancellationLab.java",
+          "referencePath": "lessons/optimistic-cancel/reference/src/main/java/edu/lab/CancellationLab.java",
+          "editable": false
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/optimistic-cancel/starter/pom.xml",
+          "referencePath": "lessons/optimistic-cancel/reference/pom.xml",
+          "editable": false
+        },
+        {
+          "path": "src/main/resources/META-INF/persistence.xml",
+          "templatePath": "lessons/optimistic-cancel/starter/src/main/resources/META-INF/persistence.xml",
+          "referencePath": "lessons/optimistic-cancel/reference/src/main/resources/META-INF/persistence.xml",
+          "editable": false
+        },
+        {
+          "path": "src/main/java/edu/lab/CancellableOrder.java",
+          "templatePath": "lessons/optimistic-cancel/starter/src/main/java/edu/lab/CancellableOrder.java",
+          "referencePath": "lessons/optimistic-cancel/reference/src/main/java/edu/lab/CancellableOrder.java",
+          "editable": true
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/optimistic-cancel/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "optimistic-cancel-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 2,
+        "starterSatisfied": false,
+        "sourceFingerprint": "e5e66d061683ca073cec3b47255908664a8be1efbe2f2223808aa499c2b23ec0",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "security-csrf",
+      "order": 15,
+      "title": "Spring Security의 인증·권한·CSRF",
+      "profileId": "professional-security",
+      "prerequisites": [
+        "json-validation"
+      ],
+      "lessonPath": "lessons/security-csrf/lesson.json",
+      "referenceDir": "lessons/security-csrf/reference",
+      "starterDir": "lessons/security-csrf/starter",
+      "graderDir": "lessons/security-csrf/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/SecurityLab.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/SecurityLab.java",
+          "templatePath": "lessons/security-csrf/starter/src/main/java/edu/lab/SecurityLab.java",
+          "referencePath": "lessons/security-csrf/reference/src/main/java/edu/lab/SecurityLab.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/security-csrf/starter/pom.xml",
+          "referencePath": "lessons/security-csrf/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/security-csrf/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "security-csrf-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 4,
+        "starterSatisfied": false,
+        "sourceFingerprint": "cad4dad0bbd2cd397625790a2880f107777c9222fcaf45fa9ef39664f99e47a4",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "oidc-identity",
+      "order": 16,
+      "title": "OAuth2·OIDC의 역할과 계정 식별 경계",
+      "profileId": "professional-oidc-fixture",
+      "prerequisites": [
+        "security-csrf"
+      ],
+      "lessonPath": "lessons/oidc-identity/lesson.json",
+      "referenceDir": "lessons/oidc-identity/reference",
+      "starterDir": "lessons/oidc-identity/starter",
+      "graderDir": "lessons/oidc-identity/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/IdentityLab.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/IdentityLab.java",
+          "templatePath": "lessons/oidc-identity/starter/src/main/java/edu/lab/IdentityLab.java",
+          "referencePath": "lessons/oidc-identity/reference/src/main/java/edu/lab/IdentityLab.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/oidc-identity/starter/pom.xml",
+          "referencePath": "lessons/oidc-identity/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/oidc-identity/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "oidc-identity-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 4,
+        "starterSatisfied": false,
+        "sourceFingerprint": "efb7ff61b59c5dc1f7d5aa5c28fb1d966c164b72dc6c9af2dda2b586d2335cd0",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "jwt-validation",
+      "order": 17,
+      "title": "JWT 서명·발급자·대상·만료 검증",
+      "profileId": "professional-jwt-local",
+      "prerequisites": [
+        "security-csrf"
+      ],
+      "lessonPath": "lessons/jwt-validation/lesson.json",
+      "referenceDir": "lessons/jwt-validation/reference",
+      "starterDir": "lessons/jwt-validation/starter",
+      "graderDir": "lessons/jwt-validation/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/JwtLab.java"
+      ],
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/JwtLab.java",
+          "templatePath": "lessons/jwt-validation/starter/src/main/java/edu/lab/JwtLab.java",
+          "referencePath": "lessons/jwt-validation/reference/src/main/java/edu/lab/JwtLab.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/jwt-validation/starter/pom.xml",
+          "referencePath": "lessons/jwt-validation/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/jwt-validation/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "exerciseId": "jwt-validation-project",
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 5,
+        "starterSatisfied": false,
+        "sourceFingerprint": "d38b26b60eefc5c0ff1a5de48f9e990ae37322631559da4c24fc6f1e7f4574c4",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "redis-cache",
+      "order": 18,
+      "title": "Redis TTL·무효화·키 소유권",
+      "profileId": "professional-redis",
+      "prerequisites": [
+        "tx-proxy"
+      ],
+      "lessonPath": "lessons/redis-cache/lesson.json",
+      "referenceDir": "lessons/redis-cache/reference",
+      "starterDir": "lessons/redis-cache/starter",
+      "graderDir": "lessons/redis-cache/grader",
+      "sourceStatus": "source-prepared",
+      "executionVerified": false,
+      "webPublication": "static-only-after-content-review",
+      "editableFiles": [
+        "src/main/java/edu/lab/StockCache.java"
+      ],
+      "exerciseId": "redis-cache-project",
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/StockCache.java",
+          "templatePath": "lessons/redis-cache/starter/src/main/java/edu/lab/StockCache.java",
+          "referencePath": "lessons/redis-cache/reference/src/main/java/edu/lab/StockCache.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/redis-cache/starter/pom.xml",
+          "referencePath": "lessons/redis-cache/reference/pom.xml",
+          "editable": false
+        },
+        {
+          "path": "FIXTURE.md",
+          "templatePath": "lessons/redis-cache/starter/FIXTURE.md",
+          "referencePath": "lessons/redis-cache/reference/FIXTURE.md",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/redis-cache/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ]
+    },
+    {
+      "id": "kafka-idempotency",
+      "order": 19,
+      "title": "Kafka 재전달과 DB 멱등 처리",
+      "profileId": "professional-kafka",
+      "prerequisites": [
+        "tx-proxy",
+        "flyway-migrations"
+      ],
+      "lessonPath": "lessons/kafka-idempotency/lesson.json",
+      "referenceDir": "lessons/kafka-idempotency/reference",
+      "starterDir": "lessons/kafka-idempotency/starter",
+      "graderDir": "lessons/kafka-idempotency/grader",
+      "sourceStatus": "source-prepared",
+      "executionVerified": false,
+      "webPublication": "static-only-after-content-review",
+      "editableFiles": [
+        "src/main/java/edu/lab/EventHandler.java"
+      ],
+      "exerciseId": "kafka-idempotency-project",
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/EventHandler.java",
+          "templatePath": "lessons/kafka-idempotency/starter/src/main/java/edu/lab/EventHandler.java",
+          "referencePath": "lessons/kafka-idempotency/reference/src/main/java/edu/lab/EventHandler.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/kafka-idempotency/starter/pom.xml",
+          "referencePath": "lessons/kafka-idempotency/reference/pom.xml",
+          "editable": false
+        },
+        {
+          "path": "FIXTURE.md",
+          "templatePath": "lessons/kafka-idempotency/starter/FIXTURE.md",
+          "referencePath": "lessons/kafka-idempotency/reference/FIXTURE.md",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/kafka-idempotency/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ]
+    },
+    {
+      "id": "observability",
+      "order": 20,
+      "title": "Micrometer 지표와 관측 실패 신호",
+      "profileId": "professional-observability",
+      "prerequisites": [
+        "spring-di",
+        "test-collaborators"
+      ],
+      "lessonPath": "lessons/observability/lesson.json",
+      "referenceDir": "lessons/observability/reference",
+      "starterDir": "lessons/observability/starter",
+      "graderDir": "lessons/observability/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/OrderTelemetry.java"
+      ],
+      "exerciseId": "observability-project",
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/OrderTelemetry.java",
+          "templatePath": "lessons/observability/starter/src/main/java/edu/lab/OrderTelemetry.java",
+          "referencePath": "lessons/observability/reference/src/main/java/edu/lab/OrderTelemetry.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/observability/starter/pom.xml",
+          "referencePath": "lessons/observability/reference/pom.xml",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/observability/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 1,
+        "starterSatisfied": false,
+        "sourceFingerprint": "92e8fff2dd813d24d2a77243bf640196e2bbabcde8ec61f95343ce9e953a3c2e",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "build-gradle-ci",
+      "order": 21,
+      "title": "Gradle·Docker·CI의 재현 조건",
+      "profileId": "professional-gradle-ci",
+      "prerequisites": [
+        "build-maven",
+        "test-contracts"
+      ],
+      "lessonPath": "lessons/build-gradle-ci/lesson.json",
+      "referenceDir": "lessons/build-gradle-ci/reference",
+      "starterDir": "lessons/build-gradle-ci/starter",
+      "graderDir": "lessons/build-gradle-ci/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/BuildMain.java"
+      ],
+      "exerciseId": "build-gradle-ci-project",
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/BuildMain.java",
+          "templatePath": "lessons/build-gradle-ci/starter/src/main/java/edu/lab/BuildMain.java",
+          "referencePath": "lessons/build-gradle-ci/reference/src/main/java/edu/lab/BuildMain.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/build-gradle-ci/starter/pom.xml",
+          "referencePath": "lessons/build-gradle-ci/reference/pom.xml",
+          "editable": false
+        },
+        {
+          "path": "settings.gradle",
+          "templatePath": "lessons/build-gradle-ci/starter/settings.gradle",
+          "referencePath": "lessons/build-gradle-ci/reference/settings.gradle",
+          "editable": false
+        },
+        {
+          "path": "build.gradle",
+          "templatePath": "lessons/build-gradle-ci/starter/build.gradle",
+          "referencePath": "lessons/build-gradle-ci/reference/build.gradle",
+          "editable": false
+        },
+        {
+          "path": "Dockerfile",
+          "templatePath": "lessons/build-gradle-ci/starter/Dockerfile",
+          "referencePath": "lessons/build-gradle-ci/reference/Dockerfile",
+          "editable": false
+        },
+        {
+          "path": "deployment-examples/ci.yml",
+          "templatePath": "lessons/build-gradle-ci/starter/deployment-examples/ci.yml",
+          "referencePath": "lessons/build-gradle-ci/reference/deployment-examples/ci.yml",
+          "editable": false
+        },
+        {
+          "path": "BUILD-COMPARISON.md",
+          "templatePath": "lessons/build-gradle-ci/starter/BUILD-COMPARISON.md",
+          "referencePath": "lessons/build-gradle-ci/reference/BUILD-COMPARISON.md",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/build-gradle-ci/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 2,
+        "starterSatisfied": false,
+        "sourceFingerprint": "62e994695134b10e2f7284eebd74a5673eb2f1f2359028b85b22661f2a25b4ff",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    },
+    {
+      "id": "orders-capstone",
+      "order": 22,
+      "title": "주문·예약·취소 통합 계약",
+      "profileId": "professional-capstone",
+      "prerequisites": [
+        "json-validation",
+        "tx-proxy",
+        "security-csrf",
+        "flyway-migrations"
+      ],
+      "lessonPath": "lessons/orders-capstone/lesson.json",
+      "referenceDir": "lessons/orders-capstone/reference",
+      "starterDir": "lessons/orders-capstone/starter",
+      "graderDir": "lessons/orders-capstone/grader",
+      "sourceStatus": "reference-verified",
+      "executionVerified": true,
+      "webPublication": "reviewed-static",
+      "editableFiles": [
+        "src/main/java/edu/lab/CapstoneLab.java"
+      ],
+      "exerciseId": "orders-capstone-project",
+      "files": [
+        {
+          "path": "src/main/java/edu/lab/CapstoneLab.java",
+          "templatePath": "lessons/orders-capstone/starter/src/main/java/edu/lab/CapstoneLab.java",
+          "referencePath": "lessons/orders-capstone/reference/src/main/java/edu/lab/CapstoneLab.java",
+          "editable": true
+        },
+        {
+          "path": "pom.xml",
+          "templatePath": "lessons/orders-capstone/starter/pom.xml",
+          "referencePath": "lessons/orders-capstone/reference/pom.xml",
+          "editable": false
+        },
+        {
+          "path": "src/main/resources/application.properties",
+          "templatePath": "lessons/orders-capstone/starter/src/main/resources/application.properties",
+          "referencePath": "lessons/orders-capstone/reference/src/main/resources/application.properties",
+          "editable": false
+        },
+        {
+          "path": "src/main/resources/db/migration/V1__orders.sql",
+          "templatePath": "lessons/orders-capstone/starter/src/main/resources/db/migration/V1__orders.sql",
+          "referencePath": "lessons/orders-capstone/reference/src/main/resources/db/migration/V1__orders.sql",
+          "editable": false
+        }
+      ],
+      "testFiles": [
+        {
+          "path": "src/test/java/edu/lab/ContractTest.java",
+          "sourcePath": "lessons/orders-capstone/grader/src/test/java/edu/lab/ContractTest.java"
+        }
+      ],
+      "verification": {
+        "checkedAt": "2026-10-12",
+        "runtimeJava": 21,
+        "compilerTarget": 17,
+        "maven": "3.10.0",
+        "referenceTests": 6,
+        "starterSatisfied": false,
+        "sourceFingerprint": "da15b7d861d2b0be337ec2cb9e5a67f8f72e089b444043a84e821298bf159431",
+        "scope": "reference-and-starter-tests; installed-app-verification-separate"
+      }
+    }
+  ]
+}

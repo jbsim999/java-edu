@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.lab.MyBatisLab$Mapper">
+  <resultMap id="orderRow" type="edu.lab.MyBatisLab$OrderRow">
+    <id property="id" column="order_id"/><result property="sku" column="sku"/><result property="quantity" column="quantity"/>
+  </resultMap>
+  <!-- sku 필터를 값 바인딩으로 구현하세요. -->
+  <select id="findBySku" resultMap="orderRow">
+    SELECT id AS order_id, sku, quantity FROM orders WHERE 1 = 0 ORDER BY id
+  </select>
+</mapper>

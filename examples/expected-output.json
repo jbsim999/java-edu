@@ -1,0 +1,62 @@
+{
+  "java8/java-basics/Main.java": {
+    "minVersion": 8,
+    "mainClass": "Main",
+    "stdout": "5\n15\nfalse\ntrue\n"
+  },
+  "java8/oop/Main.java": {
+    "minVersion": 8,
+    "mainClass": "Main",
+    "stdout": "true\nfalse\n60\n"
+  },
+  "java8/polymorphism/Main.java": {
+    "minVersion": 8,
+    "mainClass": "Main",
+    "stdout": "[stock]\nreport:stock\n"
+  },
+  "java8/collections/Main.java": {
+    "minVersion": 8,
+    "mainClass": "Main",
+    "stdout": "2\njava\nother\n"
+  },
+  "java8/generics/Main.java": {
+    "minVersion": 8,
+    "mainClass": "Main",
+    "stdout": "6.0\n2.0\n"
+  },
+  "java8/exceptions/Main.java": {
+    "minVersion": 8,
+    "mainClass": "Main",
+    "stdout": "12\nNumberFormatException\n"
+  },
+  "java8/streams/Main.java": {
+    "minVersion": 8,
+    "mainClass": "Main",
+    "stdout": "[JAVA, JVM]\n4\n"
+  },
+  "java8/concurrency/Main.java": {
+    "minVersion": 8,
+    "mainClass": "Main",
+    "stdout": "2000\n"
+  },
+  "java11/modern-apis/Main.java": {
+    "minVersion": 11,
+    "mainClass": "Main",
+    "stdout": "2\n3\n"
+  },
+  "java17/records-sealed/Main.java": {
+    "minVersion": 17,
+    "mainClass": "Main",
+    "stdout": "true\nFailure[reason=positive-required]\n"
+  },
+  "java21/java21/Main.java": {
+    "minVersion": 21,
+    "mainClass": "Main",
+    "stdout": "sync:2\nmissing\n"
+  },
+  "java8/testing-design/Main.java": {
+    "minVersion": 8,
+    "mainClass": "Main",
+    "stdout": "4 contract checks passed\n"
+  }
+}

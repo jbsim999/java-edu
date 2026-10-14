@@ -1,0 +1,203 @@
+{
+  "id": "lombok-values",
+  "title": "Lombok 생성 코드와 동등성의 범위",
+  "description": "HashSet에 넣은 주문 키의 방문 횟수를 바꿔도 다시 찾을 수 있어야 합니다. Lombok이 생성하는 equals·hashCode가 어떤 필드를 사용하는지 읽습니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "Lombok이 생성할 생성자·getter·equals·hashCode를 애너테이션과 연결해 설명한다.",
+    "서로 다른 OrderKey라도 orderId가 같으면 같은 키로 판단하는 이유를 설명한다.",
+    "visit()로 바뀌는 displayVisits를 동등성에서 제외한다.",
+    "방문 횟수가 변한 뒤에도 HashSet 조회가 유지되는지 확인한다."
+  ],
+  "theory": [
+    {
+      "heading": "애너테이션 처리 결과 읽기",
+      "text": "OrderKey에는 생성자와 getOrderId가 직접 적혀 있지 않습니다. @RequiredArgsConstructor가 final orderId를 받는 생성자를 만들고 @Getter가 필드를 읽는 메서드를 만듭니다. orderId의 @NonNull은 생성자에 null이 들어오는 것을 거절하게 합니다. 다만 null 검사이므로 빈 문자열까지 주문 ID로 적합한지는 이 애너테이션이 결정하지 않습니다.\n\nequals는 두 객체를 같은 값으로 볼지, hashCode는 해시 기반 컬렉션이 찾을 위치를 정할 때 사용할 값을 제공합니다. @EqualsAndHashCode(onlyExplicitlyIncluded = true)는 표시한 필드만 이 두 메서드에 참여시키라는 설정이고, 여기서는 orderId에만 Include가 붙어 있습니다. 코드를 줄이기 전에 “방문 횟수가 달라도 ID가 같으면 같은 키”라는 규칙을 먼저 정한 것입니다."
+    },
+    {
+      "heading": "가변 필드와 엔티티의 함정",
+      "text": "HashSet은 객체를 넣을 때의 해시값을 이용해 저장하고, 찾을 때도 해시값과 equals를 사용합니다. set.add(key) 뒤 key.visit()를 했을 때 displayVisits가 hashCode 계산에 들어 있다면 찾을 기준이 달라져 같은 객체도 못 찾는 문제가 생길 수 있습니다. 이 코드의 hashCode는 final String orderId에만 의존하므로 visit() 뒤에도 기준이 같습니다.\n\n이 예제는 주문을 식별하는 작은 키 객체이며 객체 전체가 불변인 것은 아닙니다. displayVisits는 계속 바뀝니다. 이를 JPA 엔티티에 모든 필드를 포함하는 @Data를 붙여도 된다는 규칙으로 옮기지 않습니다. DB 저장 때 ID가 생기거나 연관 객체를 따라가야 하는 엔티티는 동등성·출력·접근자 생성의 영향을 별도로 검토해야 합니다."
+    }
+  ],
+  "example": {
+    "title": "OrderKey 기준 구현",
+    "code": "package edu.lab;\nimport lombok.Getter;\nimport lombok.NonNull;\nimport lombok.RequiredArgsConstructor;\nimport lombok.EqualsAndHashCode;\n@Getter\n@RequiredArgsConstructor\n@EqualsAndHashCode(onlyExplicitlyIncluded = true)\npublic final class OrderKey {\n @NonNull @EqualsAndHashCode.Include private final String orderId;\n private int displayVisits;\n public void visit() { displayVisits++; }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 같은 ID 동등성 · 가변 표시 값 제외 · HashSet 조회 유지.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "OrderKey(\"o-1\")을 만들면 orderId가 고정되고 displayVisits는 0에서 시작합니다. visit()는 displayVisits만 1 늘립니다. Include는 orderId에만 붙어 있으므로 방문 횟수가 다른 두 OrderKey(\"o-1\")도 equals가 같다고 판단하고 hashCode도 같습니다. 그래서 기존 테스트는 visit() 뒤 원래 key와 새 OrderKey(\"o-1\")을 모두 HashSet에서 찾는지 확인합니다. @NonNull이 생성자의 null 입력을 거절하는지도 별도 테스트합니다.\n\n공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrderKey.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport lombok.Getter;\nimport lombok.NonNull;\nimport lombok.RequiredArgsConstructor;\nimport lombok.EqualsAndHashCode;\n@Getter\n@RequiredArgsConstructor\n@EqualsAndHashCode(onlyExplicitlyIncluded = true)\npublic final class OrderKey {\n @NonNull @EqualsAndHashCode.Include private final String orderId;\n private int displayVisits;\n public void visit() { displayVisits++; }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>lombok-values</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><scope>provided</scope></dependency></dependencies><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><configuration><annotationProcessors><annotationProcessor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor</annotationProcessor></annotationProcessors></configuration></plugin></plugins></build></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "lombok-values-q1",
+      "question": "OrderKey의 displayVisits를 equals/hashCode에서 제외하는 이유는?",
+      "options": [
+        "방문 횟수가 바뀌어도 주문 식별과 해시 탐색 기준을 유지하기 위해서다.",
+        "모든 int 필드는 동등성에 사용할 수 없기 때문이다.",
+        "Lombok은 가변 필드를 컴파일하지 못하기 때문이다.",
+        "HashSet은 항상 객체 참조만 비교하기 때문이다."
+      ],
+      "correctIndex": 0,
+      "explanation": "visit()는 사용자가 주문 화면을 몇 번 봤는지를 바꿉니다. 같은 주문인지 판단하는 orderId는 그대로입니다. displayVisits까지 hashCode에 넣으면 Set에 저장할 때와 찾을 때의 해시 기준이 달라질 수 있으므로 이 필드는 제외합니다."
+    },
+    {
+      "id": "lombok-values-q2",
+      "question": "JPA 엔티티에 @Data를 그대로 적용하기 전에 무엇을 검토해야 하는가?",
+      "options": [
+        "식별자 수명·가변 필드·연관관계 순환·지연 로딩 접근",
+        "소스 줄 수만",
+        "어노테이션의 알파벳 순서만",
+        "필드가 private인지 여부만"
+      ],
+      "correctIndex": 0,
+      "explanation": "엔티티는 저장 전후 ID가 달라질 수 있고 다른 엔티티와 연결될 수 있습니다. 자동 생성한 equals·hashCode·toString이 그 필드를 읽거나 바꾸는 동작도 실제 코드입니다. 이 수업의 고정 orderId 키에서 안전한 선택이 모든 엔티티에서도 맞는지 식별자 수명과 연관관계를 살펴야 합니다."
+    }
+  ],
+  "practice": {
+    "title": "방문 횟수가 바뀌어도 찾을 수 있는 주문 키",
+    "scenario": "최근 본 주문을 HashSet으로 관리합니다. 사용자가 다시 보았다고 visit()를 호출한 뒤에도 같은 주문 키를 찾고 중복으로 넣지 않으려 합니다.",
+    "tasks": [
+      "OrderKey의 equals와 hashCode에 불변 orderId만 참여하게 하세요.",
+      "HashSet에 넣은 key에 visit()를 호출한 뒤 key와 새 OrderKey(\"o-1\")을 찾을 수 있는지 기존 테스트에서 확인하세요.",
+      "onlyExplicitlyIncluded=true와 orderId의 Include를 보고 displayVisits가 왜 제외되는지 설명하세요.",
+      "OrderKey(null)은 거절되지만 빈 ID의 유효성은 별도 규칙이 필요하다는 점, JPA 엔티티의 ID 수명까지 이 테스트로 검증한 것은 아니라는 점을 적으세요."
+    ],
+    "takeaway": "자동 생성된 메서드도 어떤 값을 읽는지 직접 작성한 코드처럼 검토합니다. 컬렉션에 들어간 키는 조회 기준이 흔들리지 않아야 하므로 표시용 가변 값과 식별 값을 구분합니다."
+  },
+  "sources": [
+    {
+      "title": "Lombok EqualsAndHashCode",
+      "url": "https://projectlombok.org/features/EqualsAndHashCode",
+      "edition": "Lombok",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Lombok constructor generation",
+      "url": "https://projectlombok.org/features/constructor",
+      "edition": "Lombok",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Java"
+  ],
+  "exerciseId": "lombok-values-project",
+  "professionalExercise": {
+    "id": "lombok-values-project",
+    "profileId": "professional-lombok",
+    "mode": "project",
+    "instructions": [
+      "OrderKey의 동등성과 hashCode는 불변 orderId만 사용하게 하세요.",
+      "visit()로 displayVisits가 바뀌어도 HashSet에서 키를 찾을 수 있어야 합니다.",
+      "Lombok @EqualsAndHashCode(onlyExplicitlyIncluded=true)와 Include의 생성 의미를 설명하세요."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/OrderKey.java"
+    ],
+    "template": "package edu.lab;\nimport lombok.Getter;\nimport lombok.NonNull;\nimport lombok.RequiredArgsConstructor;\n@Getter\n@RequiredArgsConstructor\npublic final class OrderKey {\n @NonNull private final String orderId;\n private int displayVisits;\n public void visit() { displayVisits++; }\n // orderId만 사용하는 동등성 계약을 Lombok으로 선언하세요.\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/OrderKey.java",
+        "templatePath": "lessons/lombok-values/starter/src/main/java/edu/lab/OrderKey.java",
+        "referencePath": "lessons/lombok-values/reference/src/main/java/edu/lab/OrderKey.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/lombok-values/starter/pom.xml",
+        "referencePath": "lessons/lombok-values/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/lombok-values/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "같은 ID 동등성",
+      "가변 표시 값 제외",
+      "HashSet 조회 유지"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "test-contracts",
+    "core:collections"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 2,
+    "starterSatisfied": false,
+    "sourceFingerprint": "65bcae5900047877a822e89821af9b5ac4a511c1b6a634d002757f4cee5efa9a",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  },
+  "learningGuide": {
+    "scenario": "주문 키를 HashSet에 넣고 화면을 한 번 열어 visit()를 호출했습니다. 방문 횟수가 변했다는 이유로 이미 넣은 주문을 다시 못 찾으면 중복 확인이 깨집니다.",
+    "question": "OrderKey에서 어떤 필드가 바뀌어도 같은 주문 키라는 판단은 유지되어야 할까요?",
+    "terms": [
+      {
+        "term": "동등성",
+        "meaning": "서로 다른 객체를 같은 값으로 판단하는 규칙입니다. 여기서는 orderId가 같으면 같은 OrderKey입니다."
+      },
+      {
+        "term": "hashCode",
+        "meaning": "HashSet이 찾을 후보를 좁힐 때 사용하는 정수값입니다. 같은 키로 판단되는 두 객체는 같은 hashCode를 내야 합니다."
+      },
+      {
+        "term": "생성 코드",
+        "meaning": "컴파일할 때 Lombok이 애너테이션을 보고 추가하는 메서드입니다. OrderKey의 생성자·getter·equals·hashCode가 해당합니다."
+      },
+      {
+        "term": "불변 식별 값",
+        "meaning": "객체가 만들어진 뒤 바뀌지 않는 구별 기준입니다. final String orderId는 고정되어 있고 displayVisits는 visit()마다 바뀝니다."
+      }
+    ],
+    "walkthrough": [
+      "@RequiredArgsConstructor는 final orderId를 받는 생성자를 만듭니다. @NonNull 때문에 null ID는 생성할 때 거절됩니다.",
+      "@EqualsAndHashCode의 onlyExplicitlyIncluded=true가 비교 대상을 명시한 필드로 제한합니다. Include가 있는 필드는 orderId 하나입니다.",
+      "HashSet에 OrderKey(\"o-1\")을 넣으면 그 키의 hashCode가 저장 위치를 찾는 데 쓰입니다.",
+      "visit()는 displayVisits만 증가시킵니다. equals와 hashCode의 입력인 orderId에는 손대지 않습니다.",
+      "그래서 방문 뒤에도 원래 key와 새 OrderKey(\"o-1\")을 같은 키로 찾습니다. 기존 stableIdentity 테스트는 OrderKey(\"o-2\")와는 다른 값인지도 확인합니다."
+    ],
+    "prediction": {
+      "question": "OrderKey(\"o-1\")을 HashSet에 넣고 visit()를 한 번 호출한 뒤 새 OrderKey(\"o-1\")을 조회하면 찾을 수 있나요?",
+      "answer": "찾을 수 있습니다. 기존 key의 displayVisits는 1이지만 새 키와 orderId가 같습니다.",
+      "explanation": "displayVisits에는 Include가 없어서 equals와 hashCode 계산에 참여하지 않습니다. 방문 횟수 차이가 있어도 조회 기준인 orderId는 같습니다."
+    },
+    "takeaway": "“모든 필드를 비교한다”보다 “무엇이 같아야 같은 키인가”를 먼저 정합니다. 자동 생성 도구의 설정은 그 결정을 코드로 드러내는 방법입니다.",
+    "code": {
+      "file": "src/main/java/edu/lab/OrderKey.java",
+      "source": "@Getter\n@RequiredArgsConstructor\n@EqualsAndHashCode(onlyExplicitlyIncluded = true)\npublic final class OrderKey {\n @NonNull @EqualsAndHashCode.Include private final String orderId;\n private int displayVisits;\n public void visit() { displayVisits++; }\n}\n"
+    }
+  }
+}
