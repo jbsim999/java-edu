@@ -1,0 +1,205 @@
+{
+  "id": "security-csrf",
+  "title": "Spring Security의 인증·권한·CSRF",
+  "description": "로그인한 viewer가 주문을 만들면 왜 403일까요? 사용자 확인, 주문을 만들 권한, CSRF 토큰을 각각 만족시켜야 하는 POST /orders를 읽습니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "사용자가 누구인지 확인하는 인증과 그 행동을 허용하는 인가를 구분한다.",
+    "유효한 CSRF 토큰만 있는 미인증 요청이 401인 이유를 설명한다.",
+    "VIEWER 역할이나 누락된 CSRF 토큰이 각각 403을 만드는 조건을 찾는다.",
+    "BUYER와 유효한 CSRF를 갖춘 요청만 200이 되는 경로를 따라간다.",
+    "역할 검사와 특정 주문의 소유자 검사를 구분한다."
+  ],
+  "learningGuide": {
+    "scenario": "viewer는 올바른 아이디와 비밀번호로 요청했고 CSRF 토큰도 보냈습니다. 그런데 주문 생성 요청이 403으로 거절됩니다.",
+    "question": "로그인은 확인됐는데 이 요청을 막는 코드가 또 있을까요?",
+    "terms": [
+      {
+        "term": "인증",
+        "meaning": "요청자의 신원을 확인하는 과정입니다. 여기서는 HTTP Basic으로 교육용 계정 정보를 받습니다."
+      },
+      {
+        "term": "인가",
+        "meaning": "그 사용자가 해당 행동을 해도 되는지 판단하는 과정입니다. hasRole(\"BUYER\")가 주문 요청의 역할을 검사합니다."
+      },
+      {
+        "term": "CSRF 토큰",
+        "meaning": "브라우저를 이용한 위조 요청을 막기 위해 서버가 확인하는 값입니다. 이 예제의 POST에는 인증과 별도로 필요합니다."
+      }
+    ],
+    "code": {
+      "file": "src/main/java/edu/lab/SecurityLab.java",
+      "source": "    @Bean SecurityFilterChain security(HttpSecurity http) throws Exception {\n        // BEGIN EXERCISE\n        http.authorizeHttpRequests(auth -> auth.requestMatchers(\"/orders\").hasRole(\"BUYER\").anyRequest().authenticated())\n            .httpBasic(Customizer.withDefaults()).csrf(Customizer.withDefaults());\n        return http.build();\n        // END EXERCISE\n    }\n    @Bean UserDetailsService users() {\n        return new InMemoryUserDetailsManager(\n            User.withUsername(\"buyer\").password(\"{noop}training\").roles(\"BUYER\").build(),\n            User.withUsername(\"viewer\").password(\"{noop}training\").roles(\"VIEWER\").build());"
+    },
+    "walkthrough": [
+      "authorizeHttpRequests의 requestMatchers(\"/orders\")가 검사할 경로를 고릅니다. hasRole(\"BUYER\")는 그 경로를 요청할 사용자에게 BUYER 역할을 요구합니다.",
+      "anyRequest().authenticated()는 앞 규칙에 잡히지 않은 다른 요청에도 인증을 요구합니다. /orders의 BUYER 조건을 없애는 줄이 아닙니다.",
+      "httpBasic은 인증 방식을, csrf는 기본 CSRF 방어를 설정합니다. http.build()가 이 설정을 적용할 보안 필터 구성을 만듭니다.",
+      "users의 buyer에는 BUYER, viewer에는 VIEWER 역할이 붙습니다. 따라서 viewer는 신원이 확인되고 토큰이 있어도 /orders의 BUYER 조건을 통과하지 못합니다."
+    ],
+    "prediction": {
+      "question": "POST /orders에 viewer의 올바른 인증 정보와 유효한 CSRF 토큰을 보내면 200일까요, 403일까요?",
+      "answer": "403입니다. viewer에게는 BUYER 역할이 없습니다.",
+      "explanation": "인증과 CSRF를 만족해도 hasRole(\"BUYER\") 검사는 남아 있습니다. users에서 viewer에게 준 역할은 VIEWER이므로 요청은 create에 들어가기 전에 거절됩니다."
+    },
+    "takeaway": "로그인 성공은 모든 행동을 허용한다는 뜻이 아닙니다. 코드에서 각 허용 조건을 따로 읽습니다."
+  },
+  "theory": [
+    {
+      "heading": "인증·권한·객체 소유권",
+      "text": "인증은 요청한 사람이 누구인지 확인하는 일이고, 인가는 확인된 사람이 이 행동을 해도 되는지 판단하는 일입니다. SecurityLab의 httpBasic은 테스트 계정 buyer와 viewer의 인증 정보를 받습니다. requestMatchers(\"/orders\").hasRole(\"BUYER\")는 /orders 요청에 BUYER 역할을 요구하는 인가 규칙입니다. viewer는 인증에 성공해도 이 역할이 없어 주문을 만들 수 없습니다. 또한 BUYER 역할만으로 다른 사람 주문까지 취소할 수는 없습니다. 특정 주문의 소유자 검사는 통합 과제에서 따로 다룹니다."
+    },
+    {
+      "heading": "CSRF와 인증 전송 방식",
+      "text": "CSRF는 공격자가 사용자의 브라우저를 통해 사용자가 의도하지 않은 상태 변경 요청을 보내게 하는 공격입니다. 브라우저가 인증 정보를 자동으로 보내는 환경에서는 로그인 여부만으로 이를 가릴 수 없습니다. 이 예제의 csrf(Customizer.withDefaults())는 기본 방어를 유지하므로 POST /orders에 유효한 CSRF 토큰도 필요합니다. REST API라는 이름만으로 이 검사를 끄지 않습니다. HTTP Basic과 {noop}training 비밀번호는 로컬 교육용 설정이며 실제 서비스의 HTTPS와 비밀번호 저장 정책을 대신하지 않습니다."
+    },
+    {
+      "heading": "실패 순서의 관찰",
+      "text": "보안 필터는 컨트롤러의 create에 도착하기 전에 요청을 거절할 수 있습니다. 로그인 정보와 CSRF가 모두 없으면 먼저 실패한 검사만 보게 됩니다. 그래서 인증 검사는 csrf()를 붙인 미인증 요청으로, CSRF 검사는 buyer로 인증하되 토큰을 뺀 요청으로 만듭니다. 전자는 이 설정에서 401, 후자는 403입니다. viewer에 유효한 토큰을 주면 역할 부족 403을 따로 볼 수 있습니다. 설정 코드를 쓴 줄 순서를 실제 필터 실행 순서라고 단정하지 말고 각각의 실패 조건을 분리해 확인합니다."
+    }
+  ],
+  "example": {
+    "title": "SecurityLab 기준 구현",
+    "code": "package edu.lab;\nimport java.util.Map;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.security.config.Customizer;\nimport org.springframework.security.config.annotation.web.builders.HttpSecurity;\nimport org.springframework.security.core.userdetails.*;\nimport org.springframework.security.provisioning.InMemoryUserDetailsManager;\nimport org.springframework.security.web.SecurityFilterChain;\nimport org.springframework.web.bind.annotation.*;\n@SpringBootApplication\npublic class SecurityLab {\n    @Bean SecurityFilterChain security(HttpSecurity http) throws Exception {\n        // BEGIN EXERCISE\n        http.authorizeHttpRequests(auth -> auth.requestMatchers(\"/orders\").hasRole(\"BUYER\").anyRequest().authenticated())\n            .httpBasic(Customizer.withDefaults()).csrf(Customizer.withDefaults());\n        return http.build();\n        // END EXERCISE\n    }\n    @Bean UserDetailsService users() {\n        return new InMemoryUserDetailsManager(\n            User.withUsername(\"buyer\").password(\"{noop}training\").roles(\"BUYER\").build(),\n            User.withUsername(\"viewer\").password(\"{noop}training\").roles(\"VIEWER\").build());\n    }\n    @RestController public static class Orders {\n        @PostMapping(\"/orders\") public Map<String,String> create() { return Map.of(\"status\",\"accepted\"); }\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 4개 JUnit 테스트 통과.\n검증 항목: 미인증 401 · 역할 부족 403 · CSRF 누락 403 · 허용된 요청 200.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "security 메서드는 /orders에 BUYER 역할을 요구하고 HTTP Basic 인증과 기본 CSRF 보호를 켭니다. users는 BUYER인 buyer와 VIEWER인 viewer를 만듭니다. create는 보안 검사를 통과한 뒤에만 status=accepted를 반환합니다. 그래서 테스트는 미인증·역할 부족·토큰 누락을 따로 만들고, buyer와 유효한 토큰이 함께 있을 때 200을 확인합니다. 이 컨트롤러에는 실제 주문 저장이나 소유권 검사 코드가 없습니다. 기존 기준 구현의 검증 기록은 JDK 21·Java 17 대상·Maven 3.10.0에서의 JUnit 검사입니다. 미완성 실습은 기준 테스트를 통과하지 않습니다. 설치형에서는 등록한 로컬 JDK로 자신의 코드를 별도로 실행·제출하며, 기준 구현의 기록과 자신의 실행 결과를 구분합니다.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/SecurityLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport java.util.Map;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.security.config.Customizer;\nimport org.springframework.security.config.annotation.web.builders.HttpSecurity;\nimport org.springframework.security.core.userdetails.*;\nimport org.springframework.security.provisioning.InMemoryUserDetailsManager;\nimport org.springframework.security.web.SecurityFilterChain;\nimport org.springframework.web.bind.annotation.*;\n@SpringBootApplication\npublic class SecurityLab {\n    @Bean SecurityFilterChain security(HttpSecurity http) throws Exception {\n        // BEGIN EXERCISE\n        http.authorizeHttpRequests(auth -> auth.requestMatchers(\"/orders\").hasRole(\"BUYER\").anyRequest().authenticated())\n            .httpBasic(Customizer.withDefaults()).csrf(Customizer.withDefaults());\n        return http.build();\n        // END EXERCISE\n    }\n    @Bean UserDetailsService users() {\n        return new InMemoryUserDetailsManager(\n            User.withUsername(\"buyer\").password(\"{noop}training\").roles(\"BUYER\").build(),\n            User.withUsername(\"viewer\").password(\"{noop}training\").roles(\"VIEWER\").build());\n    }\n    @RestController public static class Orders {\n        @PostMapping(\"/orders\") public Map<String,String> create() { return Map.of(\"status\",\"accepted\"); }\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>security-csrf</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>\n<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "security-csrf-q1",
+      "question": "인증과 CSRF를 독립적으로 검사하려면?",
+      "options": [
+        "둘 다 항상 끄고 컨트롤러만 검사한다.",
+        "로그인 성공만 확인하면 CSRF도 검증된다.",
+        "모든 오류 응답을 200으로 통일한다.",
+        "인증 검사는 유효한 CSRF와 함께, CSRF 검사는 인증된 요청으로 수행한다."
+      ],
+      "correctIndex": 3,
+      "explanation": "미인증 요청에 CSRF까지 없으면 CSRF 검사가 먼저 막아 인증 실패를 제대로 관찰하지 못할 수 있습니다. csrf()로 한 조건을 만족시킨 뒤 인증만 빼거나, buyer 인증을 준 뒤 CSRF만 빼야 무엇이 401·403을 만들었는지 알 수 있습니다."
+    },
+    {
+      "id": "security-csrf-q2",
+      "question": "BUYER 역할이 있는 사용자가 다른 사람의 주문을 취소할 때 필요한 판단은?",
+      "options": [
+        "역할만 맞으면 모든 주문을 허용한다.",
+        "주문의 소유권이나 위임 권한을 추가로 검사한다.",
+        "CSRF 토큰이 있으면 소유권 검사는 생략한다.",
+        "URL에 주문 ID가 있으면 권한이 있다고 본다."
+      ],
+      "correctIndex": 1,
+      "explanation": "hasRole(\"BUYER\")는 이 사용자가 구매자 역할인지 검사할 뿐 어느 주문의 주인인지는 모릅니다. 취소할 주문의 소유자와 인증된 사용자를 별도로 비교해야 합니다. CSRF 토큰은 이 소유권 판단을 대신하지 않습니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "POST /orders가 403을 반환했다는 문의를 받았습니다. 계정의 역할이 부족한 경우와 CSRF 토큰이 빠진 경우가 같은 코드로 보일 수 있으므로 재현 요청을 나누어 원인을 찾습니다.",
+    "tasks": [
+      "csrf()만 붙이고 인증하지 않은 요청의 401을 확인할 때, CSRF 조건을 먼저 만족시키는 이유를 설명하세요.",
+      "viewer와 유효한 CSRF로 요청하면 users의 어느 역할 설정과 hasRole의 어떤 조건이 충돌하는지 찾으세요.",
+      "buyer로 인증해도 CSRF를 빼면 403인 이유, 둘 다 갖추면 200인 이유를 각각 말하세요.",
+      "training은 가상 계정의 로컬 테스트 비밀번호입니다. 실제 자격증명으로 바꾸지 말고, 운영 계정 저장·HTTPS·토큰 전달은 별도 설계 대상으로 적으세요.",
+      "이번 검사가 URL의 역할 권한까지라는 점을 적고, 다른 사람의 주문 취소를 막으려면 필요한 소유권 검사를 통합 과제와 연결하세요."
+    ],
+    "takeaway": "401·403만 보고 원인을 단정하지 않습니다. 인증, 역할, CSRF를 한 조건씩 바꾼 요청으로 확인합니다."
+  },
+  "sources": [
+    {
+      "title": "Spring Security CSRF",
+      "url": "https://docs.spring.io/spring-security/reference/6.5/servlet/exploits/csrf.html",
+      "edition": "Spring Security 6.5",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "In-memory authentication",
+      "url": "https://docs.spring.io/spring-security/reference/6.5/servlet/authentication/passwords/in-memory.html",
+      "edition": "Spring Security 6.5",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Spring Security"
+  ],
+  "exerciseId": "security-csrf-project",
+  "professionalExercise": {
+    "id": "security-csrf-project",
+    "profileId": "professional-security",
+    "mode": "project",
+    "instructions": [
+      "POST /orders는 BUYER 역할만 허용하고 CSRF 토큰도 요구합니다.",
+      "유효한 CSRF와 미인증 요청은 401, 인증했지만 CSRF가 없으면 403입니다.",
+      "VIEWER는 CSRF가 유효해도 403, BUYER와 유효 CSRF는 200입니다.",
+      "training 비밀번호는 이 로컬 테스트의 가상 계정 값이며 실제 자격증명을 사용하지 않습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/SecurityLab.java"
+    ],
+    "template": "package edu.lab;\nimport java.util.Map;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.security.config.Customizer;\nimport org.springframework.security.config.annotation.web.builders.HttpSecurity;\nimport org.springframework.security.core.userdetails.*;\nimport org.springframework.security.provisioning.InMemoryUserDetailsManager;\nimport org.springframework.security.web.SecurityFilterChain;\nimport org.springframework.web.bind.annotation.*;\n@SpringBootApplication\npublic class SecurityLab {\n    @Bean SecurityFilterChain security(HttpSecurity http) throws Exception {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n    @Bean UserDetailsService users() {\n        return new InMemoryUserDetailsManager(\n            User.withUsername(\"buyer\").password(\"{noop}training\").roles(\"BUYER\").build(),\n            User.withUsername(\"viewer\").password(\"{noop}training\").roles(\"VIEWER\").build());\n    }\n    @RestController public static class Orders {\n        @PostMapping(\"/orders\") public Map<String,String> create() { return Map.of(\"status\",\"accepted\"); }\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/SecurityLab.java",
+        "templatePath": "lessons/security-csrf/starter/src/main/java/edu/lab/SecurityLab.java",
+        "referencePath": "lessons/security-csrf/reference/src/main/java/edu/lab/SecurityLab.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/security-csrf/starter/pom.xml",
+        "referencePath": "lessons/security-csrf/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/security-csrf/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "미인증 401",
+      "역할 부족 403",
+      "CSRF 누락 403",
+      "허용된 요청 200"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "json-validation"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 4,
+    "starterSatisfied": false,
+    "sourceFingerprint": "cad4dad0bbd2cd397625790a2880f107777c9222fcaf45fa9ef39664f99e47a4",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

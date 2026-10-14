@@ -1,0 +1,19 @@
+plugins { id 'java' }
+group = 'edu.javaedu'
+version = '0.1.0'
+repositories { mavenCentral() }
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
+tasks.withType(JavaCompile).configureEach { options.release = 17; options.encoding = 'UTF-8' }
+dependencies {
+    testImplementation platform('org.springframework.boot:spring-boot-dependencies:3.5.16')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+sourceSets {
+    test {
+        java.srcDirs = ['../grader/src/test/java']
+        resources.srcDirs = ['../grader/src/test/resources']
+    }
+}
+test { useJUnitPlatform() }

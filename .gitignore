@@ -1,0 +1,15 @@
+node_modules/
+work/
+*.class
+.DS_Store
+.env
+.env.*
+.openai/
+test-results/
+worker/assets.generated.mjs
+dist/server/
+dist/.openai/
+dist/assets/editor.bundle.js
+desktop-release/
+dist/downloads/
+dist/data/professional.js

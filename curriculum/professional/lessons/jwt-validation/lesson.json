@@ -1,0 +1,213 @@
+{
+  "id": "jwt-validation",
+  "title": "JWT 서명·발급자·대상·만료 검증",
+  "description": "서명은 맞지만 다른 API에 쓰라고 발급된 토큰을 주문 API가 받으면 안 됩니다. JwtLab의 공개키 검사와 발급자·대상·만료·사용자 ID 조건을 한 줄씩 연결합니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "서명 검증에 성공해도 JWT를 거절해야 하는 조건을 코드에서 찾는다.",
+    "정상 토큰이 통과하려면 필요한 issuer·audience·subject·exp를 설명한다.",
+    "다른 발급자·다른 API 대상·다른 키 서명에 대한 거절을 구분한다.",
+    "만료와 아직 사용 가능한 시각이 오지 않은 nbf를 고정 Clock으로 비교한다.",
+    "필수 값 누락과 현재 시각에 정확히 만료된 토큰을 거절하는 줄을 찾는다.",
+    "로컬 키 검사가 운영 키 배포·교체 검증과 다른 범위임을 설명한다."
+  ],
+  "learningGuide": {
+    "scenario": "주문 API가 신뢰하는 키로 서명된 토큰이 왔지만, audience에는 another-api만 들어 있습니다. subject와 만료 시각은 정상입니다.",
+    "question": "키가 맞는다는 이유만으로 이 토큰을 받아도 될까요?",
+    "terms": [
+      {
+        "term": "claim",
+        "meaning": "토큰이 담고 있는 이름·값 정보입니다. issuer, audience, subject, exp 등이 각각 다른 조건을 나타냅니다."
+      },
+      {
+        "term": "issuer / audience",
+        "meaning": "issuer는 발급자, audience는 토큰을 받을 대상입니다. 이 예제는 지정 발급자와 orders-api라는 대상을 요구합니다."
+      },
+      {
+        "term": "exp / nbf",
+        "meaning": "exp는 만료 시각, nbf는 사용 가능 시작 시각입니다. 서명이 맞아도 현재 시각이 허용 범위 밖이면 거절합니다."
+      },
+      {
+        "term": "Clock",
+        "meaning": "현재 시각을 제공하는 Java 객체입니다. 테스트에서는 시간을 고정해 만료 경계를 반복해서 확인할 수 있습니다."
+      }
+    ],
+    "code": {
+      "file": "src/main/java/edu/lab/JwtLab.java",
+      "source": "        NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(publicKey).build();\n        JwtTimestampValidator time = new JwtTimestampValidator(Duration.ZERO); time.setClock(clock);\n        OAuth2TokenValidator<Jwt> required = jwt -> {\n            boolean valid = jwt.getAudience() != null && jwt.getAudience().contains(\"orders-api\")\n                && jwt.getExpiresAt() != null && jwt.getExpiresAt().isAfter(clock.instant())\n                && jwt.getSubject() != null && !jwt.getSubject().isBlank();\n            return valid ? OAuth2TokenValidatorResult.success()\n                : OAuth2TokenValidatorResult.failure(new OAuth2Error(\"invalid_token\",\"required claims missing or wrong\",null));\n        };\n        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(time, new JwtIssuerValidator(ISSUER), required));\n        return decoder;"
+    },
+    "walkthrough": [
+      "NimbusJwtDecoder.withPublicKey(publicKey).build()는 주어진 RSA 공개키로 서명 검사할 decoder를 만듭니다. 아래 claim 조건은 이 검사에 추가됩니다.",
+      "JwtTimestampValidator(Duration.ZERO)와 time.setClock(clock)은 시간 오차 허용을 0으로 두고 인수로 받은 시각을 사용합니다.",
+      "required의 boolean valid는 audience에 orders-api 포함, exp 존재 및 현재보다 뒤, 비어 있지 않은 subject를 &&로 묶습니다. 모두 참이어야 합니다.",
+      "return valid ? ...는 조건을 만족하면 성공을, 아니면 invalid_token 오류를 돌려줍니다. 토큰 내용 읽기에 성공해도 이 결과는 실패일 수 있습니다.",
+      "setJwtValidator의 DelegatingOAuth2TokenValidator는 time, JwtIssuerValidator(ISSUER), required를 함께 적용합니다. return decoder로 돌려준 객체가 토큰을 읽을 때 이 정책을 검사합니다."
+    ],
+    "prediction": {
+      "question": "서명·issuer·subject·시간이 모두 맞고 audience가 another-api뿐인 토큰은 통과할까요?",
+      "answer": "거절됩니다. required의 orders-api 포함 조건이 false입니다.",
+      "explanation": "&&로 묶인 조건 중 하나라도 거짓이면 required가 invalid_token을 반환합니다. 서명 성공은 이 토큰이 현재 주문 API를 대상으로 발급됐다는 뜻까지 보장하지 않습니다."
+    },
+    "takeaway": "서명 검사와 토큰 수용 조건을 모두 읽어야, 어떤 토큰을 왜 거절하는지 설명할 수 있습니다."
+  },
+  "theory": [
+    {
+      "heading": "서명과 수용 정책",
+      "text": "JWT의 claim은 토큰 안에 담긴 이름·값 정보입니다. 내용을 읽을 수 있다는 것만으로 발급자를 믿을 수는 없습니다. decoder의 NimbusJwtDecoder.withPublicKey(publicKey)는 주어진 RSA 공개키로 서명을 확인하며 이 설정의 기본 허용 알고리즘은 RS256입니다. 서명이 맞아도 required의 audience에 orders-api가 없거나 JwtIssuerValidator가 보는 issuer가 다르면 거절합니다. 서명은 내용의 무결성을, 추가 조건은 이 주문 API가 받아들일 토큰인지를 확인합니다."
+    },
+    {
+      "heading": "시간과 테스트 재현성",
+      "text": "exp는 만료 시각, nbf는 사용을 시작할 수 있는 시각입니다. JwtTimestampValidator는 시간 조건을 확인하고 setClock(clock)은 비교할 현재 시각을 외부에서 받게 합니다. required의 getExpiresAt().isAfter(clock.instant())는 exp가 반드시 존재하고 현재보다 뒤여야 한다는 이 실습의 정책입니다. 그래서 만료 시각과 현재가 정확히 같아도 거절합니다. Duration.ZERO로 시간 오차 허용을 0으로 두어 경계를 재현하며, 실제 서비스의 서버 시간 차이 허용과 시간 동기화 정책은 따로 정합니다."
+    },
+    {
+      "heading": "키 수명과 로그",
+      "text": "테스트는 실행 중 만든 RSA 키 쌍으로 서명하고 그 공개키를 decoder에 줍니다. 따라서 다른 키로 서명한 토큰을 거절하는 검사는 가능하지만 외부 키 서버에서 키를 내려받거나 운영 키를 교체·폐기하는 과정은 포함하지 않습니다. 토큰 재사용 대응도 별도 문제입니다. 운영 관측이 필요할 때는 토큰 원문이나 개인정보 claim을 그대로 기록하기보다 서명 오류·만료·대상 불일치 같은 필요한 거절 유형을 남기는 정책을 검토합니다."
+    }
+  ],
+  "example": {
+    "title": "JwtLab 기준 구현",
+    "code": "package edu.lab;\nimport java.security.interfaces.RSAPublicKey;\nimport java.time.Clock;\nimport java.time.Duration;\nimport org.springframework.security.oauth2.core.*;\nimport org.springframework.security.oauth2.jwt.*;\npublic final class JwtLab {\n    public static final String ISSUER = \"https://training-issuer.invalid\";\n    public static JwtDecoder decoder(RSAPublicKey publicKey, Clock clock) {\n        // BEGIN EXERCISE\n        NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(publicKey).build();\n        JwtTimestampValidator time = new JwtTimestampValidator(Duration.ZERO); time.setClock(clock);\n        OAuth2TokenValidator<Jwt> required = jwt -> {\n            boolean valid = jwt.getAudience() != null && jwt.getAudience().contains(\"orders-api\")\n                && jwt.getExpiresAt() != null && jwt.getExpiresAt().isAfter(clock.instant())\n                && jwt.getSubject() != null && !jwt.getSubject().isBlank();\n            return valid ? OAuth2TokenValidatorResult.success()\n                : OAuth2TokenValidatorResult.failure(new OAuth2Error(\"invalid_token\",\"required claims missing or wrong\",null));\n        };\n        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(time, new JwtIssuerValidator(ISSUER), required));\n        return decoder;\n        // END EXERCISE\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 5개 JUnit 테스트 통과.\n검증 항목: 정상 토큰 수용 · issuer·audience 불일치 거절 · 만료·미래 nbf 거절 · 다른 키 서명 거절 · 필수 claim 누락 거절.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "decoder는 공개키로 서명을 확인할 NimbusJwtDecoder를 만들고, time에 고정 가능한 Clock을 넣습니다. required는 audience에 orders-api가 있는지, exp가 현재보다 뒤인지, subject가 비어 있지 않은지 검사합니다. 마지막 setJwtValidator는 time·issuer·required를 모두 연결하므로 하나라도 실패하면 수용하지 않습니다. 테스트는 정상 토큰 외에 다른 키·발급자·대상, 만료·미래 nbf, 누락 claim과 정확한 만료 경계를 검사합니다. 외부 키 서버나 운영 키 교체는 실행하지 않습니다. 기존 기준 구현의 검증 기록은 JDK 21·Java 17 대상·Maven 3.10.0에서의 JUnit 검사입니다. 미완성 실습은 기준 테스트를 통과하지 않습니다. 설치형에서는 등록한 로컬 JDK로 자신의 코드를 별도로 실행·제출하며, 기준 구현의 기록과 자신의 실행 결과를 구분합니다.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/JwtLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport java.security.interfaces.RSAPublicKey;\nimport java.time.Clock;\nimport java.time.Duration;\nimport org.springframework.security.oauth2.core.*;\nimport org.springframework.security.oauth2.jwt.*;\npublic final class JwtLab {\n    public static final String ISSUER = \"https://training-issuer.invalid\";\n    public static JwtDecoder decoder(RSAPublicKey publicKey, Clock clock) {\n        // BEGIN EXERCISE\n        NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(publicKey).build();\n        JwtTimestampValidator time = new JwtTimestampValidator(Duration.ZERO); time.setClock(clock);\n        OAuth2TokenValidator<Jwt> required = jwt -> {\n            boolean valid = jwt.getAudience() != null && jwt.getAudience().contains(\"orders-api\")\n                && jwt.getExpiresAt() != null && jwt.getExpiresAt().isAfter(clock.instant())\n                && jwt.getSubject() != null && !jwt.getSubject().isBlank();\n            return valid ? OAuth2TokenValidatorResult.success()\n                : OAuth2TokenValidatorResult.failure(new OAuth2Error(\"invalid_token\",\"required claims missing or wrong\",null));\n        };\n        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(time, new JwtIssuerValidator(ISSUER), required));\n        return decoder;\n        // END EXERCISE\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>jwt-validation</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-oauth2-jose</artifactId></dependency>\n<dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-oauth2-resource-server</artifactId></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "jwt-validation-q1",
+      "question": "서명은 유효하지만 audience가 다른 API인 JWT의 처리로 맞는 것은?",
+      "options": [
+        "서명만 맞으면 항상 수용한다.",
+        "현재 API의 수용 정책에 따라 거절한다.",
+        "subject가 있으면 audience는 무시한다.",
+        "Base64 디코딩에 성공하면 수용한다."
+      ],
+      "correctIndex": 1,
+      "explanation": "required의 getAudience().contains(\"orders-api\")는 이 토큰을 주문 API가 받아도 되는지 묻는 조건입니다. 서명이 유효해도 audience가 another-api이면 valid가 false가 됩니다. subject 존재나 Base64 내용 읽기는 이 조건을 대신하지 않습니다."
+    },
+    {
+      "id": "jwt-validation-q2",
+      "question": "만료 검증 테스트를 재현 가능하게 만드는 설계는?",
+      "options": [
+        "현재 시스템 시간에 맞춰 테스트 상수를 매일 바꾼다.",
+        "Clock을 주입하고 고정 시각에서 경계를 검사한다.",
+        "테스트에서 시간 검증을 제거한다.",
+        "만료를 충분히 미래로 두고 실패 검사를 생략한다."
+      ],
+      "correctIndex": 1,
+      "explanation": "JwtLab.decoder는 Clock을 인수로 받고 time.setClock(clock)과 exp 비교에서 그 시각을 씁니다. 테스트가 Clock.fixed를 주면 오늘 날짜가 바뀌어도 같은 경계를 검사할 수 있습니다. 미래 만료값만 테스트하면 만료·미래 nbf·정확한 만료 경계의 실패를 놓칩니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "같은 발급자가 만든 토큰인데 다른 API용 토큰이 주문 API에 들어왔습니다. 서명 오류와 대상 불일치를 구분해서 거절하고, 만료 시각의 경계도 재현 가능한 검사로 남깁니다.",
+    "tasks": [
+      "withPublicKey가 담당하는 서명 검사와 setJwtValidator의 세 검증기가 담당하는 내용 검사를 나누어 설명하세요. 이 설정은 RS256을 사용합니다.",
+      "issuer=https://training-issuer.invalid, audience에 orders-api 포함, 비어 있지 않은 subject, 현재보다 뒤인 exp가 필요한 줄을 찾으세요.",
+      "다른 키·issuer·audience, 만료·미래 nbf, 필수 값 누락을 한 조건씩 바꿔 보는 이유를 적으세요.",
+      "Clock을 고정했을 때 exp가 현재와 같거나 1초 뒤인 경우의 차이를 설명하세요. 실제 개인키를 파일에 저장하지 않습니다.",
+      "이 과제의 실행 중 생성한 로컬 키 검사와 실제 키 서버·키 교체·폐기·토큰 재사용 대응에서 남은 검증을 구분하세요."
+    ],
+    "takeaway": "토큰의 서명을 확인한 뒤에도 누구에게, 언제까지, 어떤 주체에 대해 발급된 것인지 우리 API의 조건으로 검사합니다."
+  },
+  "sources": [
+    {
+      "title": "Spring Security JWT resource server",
+      "url": "https://docs.spring.io/spring-security/reference/6.5/servlet/oauth2/resource-server/jwt.html",
+      "edition": "Spring Security 6.5",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "JSON Web Token RFC 7519",
+      "url": "https://www.rfc-editor.org/rfc/rfc7519",
+      "edition": "RFC 7519",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "JWT",
+    "Spring Security"
+  ],
+  "exerciseId": "jwt-validation-project",
+  "professionalExercise": {
+    "id": "jwt-validation-project",
+    "profileId": "professional-jwt-local",
+    "mode": "project",
+    "instructions": [
+      "RS256과 주어진 RSA 공개키로 서명을 검증합니다.",
+      "issuer=https://training-issuer.invalid, audience=orders-api, nonblank subject, exp가 모두 필요합니다.",
+      "만료·미래 nbf·잘못된 issuer·audience·서명은 거절합니다.",
+      "Clock을 외부에서 받아 고정 시간으로 테스트하며 실제 개인키를 파일에 저장하지 않습니다."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/JwtLab.java"
+    ],
+    "template": "package edu.lab;\nimport java.security.interfaces.RSAPublicKey;\nimport java.time.Clock;\nimport java.time.Duration;\nimport org.springframework.security.oauth2.core.*;\nimport org.springframework.security.oauth2.jwt.*;\npublic final class JwtLab {\n    public static final String ISSUER = \"https://training-issuer.invalid\";\n    public static JwtDecoder decoder(RSAPublicKey publicKey, Clock clock) {\n        throw new UnsupportedOperationException(\"실습 구현 필요\");\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/JwtLab.java",
+        "templatePath": "lessons/jwt-validation/starter/src/main/java/edu/lab/JwtLab.java",
+        "referencePath": "lessons/jwt-validation/reference/src/main/java/edu/lab/JwtLab.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/jwt-validation/starter/pom.xml",
+        "referencePath": "lessons/jwt-validation/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/jwt-validation/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "정상 토큰 수용",
+      "issuer·audience 불일치 거절",
+      "만료·미래 nbf 거절",
+      "다른 키 서명 거절",
+      "필수 claim 누락 거절"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "security-csrf"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 5,
+    "starterSatisfied": false,
+    "sourceFingerprint": "d38b26b60eefc5c0ff1a5de48f9e990ae37322631559da4c24fc6f1e7f4574c4",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

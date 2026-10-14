@@ -1,0 +1,225 @@
+{
+  "id": "flyway-migrations",
+  "title": "Flyway로 스키마 변경을 기록",
+  "description": "주문 A와 B에 같은 요청 키가 저장되는 일을 막아 봅니다. 테이블을 만든 V1 다음에 V2를 적용하고, DB가 중복 키를 거절하는 이유를 읽습니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "이미 만든 orders 테이블에 request_key를 추가하는 순서를 설명한다.",
+    "처음 migrate할 때 V1과 V2가 적용되고 두 번째에는 0개가 적용되는 이유를 설명한다.",
+    "주문 ID가 달라도 같은 요청 키 req-1을 저장하면 왜 실패하는지 찾는다.",
+    "운영 테이블에 제약을 추가하기 전 중복 데이터와 배포 순서를 확인한다."
+  ],
+  "learningGuide": {
+    "scenario": "주문 A를 req-1로 저장했습니다. 응답을 못 받은 클라이언트가 다시 요청하면서 주문 ID만 B로 바뀌었습니다. 요청 키가 같다는 사실을 DB가 알아볼 수 있게 만듭니다.",
+    "question": "서로 다른 주문 ID인데도 두 번째 저장을 막으려면 어느 열에 규칙을 걸어야 할까요?",
+    "terms": [
+      {
+        "term": "마이그레이션",
+        "meaning": "DB 구조 변경을 순서가 있는 파일로 관리하는 작업입니다. 여기서는 V1로 orders를 만들고 V2로 request_key를 추가합니다."
+      },
+      {
+        "term": "UNIQUE 제약",
+        "meaning": "같은 값을 중복 저장하지 못하게 하는 DB 규칙입니다. uq_order_request는 request_key 값의 중복을 검사합니다."
+      },
+      {
+        "term": "요청 키",
+        "meaning": "재시도된 요청이 원래 어떤 요청이었는지 식별할 값입니다. 주문 ID와 별도로 req-1 같은 값을 저장합니다."
+      }
+    ],
+    "code": {
+      "file": "src/main/resources/db/migration/V2__request_key.sql",
+      "source": "ALTER TABLE orders ADD COLUMN request_key VARCHAR(80);\nALTER TABLE orders ADD CONSTRAINT uq_order_request UNIQUE (request_key);\n"
+    },
+    "walkthrough": [
+      "첫 줄 ALTER TABLE orders ADD COLUMN은 V1에서 이미 만든 orders에 request_key 열을 추가합니다. VARCHAR(80)은 최대 길이를 정하며, 이 줄에는 NOT NULL이 없습니다.",
+      "둘째 줄 ADD CONSTRAINT는 uq_order_request라는 이름의 규칙을 만듭니다. UNIQUE (request_key)이므로 비교 대상은 주문 id가 아니라 요청 키입니다.",
+      "이 두 줄이 적용된 뒤 A와 B에 같은 req-1을 저장하면 두 번째 INSERT가 제약에 걸립니다. Flyway의 적용 이력과 주문 데이터의 중복 검사는 서로 다른 역할입니다."
+    ],
+    "prediction": {
+      "question": "V1·V2를 적용한 빈 DB에서 기존 테스트처럼 SQL마다 자동 커밋(변경 확정)되는 상태로 A/req-1을 저장한 뒤 B/req-1을 저장하면 주문은 몇 행 남을까요?",
+      "answer": "두 번째 저장은 거절되고, A 한 행만 남습니다.",
+      "explanation": "기존 테스트의 JDBC 연결은 기본 자동 커밋 상태이므로 A의 INSERT가 먼저 확정됩니다. B는 같은 request_key=req-1 때문에 V2의 UNIQUE 규칙에 거절되지만, 이미 확정한 A는 남습니다. 두 INSERT를 하나의 트랜잭션으로 묶어 전체 변경을 되돌리면 A도 남지 않으므로, 최종 행 수는 중복 제약과 커밋 조건을 함께 보고 판단해야 합니다."
+    },
+    "takeaway": "무엇이 같은 요청인지 정했다면, 그 값을 저장하는 열에 DB 제약까지 연결해야 합니다."
+  },
+  "theory": [
+    {
+      "heading": "버전 있는 변경 이력",
+      "text": "개발 PC에는 request_key 열이 있는데 다른 환경에는 없다면 같은 앱도 다르게 실패합니다. 마이그레이션은 DB 구조를 바꾸는 작업을 파일로 남겨 순서대로 적용하는 방법입니다. 이 예제의 V1__create_orders.sql은 orders를 만들고 V2__request_key.sql은 열과 제약을 추가합니다. MigrationLab.configured는 이 파일들이 있는 classpath:db/migration을 지정합니다. Flyway는 적용한 버전과 파일 내용의 확인값인 체크섬을 기록하므로, 같은 DB에서 migrate를 다시 호출해도 완료한 V1·V2를 다시 실행하지 않습니다. 이미 적용한 파일을 고치지 않고 다음 버전을 추가하는 이유입니다."
+    },
+    {
+      "heading": "제약 추가의 데이터 전제",
+      "text": "V2의 첫 ALTER TABLE은 request_key라는 열을 추가합니다. 두 번째 줄의 UNIQUE는 같은 키 값을 가진 주문을 두 번 저장하지 못하게 하는 DB 규칙입니다. A와 B의 id가 달라도 request_key가 모두 req-1이면 두 번째 저장이 거절됩니다. 이 열에는 NOT NULL이 없으므로 값이 없는 경우의 의미까지 정한 것은 아닙니다. 이번 검사는 새 학습용 H2 DB의 비어 있지 않은 요청 키 중복을 다룹니다. 기존 운영 데이터의 중복·NULL 정책과 제약 추가 중 잠금은 별도로 확인해야 합니다."
+    },
+    {
+      "heading": "확장 후 전환",
+      "text": "앱 여러 대를 차례로 교체하는 동안에는 구버전과 신버전이 같은 DB를 쓸 수 있습니다. 새 열을 먼저 추가하고, 그 열을 쓰는 코드로 전환한 뒤, 더 이상 쓰지 않는 열을 제거하는 순서를 검토하는 이유입니다. V2처럼 열을 추가하는 변경도 실제 DB 종류와 데이터 양에 따라 배포 중 영향이 달라집니다. DDL은 CREATE·ALTER 같은 구조 변경 SQL을 말하며, 실패했을 때 전부 되돌릴 수 있는지는 DB별로 확인합니다."
+    }
+  ],
+  "example": {
+    "title": "MigrationLab 기준 구현",
+    "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport org.flywaydb.core.Flyway;\npublic final class MigrationLab {\n    private MigrationLab() {}\n    public static Flyway configured(DataSource source) {\n        return Flyway.configure().dataSource(source).locations(\"classpath:db/migration\").load();\n    }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 1개 JUnit 테스트 통과.\n검증 항목: 두 버전 적용 · 재실행 시 0개 적용 · 중복 요청 키 거절.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "MigrationLab.configured는 SQL을 직접 실행하는 메서드가 아니라 Flyway가 읽을 위치와 DataSource를 연결합니다. 테스트가 migrate를 호출하면 V1의 orders 생성 뒤 V2의 request_key 추가와 UNIQUE 설정이 진행됩니다. 재호출은 새로 적용할 파일이 없어 0개입니다. 이어 A의 req-1 저장은 성공하고 B의 같은 키 저장은 실패하므로 orders에는 A 한 행만 남습니다. 기존 기준 구현의 검증 기록은 JDK 21·Java 17 대상·Maven 3.10.0에서의 JUnit 검사입니다. 미완성 실습은 기준 테스트를 통과하지 않습니다. 설치형에서는 등록한 로컬 JDK로 자신의 코드를 별도로 실행·제출하며, 기준 구현의 기록과 자신의 실행 결과를 구분합니다.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/MigrationLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport javax.sql.DataSource;\nimport org.flywaydb.core.Flyway;\npublic final class MigrationLab {\n    private MigrationLab() {}\n    public static Flyway configured(DataSource source) {\n        return Flyway.configure().dataSource(source).locations(\"classpath:db/migration\").load();\n    }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>flyway-migrations</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.flywaydb</groupId><artifactId>flyway-core</artifactId></dependency>\n<dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId></dependency></dependencies></project>\n"
+      },
+      {
+        "path": "src/main/resources/db/migration/V1__create_orders.sql",
+        "language": "sql",
+        "code": "CREATE TABLE orders (id VARCHAR(60) PRIMARY KEY, quantity INT NOT NULL CHECK (quantity > 0));\n"
+      },
+      {
+        "path": "src/main/resources/db/migration/V2__request_key.sql",
+        "language": "sql",
+        "code": "ALTER TABLE orders ADD COLUMN request_key VARCHAR(80);\nALTER TABLE orders ADD CONSTRAINT uq_order_request UNIQUE (request_key);\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "flyway-migrations-q1",
+      "question": "이미 배포되어 적용된 V1 파일의 의미를 바꾸어야 할 때 일반적인 선택은?",
+      "options": [
+        "새 버전 마이그레이션으로 다음 상태를 표현한다.",
+        "V1 내용을 바꾸고 이력은 무시한다.",
+        "모든 DB에서 clean을 실행한다.",
+        "파일 이름만 V1으로 유지하면 체크섬은 무관하다."
+      ],
+      "correctIndex": 0,
+      "explanation": "이미 적용된 V1을 바꾸면 새 환경이 읽는 내용과 기존 DB가 적용했던 내용이 달라집니다. 다음 V2·V3 파일에 변경을 추가해야 이력을 따라 같은 상태에 도달할 수 있습니다. 이 예제도 테이블 생성 V1을 고치지 않고 요청 키를 V2에서 추가합니다."
+    },
+    {
+      "id": "flyway-migrations-q2",
+      "question": "UNIQUE 제약을 기존 운영 테이블에 추가하기 전에 필요한 확인은?",
+      "options": [
+        "기존 중복·NULL 정책·DDL 잠금과 배포 호환성",
+        "Java 클래스의 줄 수",
+        "JSON 필드 순서",
+        "서비스 포트 번호만"
+      ],
+      "correctIndex": 0,
+      "explanation": "기존 orders에 req-1이 두 번 있다면 UNIQUE를 붙이는 단계부터 실패할 수 있습니다. NULL을 허용할지, ALTER TABLE이 얼마나 잠그는지, 구버전 앱이 새 스키마에서도 동작할지를 함께 확인해야 합니다. 새 H2 DB의 성공만으로 운영 테이블을 판단할 수 없습니다."
+    }
+  ],
+  "practice": {
+    "title": "주문·재고·취소 프로젝트에 연결",
+    "scenario": "주문 버튼을 두 번 누르거나 응답을 못 받아 재시도하면 서로 다른 주문 ID에 같은 요청 키가 들어올 수 있습니다. 애플리케이션의 사전 조회만 믿지 않고 DB에도 중복 금지 규칙을 둡니다.",
+    "tasks": [
+      "V1에서 만든 orders에 V2의 두 ALTER TABLE이 각각 무엇을 추가하는지 말로 설명하세요.",
+      "A에 req-1을 저장한 뒤 B에도 req-1을 저장할 때, id와 request_key 중 어떤 규칙 때문에 실패하는지 짚으세요.",
+      "같은 학습 DB에서 migrate를 두 번 호출할 때 적용 수가 2, 0인 이유를 변경 이력과 연결하세요.",
+      "운영 테이블로 옮긴다고 가정하고 기존 중복·NULL·DDL 잠금·구버전 앱 호환성을 확인 목록에 적으세요. 이 실습에서는 학습용 DB만 사용하며 clean을 호출하지 않습니다.",
+      "학습 H2에서 확인한 제약 동작과 실제 운영 DB에서 아직 확인하지 않은 사항을 구분하세요."
+    ],
+    "takeaway": "마이그레이션 파일은 DB가 다음 상태로 가는 순서이고, UNIQUE는 그 상태에서 중복 요청 키를 막는 규칙입니다. 두 역할을 함께 확인합니다."
+  },
+  "sources": [
+    {
+      "title": "Flyway Java API",
+      "url": "https://documentation.red-gate.com/flyway/reference/usage/api-java",
+      "edition": "Flyway",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "Flyway versioned migrations",
+      "url": "https://documentation.red-gate.com/flyway/flyway-concepts/migrations/versioned-migrations",
+      "edition": "Flyway",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Flyway",
+    "SQL"
+  ],
+  "exerciseId": "flyway-migrations-project",
+  "professionalExercise": {
+    "id": "flyway-migrations-project",
+    "profileId": "professional-flyway",
+    "mode": "project",
+    "instructions": [
+      "V1은 orders 기본 테이블, V2는 request_key 열과 UNIQUE 제약을 추가합니다.",
+      "서로 다른 주문에 같은 non-null request_key를 저장하면 DB가 거절해야 합니다.",
+      "같은 DB에 migrate를 다시 실행하면 이미 적용된 마이그레이션 수는 0입니다.",
+      "학습용 DB만 대상으로 하며 clean 호출을 구현하지 않습니다."
+    ],
+    "editableFiles": [
+      "src/main/resources/db/migration/V2__request_key.sql"
+    ],
+    "template": "package edu.lab;\nimport javax.sql.DataSource;\nimport org.flywaydb.core.Flyway;\npublic final class MigrationLab {\n    private MigrationLab() {}\n    public static Flyway configured(DataSource source) {\n        return Flyway.configure().dataSource(source).locations(\"classpath:db/migration\").load();\n    }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/MigrationLab.java",
+        "templatePath": "lessons/flyway-migrations/starter/src/main/java/edu/lab/MigrationLab.java",
+        "referencePath": "lessons/flyway-migrations/reference/src/main/java/edu/lab/MigrationLab.java",
+        "editable": false
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/flyway-migrations/starter/pom.xml",
+        "referencePath": "lessons/flyway-migrations/reference/pom.xml",
+        "editable": false
+      },
+      {
+        "path": "src/main/resources/db/migration/V1__create_orders.sql",
+        "templatePath": "lessons/flyway-migrations/starter/src/main/resources/db/migration/V1__create_orders.sql",
+        "referencePath": "lessons/flyway-migrations/reference/src/main/resources/db/migration/V1__create_orders.sql",
+        "editable": false
+      },
+      {
+        "path": "src/main/resources/db/migration/V2__request_key.sql",
+        "templatePath": "lessons/flyway-migrations/starter/src/main/resources/db/migration/V2__request_key.sql",
+        "referencePath": "lessons/flyway-migrations/reference/src/main/resources/db/migration/V2__request_key.sql",
+        "editable": true
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/flyway-migrations/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "두 버전 적용",
+      "재실행 시 0개 적용",
+      "중복 요청 키 거절"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "sql-jdbc"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 1,
+    "starterSatisfied": false,
+    "sourceFingerprint": "f26b6d4349c223d9c0ee58c03a190193431592dd68baa2cdec3775fcc42ecd6f",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  }
+}

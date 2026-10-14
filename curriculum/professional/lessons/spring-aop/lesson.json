@@ -1,0 +1,199 @@
+{
+  "id": "spring-aop",
+  "title": "프록시·AOP 호출 경로의 반례",
+  "description": "reserve를 직접 부르면 기록되는데 reserveTwice 안의 두 호출은 기록되지 않습니다. 같은 메서드 이름이어도 프록시를 통과하는 경로가 다른 이유를 따라갑니다.",
+  "track": "advanced",
+  "level": "심화",
+  "minVersion": 17,
+  "featureSince": null,
+  "preview": false,
+  "duration": 75,
+  "category": "실무 프로젝트",
+  "goals": [
+    "호출 앞에서 추가 동작을 수행하는 프록시와 실제 Orders 객체를 구분한다.",
+    "프록시를 통한 reserve 호출에서 beforeReserve가 한 번 실행되는 이유를 설명한다.",
+    "reserveTwice 안의 reserve 호출 두 번이 calls를 늘리지 않는 이유를 설명한다."
+  ],
+  "theory": [
+    {
+      "heading": "프록시가 가로채는 경계",
+      "text": "프록시는 호출자가 실제 대상 객체에 도달하기 전에 거치는 대신 호출해 주는 객체입니다. 여기서 경계는 “호출이 프록시로 들어오는 지점”을 뜻합니다. proxied는 new Orders()를 대상으로 AspectJProxyFactory를 만들고 TraceAspect를 붙인 뒤 프록시를 반환합니다. @Before가 가리키는 advice는 대상 메서드 앞에 추가할 동작이며 이 예제에서는 beforeReserve의 calls++입니다.\n\n호출자가 반환된 프록시의 reserve()를 부르면 이름 reserve에 맞는 규칙이 적용되어 beforeReserve가 먼저 실행됩니다. 반면 reserveTwice()는 규칙이 정한 이름에 해당하지 않습니다. 그 안에서 실행되는 reserve(); reserve();는 실제 Orders 객체 자신을 향하는 호출이라 프록시로 다시 들어가지 않습니다. 따라서 새 TraceAspect에서 시작한 reserveTwice 호출은 calls가 0입니다."
+    },
+    {
+      "heading": "어노테이션보다 호출 경로",
+      "text": "“메서드에 표시를 붙였으니 어디서 불러도 적용된다”라고 읽으면 이 차이를 놓칩니다. 호출자가 가진 것이 new Orders()인지 proxied(trace)의 반환값인지, 대상 메서드 내부에서 다시 부르는지 확인해야 합니다. 이 예제는 프록시 방식의 Spring AOP를 사용하며 AspectJProxyFactory라는 이름 때문에 바이트코드 전체를 바꾸는 AspectJ weaving과 같은 방식이라고 생각하면 안 됩니다.\n\n실무에서 트랜잭션이나 실행 시간 측정을 붙일 때도 실제 호출 경로를 따라가야 합니다. 내부 호출에도 추가 처리가 필요하다면 그 역할을 별도 객체로 분리해 프록시를 거치도록 하는 설계를 검토할 수 있습니다. 자기 자신을 강제로 다시 주입하는 방식을 기본 해법으로 삼기 전에 객체의 역할이 지나치게 묶여 있지 않은지 살펴봅니다."
+    }
+  ],
+  "example": {
+    "title": "AopLab 기준 구현",
+    "code": "package edu.lab;\nimport org.aspectj.lang.annotation.Aspect;\nimport org.aspectj.lang.annotation.Before;\nimport org.springframework.aop.aspectj.annotation.AspectJProxyFactory;\npublic final class AopLab {\n public static class Orders { public void reserve() {} public void reserveTwice() { reserve(); reserve(); } }\n @Aspect public static class TraceAspect {\n  private int calls;\n  @Before(\"execution(* reserve(..))\") public void beforeReserve() { calls++; }\n  public int calls() { return calls; }\n }\n public static Orders proxied(TraceAspect trace) {\n  // BEGIN EXERCISE\n  AspectJProxyFactory factory=new AspectJProxyFactory(new Orders());\n  factory.addAspect(trace);\n  return factory.getProxy();\n  // END EXERCISE\n }\n}\n",
+    "output": "기준 구현 검증: JDK 21 · Java 17 대상 · 2개 JUnit 테스트 통과.\n검증 항목: 외부 호출 advice · 자기 호출 우회 반례.\n작성한 코드는 앱에서 실행·제출할 때 별도로 검사합니다.",
+    "explanation": "proxied(trace)는 새 Orders 인스턴스를 그대로 돌려주지 않고 TraceAspect를 붙인 프록시를 반환합니다. 그 프록시의 reserve()를 호출하면 @Before의 이름 조건과 맞아 calls가 1 증가합니다. reserveTwice()는 이름 조건에 맞지 않고, 본문 안의 reserve 두 번도 대상 객체 내부 호출이라 프록시를 다시 통과하지 않습니다. 두 테스트는 각각 새 TraceAspect를 사용하므로 기대값이 1과 0입니다. reserve 본문이 비어 있는 이유는 예약 기능이 아니라 호출 경로를 관찰하기 위해서입니다.\n\n공개 기준 구현과 테스트를 JDK 21 및 Maven 3.10.0으로 실행해 확인했습니다. 미완성 실습은 테스트를 통과하지 않습니다. 설치형에서는 등록한 JDK로 환경 준비와 학습 코드 검증을 진행합니다. 테스트 범위와 운영 환경의 차이는 실무 설명을 함께 읽으세요.",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/AopLab.java",
+        "language": "java",
+        "code": "package edu.lab;\nimport org.aspectj.lang.annotation.Aspect;\nimport org.aspectj.lang.annotation.Before;\nimport org.springframework.aop.aspectj.annotation.AspectJProxyFactory;\npublic final class AopLab {\n public static class Orders { public void reserve() {} public void reserveTwice() { reserve(); reserve(); } }\n @Aspect public static class TraceAspect {\n  private int calls;\n  @Before(\"execution(* reserve(..))\") public void beforeReserve() { calls++; }\n  public int calls() { return calls; }\n }\n public static Orders proxied(TraceAspect trace) {\n  // BEGIN EXERCISE\n  AspectJProxyFactory factory=new AspectJProxyFactory(new Orders());\n  factory.addAspect(trace);\n  return factory.getProxy();\n  // END EXERCISE\n }\n}\n"
+      },
+      {
+        "path": "pom.xml",
+        "language": "xml",
+        "code": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><parent><groupId>edu.javaedu</groupId><artifactId>professional-parent</artifactId><version>0.1.0</version><relativePath>../../../pom.xml</relativePath></parent><artifactId>spring-aop</artifactId><dependencies><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><scope>test</scope></dependency>\n<dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId></dependency>\n<dependency><groupId>org.aspectj</groupId><artifactId>aspectjweaver</artifactId></dependency></dependencies></project>\n"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "id": "spring-aop-q1",
+      "question": "reserveTwice가 내부에서 this.reserve를 두 번 호출할 때 advice 횟수가 0인 이유는?",
+      "options": [
+        "두 번 호출하면 advice가 자동 취소되기 때문이다.",
+        "메서드 이름에 Twice가 있으면 AOP가 제외하기 때문이다.",
+        "같은 대상의 자기 호출이 프록시를 다시 거치지 않기 때문이다.",
+        "모든 메서드가 final이기 때문이다."
+      ],
+      "correctIndex": 2,
+      "explanation": "reserveTwice 자체는 이름 reserve에 해당하지 않아 이 @Before의 대상이 아닙니다. 그 본문이 부르는 reserve 두 번은 같은 Orders 객체 안에서 바로 실행되어 프록시의 가로채는 지점으로 돌아오지 않습니다. 그래서 새 trace의 calls는 0으로 남습니다."
+    },
+    {
+      "id": "spring-aop-q2",
+      "question": "이 예제의 프록시 동작을 구분하는 적절한 검사는?",
+      "options": [
+        "프록시 생성에 예외가 없는지만 검사한다.",
+        "외부 reserve 호출과 내부 자기 호출을 각각 실행하여 advice 횟수를 비교한다.",
+        "대상 객체의 클래스 이름만 검사한다.",
+        "로그 출력 순서를 수동으로 기억한다."
+      ],
+      "correctIndex": 1,
+      "explanation": "프록시가 만들어졌어도 기대한 호출이 그 프록시를 거쳤는지는 별도 문제입니다. 기존 두 테스트처럼 새 trace로 외부 reserve를 실행해 1을 확인하고, 또 다른 새 trace로 reserveTwice를 실행해 0을 확인하면 경로 차이가 실제 관찰값으로 드러납니다."
+    }
+  ],
+  "practice": {
+    "title": "기록이 빠진 예약 호출의 경로 찾기",
+    "scenario": "개별 reserve 호출은 기록되는데 묶음 메서드 reserveTwice를 통해 실행하면 기록이 없습니다. 애너테이션 이름만 확인하는 대신 호출자가 가진 객체부터 대상 내부 호출까지 추적합니다.",
+    "tasks": [
+      "proxied(TraceAspect)에서 AspectJProxyFactory에 Orders 대상을 넣고 addAspect 뒤 getProxy를 반환하세요.",
+      "새 trace로 외부 reserve 호출을 실행했을 때 beforeReserve가 한 번 호출되는 경로를 설명하세요.",
+      "다른 새 trace로 reserveTwice를 실행했을 때, 메서드 이름 조건과 대상 내부 호출을 각각 짚어 calls가 0인 이유를 설명하세요.",
+      "실제 기능에서 내부 호출도 기록해야 한다면 어느 역할을 별도 객체로 옮길지 설계해 보세요. 현재 빈 reserve 메서드의 테스트가 실제 예약이나 트랜잭션을 검증하는 것은 아닙니다."
+    ],
+    "takeaway": "추가 동작이 실행되는지 판단하려면 “어떤 애너테이션인가”와 함께 “호출이 어떤 객체를 통과했는가”를 봅니다. 외부 호출과 내부 호출을 따로 재현하면 빠진 처리를 찾기 쉽습니다."
+  },
+  "sources": [
+    {
+      "title": "Spring AOP proxying",
+      "url": "https://docs.spring.io/spring-framework/reference/6.2/core/aop/proxying.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    },
+    {
+      "title": "AspectJProxyFactory",
+      "url": "https://docs.spring.io/spring-framework/docs/6.2.x/javadoc-api/org/springframework/aop/aspectj/annotation/AspectJProxyFactory.html",
+      "edition": "Spring Framework 6.2",
+      "checkedAt": "2026-10-12"
+    }
+  ],
+  "jobTags": [
+    "Java"
+  ],
+  "exerciseId": "spring-aop-project",
+  "professionalExercise": {
+    "id": "spring-aop-project",
+    "profileId": "professional-spring-aop",
+    "mode": "project",
+    "instructions": [
+      "proxied(TraceAspect)를 AspectJProxyFactory로 조립하세요.",
+      "외부 reserve 호출은 advice를 한 번 거칩니다. reserveTwice의 내부 reserve 호출들은 이 프록시 advice를 거치지 않는 반례를 확인하세요."
+    ],
+    "editableFiles": [
+      "src/main/java/edu/lab/AopLab.java"
+    ],
+    "template": "package edu.lab;\nimport org.aspectj.lang.annotation.Aspect;\nimport org.aspectj.lang.annotation.Before;\nimport org.springframework.aop.aspectj.annotation.AspectJProxyFactory;\npublic final class AopLab {\n public static class Orders { public void reserve() {} public void reserveTwice() { reserve(); reserve(); } }\n @Aspect public static class TraceAspect {\n  private int calls;\n  @Before(\"execution(* reserve(..))\") public void beforeReserve() { calls++; }\n  public int calls() { return calls; }\n }\n public static Orders proxied(TraceAspect trace) {\n  throw new UnsupportedOperationException(\"실습 구현 필요\");\n }\n}\n",
+    "files": [
+      {
+        "path": "src/main/java/edu/lab/AopLab.java",
+        "templatePath": "lessons/spring-aop/starter/src/main/java/edu/lab/AopLab.java",
+        "referencePath": "lessons/spring-aop/reference/src/main/java/edu/lab/AopLab.java",
+        "editable": true
+      },
+      {
+        "path": "pom.xml",
+        "templatePath": "lessons/spring-aop/starter/pom.xml",
+        "referencePath": "lessons/spring-aop/reference/pom.xml",
+        "editable": false
+      }
+    ],
+    "testFiles": [
+      {
+        "path": "src/test/java/edu/lab/ContractTest.java",
+        "sourcePath": "lessons/spring-aop/grader/src/test/java/edu/lab/ContractTest.java"
+      }
+    ],
+    "behaviorCriteria": [
+      "외부 호출 advice",
+      "자기 호출 우회 반례"
+    ],
+    "rubric": [
+      "업무 계약과 실패 후 상태를 설명한다.",
+      "대안·의존 관계·실제 검증 범위를 근거로 제시한다."
+    ],
+    "referencePublic": true,
+    "executionVerified": true,
+    "runLocation": "windows-desktop",
+    "remoteExecution": false
+  },
+  "status": "reference-verified",
+  "executionVerified": true,
+  "prerequisites": [
+    "spring-di"
+  ],
+  "verification": {
+    "checkedAt": "2026-10-12",
+    "runtimeJava": 21,
+    "compilerTarget": 17,
+    "maven": "3.10.0",
+    "referenceTests": 2,
+    "starterSatisfied": false,
+    "sourceFingerprint": "203bd280bfe19ad5cbaef8117c8ab0d00b95d07fe7f1a1f2f5988a187b82bad9",
+    "scope": "reference-and-starter-tests; installed-app-verification-separate"
+  },
+  "learningGuide": {
+    "scenario": "reserve를 한 번 직접 호출하면 기록 횟수는 1입니다. 그런데 reserveTwice가 reserve를 두 번 실행해도 기록 횟수는 0입니다. 실행 횟수와 기록 횟수가 왜 다른지 읽어 봅니다.",
+    "question": "reserveTwice 안의 두 reserve 호출은 어느 객체를 향하며 프록시를 다시 통과할까요?",
+    "terms": [
+      {
+        "term": "프록시",
+        "meaning": "대상 객체 앞에서 호출을 받아 추가 처리를 한 뒤 대상으로 전달하는 객체입니다. proxied의 getProxy() 반환값이 해당합니다."
+      },
+      {
+        "term": "advice",
+        "meaning": "가로챈 호출에 덧붙이는 동작입니다. 이 예제의 beforeReserve는 calls를 1 늘립니다."
+      },
+      {
+        "term": "pointcut",
+        "meaning": "어떤 호출에 추가 동작을 붙일지 고르는 조건입니다. execution(* reserve(..))는 이 예제에서 reserve를 고릅니다."
+      },
+      {
+        "term": "자기 호출",
+        "meaning": "대상 객체의 메서드가 같은 객체의 다른 메서드를 바로 부르는 일입니다. reserveTwice 안의 reserve();가 그 예입니다."
+      }
+    ],
+    "walkthrough": [
+      "proxied(trace)는 new Orders()를 대상으로 팩터리를 만들고 addAspect(trace)로 기록 동작을 등록합니다.",
+      "factory.getProxy()가 반환한 객체에 reserve()를 호출하면 프록시가 그 호출을 먼저 받습니다.",
+      "이름 reserve가 @Before의 조건에 맞으므로 beforeReserve가 calls를 늘린 뒤 실제 Orders.reserve가 실행됩니다.",
+      "reserveTwice()로 들어오면 메서드 이름이 조건과 다르므로 이 advice는 실행되지 않습니다. 본문은 실제 Orders 객체에서 실행됩니다.",
+      "본문 안의 reserve(); reserve();는 같은 대상 내부 호출입니다. 프록시를 다시 통과하지 않으므로 두 번 실행돼도 calls는 늘지 않습니다."
+    ],
+    "prediction": {
+      "question": "새 TraceAspect로 만든 같은 프록시에서 reserve()를 한 번, 이어서 reserveTwice()를 한 번 부르면 최종 calls()는 얼마인가요?",
+      "answer": "1입니다.",
+      "explanation": "첫 외부 reserve 호출에서만 beforeReserve가 실행됩니다. 이어지는 reserveTwice의 진입과 내부 reserve 두 번은 이 advice를 추가로 실행하지 않습니다. calls가 자동으로 초기화되는 것도 아닙니다."
+    },
+    "takeaway": "대상 메서드의 실행 횟수와 advice의 실행 횟수는 다를 수 있습니다. 이 프록시 모델에서는 프록시를 거치는 진입을 기준으로 추가 처리를 판단합니다.",
+    "code": {
+      "file": "src/main/java/edu/lab/AopLab.java",
+      "source": " public static class Orders { public void reserve() {} public void reserveTwice() { reserve(); reserve(); } }\n @Aspect public static class TraceAspect {\n  private int calls;\n  @Before(\"execution(* reserve(..))\") public void beforeReserve() { calls++; }\n  public int calls() { return calls; }\n }\n public static Orders proxied(TraceAspect trace) {\n  // BEGIN EXERCISE\n  AspectJProxyFactory factory=new AspectJProxyFactory(new Orders());\n  factory.addAspect(trace);\n  return factory.getProxy();\n  // END EXERCISE\n }\n}\n"
+    }
+  }
+}

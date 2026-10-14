@@ -1,0 +1,17 @@
+# 학습용 비교 예시이며 실제 .github/workflows 경로에 설치되지 않습니다.
+name: project-contract
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - run: mvn -B -ntp -f curriculum/professional/lessons/build-gradle-ci/reference/pom.xml verify
+# 실제 도입 시 저장소 경로·action commit pin·산출물 보존 정책을 검증합니다.
