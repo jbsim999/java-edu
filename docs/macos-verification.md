@@ -19,7 +19,9 @@
 
 `.github/workflows/package-macos.yml`은 네이티브 macos-15-intel / macos-15에서 공식 아카이브 확인, 포함 도구 실행, DMG·ZIP 빌드, 실제 최종 앱 검사와 화면 캡처를 수행한다. 정답 제출과 미완성 실패를 분리하고, 실제 실행하지 않은 검사를 성공으로 표시하지 않는다. ephemeral CI의 기본 사용자 데이터만 새로 생성하고 소유권을 확인한 검사 데이터는 증거 폴더로 보존한다. 기존 사용자 데이터가 있으면 실행을 중단한다.
 
-검증 파일은 해당 CI의 산출물이며 보존 기간은 14일이다. 2026-10-14 사용자가 main 반영과 실제 사용자 검증용 배포를 승인했다. Windows·macOS 공통 소스를 main으로 통합하고, 아래 체크섬으로 검증한 기존 DMG·ZIP 네 파일을 변경 없이 v0.4.0 사전 릴리스로 게시하는 작업을 준비 중이다. 이 기록 시점에는 릴리스 미게시이며, 실제 게시 결과를 확인한 후 다운로드 안내를 갱신한다. main 통합·문서 후속 커밋과 패키지 생성 소스를 구분하며 아래 체크섬은 `1f93d9e`에서 생성한 파일의 값이다.
+2026-10-14 사용자가 main 반영과 실제 사용자 검증용 배포를 승인했다. 공통 소스는 main 통합 커밋 `d6e3422`이며, [v0.4.0 사전 릴리스](https://github.com/jbsim999/java-edu/releases/tag/v0.4.0)의 DMG·ZIP 네 파일은 기존 실제 검증 소스 `1f93d9e`에서 생성한 파일을 변경 없이 제공한다. 아래 파일 크기·SHA256과 총28 PASS는 이 배포 파일에 대한 근거다. 태그가 가리키는 main 커밋과 패키지 생성 소스를 구분한다. 원본 CI 산출물은 14일 보존되는 보조 자료이며 제품 다운로드는 GitHub Release를 사용한다.
+
+릴리스 부속 자료: [SHA256SUMS-0.4.0](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/SHA256SUMS-0.4.0) · [MACOS-QA-0.4.0.json](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/MACOS-QA-0.4.0.json) · [RELEASE-PROVENANCE-0.4.0.json](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/RELEASE-PROVENANCE-0.4.0.json). main 통합 검증 기록은 [공통 회귀 CI(12작업)](https://github.com/jbsim999/java-edu/actions/runs/38489210020)와 [Mac 패키지 CI(3작업)](https://github.com/jbsim999/java-edu/actions/runs/38489209878)다. main CI에서 새로 생성한 패키지를 기존 릴리스 파일과 혼동하지 않는다.
 
 독립 검수에서 Unix 정상 종료 후 자손이 stdout/stderr를 상속하면 `close`가 늦어져 timeout으로 오인될 수 있음을 발견했다. `exit` 시점에 남은 프로세스 그룹을 정리하고 상속 파이프 회귀 검사를 추가했다. Windows 실제 감독 회귀와 두 Mac의 Unix 실제 검사에서 PASS를 확인했다. 개발자 빌드 안내의 CI 전용 QA 명령도 별도 단락으로 정정했다.
 
@@ -68,5 +70,9 @@ DMG는 실제 마운트·앱 복사·마운트 해제 후 실행했고 ZIP은 �
 ## 실제 사용자 검증 단계 — 2026-10-14
 
 사용자는 main 통합과 v0.4.0 사전 릴리스를 통한 실제 사용자 검증을 승인했다. 게시 대상은 위에서 Intel·Apple Silicon별 DMG·ZIP의 파일 크기·SHA256과 실제 실행을 확인한 네 파일이다. 문서와 CI 통합만으로 새로 패키징한 파일을 동일하게 검증한 것으로 취급하지 않는다. 기존 Windows v0.3.1 다운로드는 유지한다.
+
+main 통합 커밋 `d6e34226aa49c859e0cf7a9c5bb7a78c4f8838f7`의 공통 CI12작업과 Mac CI3작업이 모두 PASS한 뒤 2026-10-14 00:29:07 UTC에 [v0.4.0 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.4.0)를 게시했다. 릴리스 ID412217306은 `draft:false`, `prerelease:true`이며 실제 태그도 이 main 통합 커밋을 가리킨다. 기존 검증 패키지4개·동일 버전 대응 소스2개·체크섬/QA/출처 기록3개로 총9첨부를 제공한다. 9개 모두 원본 크기·SHA256이 GitHub의 `uploaded` 첨부 값과 일치하고 로그인 없는 공개 다운로드 HEAD 요청은 모두 HTTP200·정확한 크기를 반환했다. 기존 릴리스 파일을 교체하지 않았다.
+
+게시 증거는 `work/macos-release-0.4.0/main-ci-publication-gate.json`, `published-release-verification.json`, `public-download-access.json`이며 핵심 QA·출처·체크섬은 영구 릴리스에도 첨부했다. 독립 검수는 패킷9개 해시와 문서17개 첨부 링크의 정합성을 확인했다. 공개 후 접근 확인은 다운로드 가능성 검사이며 실제 Mac의 quarantine/Gatekeeper 승인 검사는 아니다.
 
 개인 Mac의 설치·첫 실행·코어 제출·Spring 환경 준비와 제출·재시작 후 학습 기록 복원을 확인받는 단계다. 제보 경로는 [Issues](https://github.com/jbsim999/java-edu/issues)이며 필수 정보는 **macOS 버전·CPU·다운로드한 파일명·재현 순서·오류 메시지**다. Apple Developer ID·공증, 실제 다운로드 후 Gatekeeper, 개인 Mac 사용자 검증은 여전히 미검증이며 CI의 총28 PASS와 구분한다.

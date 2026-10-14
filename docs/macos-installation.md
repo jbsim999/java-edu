@@ -4,7 +4,16 @@
 
 macOS 13 Ventura 이상, Intel x64 또는 Apple Silicon arm64. Electron44는 macOS12를 지원하지 않는다. Apple 메뉴 → 이 Mac에 관하여에서 **칩**이 Apple M 계열이면 arm64, **프로세서**가 Intel이면 x64를 선택한다. 두 CPU의 JDK를 섞거나 Windows EXE를 Mac에서 실행하지 않는다.
 
-패키지는 `Java-Edu-0.4.0-mac-arm64.dmg` / `Java-Edu-0.4.0-mac-x64.dmg`와 같은 CPU별 DMG·ZIP이다. [실제 Mac CI](https://github.com/jbsim999/java-edu/actions/runs/38406992540)에서 두 CPU의 최종 DMG·ZIP 앱 실행이 통과했다. 실제 검사 환경은 macOS 15이며 다른 지원 OS 버전을 모두 검사한 것은 아니다. 현재 파일은 14일간 보존되는 CI 산출물이며 GitHub Release로 게시하지 않았다. 2026-10-14 사용자가 main 반영과 실제 사용자 검증용 배포를 승인했으며, 아래 검증을 통과한 동일한 DMG·ZIP 네 파일의 v0.4.0 사전 릴리스 게시를 준비 중이다. [Apple Silicon 파일](https://github.com/jbsim999/java-edu/actions/runs/38406992540/artifacts/11818354876) · [Intel 파일](https://github.com/jbsim999/java-edu/actions/runs/38406992540/artifacts/11819915823) · [체크섬·검증 범위](macos-verification.md). 산출물 ZIP을 먼저 풀고 `desktop-release/`에서 자신의 CPU에 맞는 DMG 또는 앱 ZIP을 선택한다.
+[v0.4.0 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.4.0)는 실제 사용자 검증용 사전 릴리스다. 자신의 CPU에 맞는 DMG 또는 앱 ZIP 하나를 내려받는다.
+
+| Mac | 설치 DMG | 앱 ZIP |
+| --- | --- | --- |
+| Apple Silicon | [arm64 DMG](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/Java-Edu-0.4.0-mac-arm64.dmg) | [arm64 ZIP](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/Java-Edu-0.4.0-mac-arm64.zip) |
+| Intel | [x64 DMG](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/Java-Edu-0.4.0-mac-x64.dmg) | [x64 ZIP](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/Java-Edu-0.4.0-mac-x64.zip) |
+
+[SHA256 체크섬](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/SHA256SUMS-0.4.0) · [실제 앱 검사 기록](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/MACOS-QA-0.4.0.json) · [배포 출처](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/RELEASE-PROVENANCE-0.4.0.json) · [검증 범위](macos-verification.md).
+
+두 CPU의 최종 DMG·ZIP 앱은 [실제 Mac CI](https://github.com/jbsim999/java-edu/actions/runs/38406992540)에서 실행 검증을 통과했다. 실제 검사 환경은 macOS 15이며 다른 지원 OS 버전을 모두 검사한 것은 아니다. 릴리스의 네 파일은 소스 `1f93d9e`에서 생성한 기존 검증 파일이다. 태그의 main 통합 커밋 `d6e3422`와 패키지 생성 소스를 구분한다. 원본 [Apple Silicon CI 산출물](https://github.com/jbsim999/java-edu/actions/runs/38406992540/artifacts/11818354876)·[Intel CI 산출물](https://github.com/jbsim999/java-edu/actions/runs/38406992540/artifacts/11819915823)은 14일 보존되는 보조 검증 자료다.
 
 ## 설치와 첫 실행
 

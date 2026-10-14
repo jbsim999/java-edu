@@ -8,7 +8,7 @@
 
 다른 언어 경험자의 Java 전환 학습부터 현직 개발자의 OOP·백엔드 심화까지.
 
-[![Java](https://img.shields.io/badge/Java-8%20%7C%2011%20%7C%2017%20%7C%2021-315b45?style=flat-square)](https://github.com/jbsim999/java-edu/blob/main/docs/java-version-matrix.md) [![Windows](https://img.shields.io/badge/Desktop-Windows%20x64-315b45?style=flat-square)](https://github.com/jbsim999/java-edu/blob/main/docs/installation.md) [![Lessons](https://img.shields.io/badge/Lessons-34-806223?style=flat-square)](https://github.com/jbsim999/java-edu/blob/main/docs/education-roadmap.md) [![Status](https://img.shields.io/badge/Status-v0.4.0%20validation-806223?style=flat-square)](https://github.com/jbsim999/java-edu/issues) [![CI](https://github.com/jbsim999/java-edu/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/jbsim999/java-edu/actions/workflows/verify.yml?query=branch%3Amain)
+[![Java](https://img.shields.io/badge/Java-8%20%7C%2011%20%7C%2017%20%7C%2021-315b45?style=flat-square)](https://github.com/jbsim999/java-edu/blob/main/docs/java-version-matrix.md) [![Windows](https://img.shields.io/badge/Desktop-Windows%20x64-315b45?style=flat-square)](https://github.com/jbsim999/java-edu/blob/main/docs/installation.md) [![macOS](https://img.shields.io/badge/Desktop-macOS%20Intel%20%7C%20Apple%20Silicon-315b45?style=flat-square)](https://github.com/jbsim999/java-edu/releases/tag/v0.4.0) [![Lessons](https://img.shields.io/badge/Lessons-34-806223?style=flat-square)](https://github.com/jbsim999/java-edu/blob/main/docs/education-roadmap.md) [![Status](https://img.shields.io/badge/Status-v0.4.0%20preview-806223?style=flat-square)](https://github.com/jbsim999/java-edu/issues) [![CI](https://github.com/jbsim999/java-edu/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/jbsim999/java-edu/actions/workflows/verify.yml?query=branch%3Amain)
 
 [교육 로드맵](https://github.com/jbsim999/java-edu/blob/main/docs/education-roadmap.md) · [개발 소스](https://github.com/jbsim999/java-edu/tree/main) · [기여 안내](https://github.com/jbsim999/java-edu/blob/main/CONTRIBUTING.md) · [버그·제안](https://github.com/jbsim999/java-edu/issues)
 
@@ -18,11 +18,11 @@
 
 Java Edu는 **Windows·macOS에서 코드를 직접 실행하는 학습 앱과 웹 교재**를 함께 만드는 한국어 교육 프로젝트입니다. 다른 언어 경험자와 현직 Java 개발자가 “메서드에 객체를 넘겼는데 왜 결과가 달라질까?”, “트랜잭션을 붙였는데 왜 데이터가 남을까?” 같은 질문을 실제 코드로 확인하도록 돕습니다.
 
-**macOS Intel·Apple Silicon 검증을 통과했습니다.** v0.4.0 검증용 DMG·ZIP에는 Java·Maven이 포함됩니다. macOS 13 Ventura 이상을 대상으로 하며, 실제 검증은 GitHub Actions의 macOS 15 Intel x64·Apple Silicon arm64에서 수행했습니다. [Mac 설치·빌드 안내](docs/macos-installation.md) · [실제 검증 결과](https://github.com/jbsim999/java-edu/actions/runs/38406992540)
+**macOS Intel·Apple Silicon 검증을 통과했습니다.** v0.4.0 프리뷰 DMG·ZIP에는 Java·Maven이 포함됩니다. macOS 13 Ventura 이상을 대상으로 하며, 실제 검증은 GitHub Actions의 macOS 15 Intel x64·Apple Silicon arm64에서 수행했습니다. [Mac 설치·빌드 안내](docs/macos-installation.md) · [실제 검증 결과](https://github.com/jbsim999/java-edu/actions/runs/38406992540)
 
 수업은 **이론 → 예시 → 문제풀이 → 실무 심화 → 직접 코딩** 순서로 진행합니다. Java 언어·표준 API는 Oracle/OpenJDK 공식 문서를, 프레임워크·라이브러리는 각 프로젝트의 공식 문서를 기준으로 합니다. 실무 주제에는 출처를 기록한 채용 공고의 기술 요건도 연결합니다.
 
-> **개발 상태** — 전체 34수업과 Windows·macOS 앱의 공통 소스는 `main`에서 관리합니다. macOS v0.4.0은 실제 사용자 검증용 사전 릴리스 게시를 준비하고 있습니다. [Windows v0.3.1 통합 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1)를 설치해 학습할 수 있습니다. [호스팅 웹](https://java-edu-lab-jbsim999.junbo1218.chatgpt.site)은 소유자 전용이며 34수업·이론 도식 12개·편집기 테마가 배포돼 있습니다.
+> **개발 상태** — 전체 34수업과 Windows·macOS 앱의 공통 소스는 `main`에서 관리합니다. [macOS v0.4.0 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.4.0)는 실제 사용자 검증용 사전 릴리스입니다. [Windows v0.3.1 통합 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1)를 설치해 학습할 수 있습니다. [호스팅 웹](https://java-edu-lab-jbsim999.junbo1218.chatgpt.site)은 소유자 전용이며 34수업·이론 도식 12개·편집기 테마가 배포돼 있습니다.
 
 ## 설치하고 시작하기
 
@@ -38,16 +38,16 @@ Java·Maven·Node.js가 포함돼 있어 따로 설치하거나 폴더를 등록
 
 [자세한 설치 안내](https://github.com/jbsim999/java-edu/blob/main/docs/installation.md) · [릴리스와 체크섬](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1)
 
-### macOS 설치 안내 — v0.4.0 검증용 빌드
+### macOS 설치 안내 — v0.4.0 프리뷰
 
 Intel·Apple Silicon에서 DMG·ZIP 최종 앱 실행 검증을 모두 통과했습니다. Apple 메뉴 → 이 Mac에 관하여에서 **칩**이 Apple M 계열이면 `arm64`, **프로세서**가 Intel이면 `x64` 파일을 선택합니다.
 
-| Mac | 검증용 파일 |
-| --- | --- |
-| Apple Silicon | [arm64 CI 산출물](https://github.com/jbsim999/java-edu/actions/runs/38406992540/artifacts/11818354876) |
-| Intel | [x64 CI 산출물](https://github.com/jbsim999/java-edu/actions/runs/38406992540/artifacts/11819915823) |
+| Mac | 설치 DMG | 앱 ZIP |
+| --- | --- | --- |
+| Apple Silicon | [arm64 DMG](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/Java-Edu-0.4.0-mac-arm64.dmg) | [arm64 ZIP](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/Java-Edu-0.4.0-mac-arm64.zip) |
+| Intel | [x64 DMG](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/Java-Edu-0.4.0-mac-x64.dmg) | [x64 ZIP](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/Java-Edu-0.4.0-mac-x64.zip) |
 
-CI 산출물 ZIP을 먼저 해제하면 `desktop-release/`에 해당 CPU의 DMG와 앱 ZIP이 있습니다. 검증 기록도 함께 포함되며 보존 기간은 생성 후 14일입니다. 현재는 CI 산출물이며 GitHub Release로 게시하지 않았습니다. 아래에서 검증한 동일한 네 파일을 v0.4.0 사전 릴리스로 게시해 실제 사용자 검증을 받을 예정입니다. [패키지 SHA256·검증 범위](docs/macos-verification.md)
+[Mac 릴리스](https://github.com/jbsim999/java-edu/releases/tag/v0.4.0) · [SHA256 체크섬](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/SHA256SUMS-0.4.0) · [실제 앱 검사 기록](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/MACOS-QA-0.4.0.json) · [빌드 소스·배포 출처](https://github.com/jbsim999/java-edu/releases/download/v0.4.0/RELEASE-PROVENANCE-0.4.0.json) · [검증 범위](docs/macos-verification.md)
 
 1. 자신의 CPU에 맞는 **DMG**를 열고 **Java Edu**를 **Applications**로 끌어 놓습니다.
 2. 복사가 끝나면 디스크 이미지를 추출하고, 응용 프로그램에서 **Java Edu**를 엽니다. **ZIP**은 전체 `Java Edu.app`을 해제해 응용 프로그램으로 옮깁니다.
@@ -178,6 +178,8 @@ npm run build:desktop:mac -- --arm64
 2026-10-13 기준, v0.3.1 앱 소스 `6ce0428`의 [CI 12작업](https://github.com/jbsim999/java-edu/actions/runs/38338837092)이 모두 성공했습니다. 독립 검수에서 읽기 안내 **24/24**, 기존 기능 **49/49**, 도식 **19/19**, 정적 검사 **5/5**가 통과했고 새 EXE·ZIP의 전체 파일과 포함 도구 604개를 대조했습니다. 사용 중인 앱과 학습 기록을 보존하기 위해 **신버전의 실제 설치·기동 검사는 미실행**입니다. 이전 v0.3.0 설치·제거 검증과 구분합니다. [이번 검증 범위](https://github.com/jbsim999/java-edu/blob/main/docs/readability-release-qa-report.md) · [검증 기록](https://github.com/jbsim999/java-edu/blob/main/docs/verification.md)
 
 2026-10-13, 소스 `1f93d9e`의 [Mac 패키지 CI](https://github.com/jbsim999/java-edu/actions/runs/38406992540)가 **Intel·Apple Silicon·Windows 회귀 3작업 모두 성공**했습니다. 두 Mac에서 콘텐츠40 PASS/원격 제공자1 SKIP, 로컬32 PASS/Windows 전용1 SKIP를 확인했습니다. CPU별 DMG·ZIP 총 4개의 포함 도구 무결성·서명·소스 동일성과 실제 앱의 Java8/21 대상 제출·Spring/H2 환경 준비·정답/미완성 판정·재시작 저장이 통과했습니다. 포함 JVM은 21이며 실제 JDK8 실행 검증과 구분합니다. Apple Developer ID 공증·다운로드 후 Gatekeeper·개인 Mac 사용 검증은 미실행입니다. [Mac 검증 기록과 체크섬](docs/macos-verification.md)
+
+2026-10-14 `main` 통합 커밋 `d6e3422`의 [공통 회귀 CI(12작업)](https://github.com/jbsim999/java-edu/actions/runs/38489210020)와 [Mac 패키지 CI(3작업)](https://github.com/jbsim999/java-edu/actions/runs/38489209878)가 **15작업 모두 성공**했습니다. v0.4.0 프리뷰는 같은 날 게시했으며 첨부9개의 서버 체크섬과 로그인 없는 다운로드 접근을 확인했습니다. 배포 파일은 위에서 검증한 `1f93d9e` 빌드의 동일한 네 파일이며, 태그가 가리키는 main 통합 커밋과 패키지 생성 소스는 구분합니다.
 
 ## 문서와 로드맵
 
