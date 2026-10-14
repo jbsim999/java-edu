@@ -10,48 +10,6 @@ import { runProcess, processEnvironment } from '../../server/local/process.mjs';
 
 const fixedFixture = fileURLToPath(new URL('./process-fixture.mjs', import.meta.url));
 
-test('Unix native argv, private temp, timeout, cancellation, output and normal-exit descendant cleanup', { skip: process.platform === 'win32' }, async (t) => {
-  const parent = await realpath(tmpdir());
-  const root = await mkdtemp(path.join(parent, 'java-edu-local-unix-공백 & % 🚀-'));
-  const descendantPids = [];
-  t.after(async () => {
-    for (const pid of descendantPids) { try { process.kill(pid, 'SIGKILL'); } catch { /* already stopped */ } }
-    const resolved = await realpath(root); assert.equal(path.dirname(resolved), parent); assert.ok(path.basename(resolved).startsWith('java-edu-local-unix-')); await rm(resolved, { recursive: true, force: true });
-  });
-  const env = processEnvironment(undefined, root);
-  assert.equal(env.TMPDIR, root);
-  for (const name of ['JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', 'MAVEN_OPTS', 'NODE_OPTIONS', 'CLASSPATH']) assert.equal(Object.hasOwn(env, name), false);
-  const argv = ['공백 포함', 'a&b%PATH%', 'a"quoted"', 'trailing\\', ''];
-  const echo = await runProcess(process.execPath, [fixedFixture, 'echo', ...argv], { cwd: root, env });
-  assert.equal(echo.exitCode, 0, JSON.stringify(echo)); assert.deepEqual(JSON.parse(echo.stdout), argv);
-  const temporary = await runProcess(process.execPath, ['-p', 'JSON.stringify([process.env.TMPDIR,process.env.HOME,process.cwd()])'], { cwd: root, env });
-  assert.deepEqual(JSON.parse(temporary.stdout), [root, root, root]);
-  async function readPid(file) {
-    let pid;
-    for (let retry = 0; retry < 100 && !pid; retry++) { await delay(50); pid = Number(await readFile(file, 'utf8').catch(() => '')); }
-    assert.ok(pid, 'Fixed descendant must start'); descendantPids.push(pid); return pid;
-  }
-  async function stopped(pid) {
-    for (let retry = 0; retry < 100; retry++) { try { process.kill(pid, 0); } catch (error) { if (error.code === 'ESRCH') return; throw error; } await delay(50); }
-    assert.fail(`Descendant ${pid} survived process-group termination`);
-  }
-  const timeoutFile = path.join(root, 'timeout.pid');
-  const timeout = await runProcess(process.execPath, [fixedFixture, 'tree', timeoutFile], { cwd: root, env, timeoutMs: 1200 });
-  assert.equal(timeout.reason, 'timeout'); await stopped(await readPid(timeoutFile));
-  const cancelledFile = path.join(root, 'cancelled.pid'); const controller = new AbortController();
-  const running = runProcess(process.execPath, [fixedFixture, 'tree', cancelledFile], { cwd: root, env, signal: controller.signal });
-  const cancelledPid = await readPid(cancelledFile); controller.abort(); const cancelled = await running;
-  assert.equal(cancelled.reason, 'cancelled'); await stopped(cancelledPid);
-  const flood = await runProcess(process.execPath, [fixedFixture, 'overflow'], { cwd: root, env, outputLimit: 1024 });
-  assert.equal(flood.reason, 'output_limit'); assert.ok(Buffer.byteLength(flood.stdout) <= 1024);
-  for (const fixture of ['tree-exit', 'tree-exit-inherited']) {
-    const exitedFile = path.join(root, `${fixture}.pid`);
-    const exited = await runProcess(process.execPath, [fixedFixture, fixture, exitedFile], { cwd: root, env, timeoutMs: 2000 });
-    assert.equal(exited.exitCode, 0, JSON.stringify(exited)); assert.equal(exited.reason, 'exited', `${fixture} must retain natural exit rather than wait for inherited pipes until timeout`);
-    await stopped(await readPid(exitedFile));
-  }
-});
-
 test('Windows Job supervisor preserves Unicode/metacharacter argv and stops timeout process trees', { skip: process.platform !== 'win32' }, async (t) => {
   const parent = await realpath(tmpdir());
   const root = await mkdtemp(path.join(parent, 'java-edu-local-test-공백 & % 🚀-'));

@@ -17,7 +17,6 @@ export function processEnvironment(javaHome, temporaryDirectory) {
   }
   env.TEMP = temporaryDirectory;
   env.TMP = temporaryDirectory;
-  if (process.platform !== 'win32') env.TMPDIR = temporaryDirectory;
   env.HOME = temporaryDirectory;
   env.USERPROFILE = temporaryDirectory;
   if (process.platform === 'win32') {
@@ -74,17 +73,14 @@ export async function runProcess(executable, args, {
         }
       };
       const onAbort = () => stop('cancelled');
-      const stopUnixDescendants = () => {
-        if (process.platform !== 'win32' && child?.pid) {
-          try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already reaped */ }
-        }
-      };
       const finish = async (exitCode, spawnError) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
         signal?.removeEventListener('abort', onAbort);
-        stopUnixDescendants();
+        if (process.platform !== 'win32' && child?.pid) {
+          try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already reaped */ }
+        }
         let report;
         if (process.platform === 'win32') {
           try { report = JSON.parse(await readFile(resultPath, 'utf8')); } catch { /* Helper can be killed before reporting. */ }
@@ -110,10 +106,6 @@ export async function runProcess(executable, args, {
         });
       }
       child.once('error', (error) => void finish(-1, error));
-      // A descendant may inherit stdout/stderr and keep them open after the
-      // command exits. Kill the remaining Unix group on exit, before waiting
-      // for close to drain pipes, without changing the command's exit reason.
-      child.once('exit', stopUnixDescendants);
       child.once('close', (code) => void finish(code));
       if (signal?.aborted) stop('cancelled');
     });

@@ -97,7 +97,6 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
-      - run: npm ci
       - run: npm run test:local
       - name: Verify actual local JVM checks
         shell: pwsh

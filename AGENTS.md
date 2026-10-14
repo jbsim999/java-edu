@@ -4,10 +4,6 @@
 
 협업 규칙의 기준 문서는 CONTRIBUTING.md이다. 파일당 쓰기 소유자를 한 명으로 정한다. 콘텐츠, 프런트엔드, 조사 근거, 테스트를 독립 작업으로 나누고 의미 있는 구현은 독립 검토를 받는다. 기존 변경을 보존하며 추가 위임은 부모가 허용한 경우에만 한다.
 
-2026-10-13 사용자는 이 프로젝트에서 `junbo-github-conventions` 스킬을 앞으로 따르도록 지정했다. 브랜치·커밋·PR·협업 규칙 관련 작업에서는 `C:/Users/JBSIM/.codex/skills/junbo-github-conventions/SKILL.md`를 적용하고 CONTRIBUTING.md를 기준으로 한다. 스킬 채택 자체를 원격 변경 권한으로 해석하지 않는다. 현재 사용자는 검증용 `codex/macos-packaging` 브랜치의 선행 커밋·푸시와 GitHub Actions의 Intel·Apple Silicon Mac 검증을 명시적으로 승인했다. 이전 선행 푸시 보류를 해제하며, 두 환경의 실제 검증 통과 후 README에 결과를 반영하고 같은 브랜치에 커밋·푸시한다. 병합·릴리스 게시 권한은 별도로 확인한다.
-
-같은 날 사용자는 `junbo-programming-education-project` 스킬을 앞으로의 구현 구조와 작업 기준으로 지정했다. 교육 제품 구현·확장에서는 `C:/Users/JBSIM/.codex/skills/junbo-programming-education-project/SKILL.md`와 현재 작업에 해당하는 참고 계약을 적용한다. 기존 Java Edu 구조를 새 scaffold로 교체하지 않는다. 교육 콘텐츠는 `curriculum/`·`examples/`·`dist/data/`, 공유 화면·편집기는 `dist/`, 웹 실행은 `server/`·`worker/`, 설치 앱·로컬 실행은 `desktop/`·`server/local/`, 빌드·검사는 `scripts/`·`tests/`, 기획·상태·근거는 `docs/`에서 확장한다. 기존 기획·아키텍처·개발 인계를 먼저 확인하고 대표 수업·실행 흐름 검증 후 확장한다. 저장·실행 어댑터, 환경 준비·실행·제출·성취, 정적/모의/실제 실행/독립 검토/출시 상태를 구분한다. 콘텐츠 개정 fingerprint는 기존 구현 완료로 주장하지 않고 변경 시 별도 설계·이행 검증한다.
-
 역할: 총괄은 범위·통합·검증 책임; 연구자는 공식 명세와 공고 원문 대조; 교육 설계자는 교육 데이터와 독립 Java 예제; 프런트엔드 담당자는 dist의 화면·상호작용; 독립 리뷰어는 정확성·보안·회귀; QA는 실제 기능·합성 화면 검사. 역할은 전문 자격을 의미하지 않는다.
 
 미지원 Java 버전이나 preview 문법을 정식 예제로 표시하지 않는다. 공고 관찰을 채용 통계로 만들지 않는다. 브라우저 퀴즈와 Java 실행 검증을 구분한다. 실제 실행하지 않은 테스트는 미실행으로 기록한다. 실행기 계약은 docs/architecture.md와 docs/local-execution.md를 따른다. 교재 기준·컴파일 대상·실제 실행 JVM을 분리해서 표시한다. 웹 코어 실행은 외부 Wandbox의 실제 JVM21을 사용하며 Java8/11/17 실제 JVM이라고 주장하지 않는다. Windows 설치형은 등록한 로컬 JDK를 사용하며 원격 제공자를 호출하지 않는다. 실무 교재의 정적 공개·기준 테스트 실행·설치형 통합 검증을 분리한다. Redis/Kafka 실제 연동은 선택 환경이며 미검증을 숨기지 않는다. 이 개인 IDE를 OS 보안 샌드박스로 표현하지 않는다.

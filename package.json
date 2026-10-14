@@ -1,6 +1,6 @@
 {
   "name": "java-edu",
-  "version": "0.4.0",
+  "version": "0.3.1",
   "main": "desktop/main.cjs",
   "private": true,
   "type": "module",
@@ -23,10 +23,7 @@
     "test:browser": "node tests/browser.mjs",
     "test:theory": "node tests/theory-visuals.mjs",
     "test:readability": "node tests/readability.mjs",
-    "check": "node --check dist/app.js && node --check dist/data/curriculum.js && node --check dist/data/job-evidence.js && node --check dist/data/lesson-visuals.js && npm test",
-    "build:desktop:mac": "node scripts/build-editor.mjs && node scripts/build-professional.mjs && electron-builder --config desktop/build-config.cjs --mac --publish never",
-    "prepare:mac": "node scripts/prepare-macos-runtime.mjs",
-    "test:mac:packages": "node scripts/verify-macos-packages.mjs"
+    "check": "node --check dist/app.js && node --check dist/data/curriculum.js && node --check dist/data/job-evidence.js && node --check dist/data/lesson-visuals.js && npm test"
   },
   "engines": {
     "node": ">=22"

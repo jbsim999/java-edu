@@ -1,14 +1,13 @@
 # 협업 규칙
 
-이 저장소의 기본 규칙이다. 2026-10-13 사용자가 `junbo-github-conventions` 스킬을 이 프로젝트의 지속적인 협업 기준으로 지정했다. 스킬의 기본안을 기존 프로젝트 정책에 맞춰 적용하며, 이 문서를 프로젝트 규칙의 기준으로 삼는다. 원격 보호 설정을 변경하거나 실제 확인한 것으로 해석하지 않는다.
+이 저장소의 기본 규칙이다. Junbo GitHub Conventions의 추천안을 본 프로젝트에 맞춰 적용했다. 기존 사용자 저장소의 정책이나 GitHub 보호 설정을 확인한 것으로 해석하지 않는다.
 
 ## 변경 단위와 검토
 
 - 기준 브랜치 `main`, 단기 작업 브랜치 `feat/java-learning-mvp`처럼 `type/description`. 실제 이슈가 있으면 `type/number-description`; 번호를 만들지 않는다.
-- 커밋과 PR 제목은 `type(scope): 변경 내용`. 타입은 feat, fix, docs, test, refactor, perf, style, build, ci, chore. scope는 web, desktop, curriculum, evidence, examples, ci 중 실제 변경 대상에 맞게 사용한다. `desktop`은 설치형 앱·포함 도구·OS별 패키징에 사용한다. 이 목록은 팀의 추가 규칙이다.
+- 커밋과 PR 제목은 `type(scope): 변경 내용`. 타입은 feat, fix, docs, test, refactor, perf, style, build, ci, chore. scope는 web, curriculum, evidence, examples, ci 중 실제 변경 대상에 맞게 사용한다. 이 목록은 팀의 추가 규칙이다.
 - 하나의 PR은 하나의 목적을 갖는다. 구현 중에는 Draft PR을 사용한다. 중요 변경은 구현자 외 담당자의 독립 검토와 관련 검사 결과를 남긴다. 에이전트 검토를 사람의 GitHub 승인으로 꾸미지 않는다.
 - `main` 강제 푸시와 기존 작업 되돌리기를 금지한다. 병합과 운영 배포는 사용자 승인 범위 안에서만 수행한다. PR 준비는 자동 병합 권한을 뜻하지 않는다.
-- 스킬 채택은 커밋·푸시·PR 생성·병합·릴리스 게시·보호 설정 변경 권한을 추가하지 않는다. 현재 대화에서 확인한 승인 범위만 활용하고, 자동 승인 검토에서 차단된 작업은 승인 없이 우회하지 않는다. 관련 파일만 반영하고 로컬 작성·로컬 커밋·원격 반영을 구분한다.
 - `[필수]`, `[제안]`, `[질문]`, `[사소]`로 리뷰 의도를 표시한다. 필수 문제 해결 후 해당 실패 조건을 다시 검사한다.
 
 ## 교육 콘텐츠 기준
