@@ -18,7 +18,7 @@ macOS 13 Ventura 이상, Intel x64 또는 Apple Silicon arm64. Electron44는 mac
 
 ## Mac에서 직접 빌드
 
-Node22.12 이상에서 `codex/macos-packaging` 브랜치의 저장소 의존성을 설치한 후 해당 CPU의 Mac에서 아래 순서로 실행한다. 원본 아카이브·스테이징이 이미 존재하면 덮어쓰지 않고 중단한다. 재빌드는 기존 결과를 먼저 별도로 보존한다.
+Node22.12 이상에서 공통 개발 브랜치 `feat/java-learning-mvp`의 저장소 의존성을 설치한 후 해당 CPU의 Mac에서 아래 순서로 실행한다. macOS 구현은 이 브랜치에 통합되어 별도 브랜치 전환이 필요 없다. 원본 아카이브·스테이징이 이미 존재하면 덮어쓰지 않고 중단한다. 재빌드는 기존 결과를 먼저 별도로 보존한다.
 
 ```sh
 npm ci

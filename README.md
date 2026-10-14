@@ -134,10 +134,9 @@ npm run build:desktop
 <details>
 <summary><strong>macOS 설치 파일 직접 빌드</strong></summary>
 
-macOS 13 이상, Node.js 22.12 이상에서 해당 CPU의 Mac으로 빌드합니다. Mac 구현은 `codex/macos-packaging` 브랜치에 있습니다. 위에서 저장소를 내려받았다면 먼저 브랜치를 전환합니다.
+macOS 13 이상, Node.js 22.12 이상에서 해당 CPU의 Mac으로 빌드합니다. Mac 구현은 공통 개발 브랜치 `feat/java-learning-mvp`에 통합돼 있습니다. 위에서 저장소를 내려받았다면 같은 브랜치에서 진행합니다.
 
 ```sh
-git switch codex/macos-packaging
 npm ci
 npm run prepare:mac
 npm run check:bundle
