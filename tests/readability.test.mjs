@@ -19,14 +19,32 @@ const canonical = value => Array.isArray(value) ? value.map(canonical)
     ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]))
     : value;
 const digest = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+const kafkaFixtureWording = {
+  before: '테스트는 java-edu-<UUID> 토픽 한 개와 동일 이름 consumer group을 생성하고 자신이 만든 토픽만 삭제합니다.',
+  after: '테스트는 java-edu-<UUID> 토픽 한 개와 동일한 이름의 consumer group을 생성하고 자신이 만든 토픽만 삭제합니다.',
+};
+// Approved documentation-only correction, 2026-10-21. Reverse this exact sentence
+// only for comparison with the historical hash; every other byte stays protected.
+function historicalExampleFiles(id, files) {
+  if (id !== 'kafka-idempotency') return files;
+  assert.equal(files.filter(file => file.path === 'FIXTURE.md').length, 1, 'one Kafka fixture example');
+  return files.map(file => {
+    if (file.path !== 'FIXTURE.md') return file;
+    assert.equal(file.language, 'markdown');
+    assert.equal(file.code.split(kafkaFixtureWording.after).length - 1, 1, 'reviewed Kafka fixture sentence occurs exactly once');
+    assert.equal(file.code.includes(kafkaFixtureWording.before), false, 'Kafka fixture uses the reviewed wording');
+    return { ...file, code: file.code.replace(kafkaFixtureWording.after, kafkaFixtureWording.before) };
+  });
+}
 const contracts = values => values.map(({ id, minVersion, preview, exerciseId, example, quiz, professionalExercise, executionVerified }) =>
-  ({ id, minVersion, preview, exerciseId, example: { code: example.code, output: example.output, files: example.files },
+  ({ id, minVersion, preview, exerciseId, example: { code: example.code, output: example.output, files: historicalExampleFiles(id, example.files) },
     quiz: quiz.map(({ explanation, ...question }) => question), professionalExercise, executionVerified }));
 
 // Captured independently before learningGuide was added, 2026-10-13, and
 // checked against Git b2dda6d4f2225e5f2d9b31a5287539bd1b0685b6.
-// This readability change must not revise examples, grading, target versions,
-// starter files, or trusted checks under already-earned achievement IDs.
+// Executable examples, grading, target versions, starter code, and trusted checks
+// remain frozen under already-earned achievement IDs; the exact documentation
+// correction above is normalized only for this historical comparison.
 const originalContracts = {
   core: 'fd73ccfc033780f4419e59f4c1dd84abc64a8d0c1d4c8235c4bd4b132e43a509',
   professional: '0a9ab6fadae8aa061705168a8f898c49eb91b2a3e1cd9b97dfb7fbaf13e2dcfb',
@@ -96,6 +114,23 @@ test('readability additions preserve the pre-change examples, quiz answers, exec
   assert.equal(digest(contracts(authoredProfessional)), originalContracts.professional, 'professional examples, quiz, and local project execution contracts');
   assert.equal(digest(coreExercises), originalContracts.exercises, 'published core templates and criteria');
   assert.equal(digest(exerciseDefinitions), originalContracts.definitions, 'trusted runtime/grading checks');
+});
+
+test('the approved fixture wording correction cannot hide other documentation or Java changes', () => {
+  const changedFixture = structuredClone(authoredProfessional);
+  const fixture = changedFixture.find(lesson => lesson.id === 'kafka-idempotency').example.files.find(file => file.path === 'FIXTURE.md');
+  fixture.code += '\nAn unreviewed fixture instruction.\n';
+  assert.notEqual(digest(contracts(changedFixture)), originalContracts.professional, 'the rest of the fixture remains protected');
+
+  const changedJava = structuredClone(authoredProfessional);
+  changedJava.find(lesson => lesson.id === 'kafka-idempotency').example.files.find(file => file.path.endsWith('.java')).code += '\n// unreviewed Java change\n';
+  assert.notEqual(digest(contracts(changedJava)), originalContracts.professional, 'Java example files remain protected');
+
+  for (const code of [kafkaFixtureWording.before, `${kafkaFixtureWording.after}\n${kafkaFixtureWording.after}`]) {
+    const unapproved = structuredClone(authoredProfessional);
+    unapproved.find(lesson => lesson.id === 'kafka-idempotency').example.files.find(file => file.path === 'FIXTURE.md').code = code;
+    assert.throws(() => contracts(unapproved), /reviewed Kafka fixture sentence occurs exactly once/);
+  }
 });
 
 test('README puts installation directly after the introduction with explicit EXE and ZIP asset links', async () => {

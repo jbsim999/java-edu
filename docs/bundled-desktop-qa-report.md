@@ -21,7 +21,7 @@
 | 실제 앱 재시작 | 포트 52415→61427; 등록 경로·동의·진도·초안·테마 보존 | 포트 63593→60542; 동일 보존 PASS |
 | 최소 창·문서 글꼴 200% | 704×521 viewport; 상단·도구 카드·닫기 버튼 전체 가시성, 가로 넘침 없음·닫기 PASS | 동일 PASS |
 
-각 제품에서 실제 관측한 코어 java/javac 명령 8개와 Maven 명령 2개 모두 해당 제품의 `resources/toolchains` 내부 파일을 사용했다. 각 javac의 `--release` 값은 8/11/17/21에 일치했다. 준비의 실제 Maven 명령에는 `--offline`이 없고 학생 제출에는 있었다. 두 앱 자식의 PATH/JAVA_HOME/MAVEN_HOME는 실제로 모두 부재였고 기본 사용자 데이터는 `C:/Users/USER/AppData/Roaming/java-edu`였다. 기록된 브라우저 오류는 각각 0건이며 앱 API 요청은 해당 앱의 loopback origin뿐이었다.
+각 제품에서 실제 관측한 코어 java/javac 명령 8개와 Maven 명령 2개 모두 해당 제품의 `resources/toolchains` 내부 파일을 사용했다. 각 javac의 `--release` 값은 8/11/17/21에 일치했다. 준비 시 실제 Maven 명령에는 `--offline`이 없고 학생 제출에는 있었다. 두 앱 자식의 PATH/JAVA_HOME/MAVEN_HOME은 실제로 모두 부재였고 기본 사용자 데이터는 `C:/Users/USER/AppData/Roaming/java-edu`였다. 기록된 브라우저 오류는 각각 0건이며 앱 API 요청은 해당 앱의 loopback origin뿐이었다.
 
 각 제품의 최신 폴더에 `bundled-first-launch-settings.png`, `bundled-settings-minimum200-{top,tools,close}.png`, 코어 대상별 제출, Spring/H2 준비·제출, `bundled-restarted-achievement.png`와 `bundled-restarted-achievement-confirmation.png`를 저장했다. 재시작 캡처는 자연스럽게 스크롤된 편집기 위치이며, 저장된 객관식·실습 성취 자체는 UI의 실제 data-complete 및 저장값으로 별도 검증했다. 모든 최신 원본을 독립 시각 담당에게 전달했다.
 

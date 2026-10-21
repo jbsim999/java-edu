@@ -93,8 +93,8 @@ Electron은 contextIsolation=true, nodeIntegration=false, sandbox=true, webSecur
 
 Windows Server CI에서 PowerShell 모듈 자동 탐색 지연과 관리자 .NET CodeDom의 임시 디렉터리 생성 오류를 발견했다. 감독 helper는 Windows 기본 Utility manifest만 명시적으로 로드한다. CodeDom 컴파일에는 OS 기본 TEMP 아래 호출별 고유 디렉터리를 사용하고, 실제 Java/Maven 시작 전 TEMP/TMP를 원래 작업별 폴더로 복원한다. 학습자 작업 폴더의 한글·공백·`&`·`%`를 제거하는 방식이 아니다. 기존 CodeDom ACL 보호와 Job·시간·출력 제한은 유지한다.
 
-[.NET TempFileCollection 원문](https://github.com/microsoft/referencesource/blob/main/System/compmod/system/codedom/compiler/TempFiles.cs)과 [NativeMethods 원문](https://github.com/microsoft/referencesource/blob/main/System/compmod/microsoft/win32/NativeMethods.cs)의 관리자 분기·ANSI 경로 호출이 오류 스택과 일치했다. 로컬 코드페이지 밖 문자의 직접 호출에서도 Win32 오류123을 재현했다. 비관리자 로컬 수정 검사는16/16, JDK8 56/56·JDK21 73/73 및 양쪽 한글 진단 PASS다. 관리자 Windows CI의 수정 결과는 이후 실제 결과로 확인한다.
+[.NET TempFileCollection 원문](https://github.com/microsoft/referencesource/blob/main/System/compmod/system/codedom/compiler/TempFiles.cs)과 [NativeMethods 원문](https://github.com/microsoft/referencesource/blob/main/System/compmod/microsoft/win32/NativeMethods.cs)의 관리자 분기·ANSI 경로 호출이 오류 스택과 일치했다. 로컬 코드페이지 밖 문자의 직접 호출에서도 Win32 오류 123을 재현했다. 비관리자 로컬 수정 검사는16/16, JDK8 56/56·JDK21 73/73 및 양쪽 한글 진단 PASS다. 관리자 Windows CI의 수정 결과는 이후 실제 결과로 확인한다.
 
 감독 초기화에는 ANSI로 표현 가능한 OS 기본 TEMP 경로가 필요하다(ASCII 경로 권장). 기본 TEMP 자체가 현재 코드페이지로 표현되지 않는 경로일 때는 이 .NET 경로 제약이 남는다. 정상 완료·취소·감독 중단 후에는 이번 호출의 디렉터리 실제 부모·고유 접두사를 확인해 정리한다. 앱 부모가 강제로 종료되어 finally가 실행되지 않은 경우에는 임시 디렉터리가 남을 수 있다. 자식 프로세스 종료 검증을 모든 임시 파일의 자동 정리 보장으로 확대하지 않는다.
 
-수정 후 [CI38213755330](https://github.com/jbsim999/java-edu/actions/runs/38213755330)의 Windows8/11/17/21 네 환경은 모두 실제 관리자·코드페이지1252였다. 각 로컬16/16, 실제 JVM56/61/67/73검사 및 한글 진단이 성공했다. 이 결과는 앞서 미확인이던 관리자 경로 회귀를 보완하며 ANSI로 표현 불가한 OS 기본 TEMP 자체의 제약을 없애지는 않는다.
+수정 후 [CI38213755330](https://github.com/jbsim999/java-edu/actions/runs/38213755330)의 Windows8/11/17/21 네 환경은 모두 실제 관리자·코드페이지 1252였다. 각 로컬16/16, 실제 JVM56/61/67/73검사 및 한글 진단이 성공했다. 이 결과는 앞서 미확인이던 관리자 경로 회귀를 보완하며 ANSI로 표현 불가한 OS 기본 TEMP 자체의 제약을 없애지는 않는다.

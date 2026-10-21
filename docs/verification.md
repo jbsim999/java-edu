@@ -1,6 +1,6 @@
 # 프로토타입 검증 기록
 
-기준일: 2026-10-12. 아래 코어 프로토타입 기록은 M4 당시12수업 대상의 이력이다. 현재34수업 설치형 검증 상태는 마지막 M5–M7 절과 개발 인계를 따른다. 전체 교육 로드맵 수료 가능성이나 실제 학습 효과는 아직 검증하지 않았다.
+기준일: 2026-10-12. 아래 코어 프로토타입 기록은 M4 당시 12수업 대상의 이력이다. 현재 34수업 설치형 검증 상태는 마지막 M5–M7 절과 개발 인계를 따른다. 전체 교육 로드맵 수료 가능성이나 실제 학습 효과는 아직 검증하지 않았다.
 
 ## 소스와 마일스톤
 
@@ -42,9 +42,9 @@
 
 ## M5–M7 구현·검증 기록
 
-코어12+실무22, 총34수업의 Windows 앱·웹 공용 교재를 구현했다. 독립 기능 QA의 개발 Electron9/9, 모의API 웹4/4, 기존 브라우저49개 PASS. Node35 PASS/제공자1 SKIP, Worker 정적 모듈·ZIP 검사 PASS, 로컬 계약16/16 PASS. 실제 JDK8/21 core와 Spring/H2 UI 실행은 [설치형 QA 기록](desktop-qa-report.md)을 따른다.
+코어 12+실무 22, 총 34수업의 Windows 앱·웹 공용 교재를 구현했다. 독립 기능 QA의 개발 Electron9/9, 모의 API 웹4/4, 기존 브라우저 49개 PASS. Node35 PASS/제공자1 SKIP, Worker 정적 모듈·ZIP 검사 PASS, 로컬 계약16/16 PASS. 실제 JDK8/21 core와 Spring/H2 UI 실행은 [설치형 QA 기록](desktop-qa-report.md)을 따른다.
 
-JDK21·컴파일 대상17·Maven3.10.0에서 기본20실무프로젝트를 실제 실행해 reference54개 JUnit PASS와20개 미완성 starter 실패를 확인했다. 독립 리뷰는129소스 및 부모POM 해시·Surefire XML·메타데이터를 대조했다. Redis/Kafka는 reference/starter 컴파일만 확인했으며 실제 서비스 실행은 미검증이다. 독립 코드·교재 리뷰에는 미해결 P1/P2가 없다.
+JDK21·컴파일 대상 17·Maven3.10.0에서 기본 20실무 프로젝트를 실제 실행해 reference54개 JUnit PASS와 20개 미완성 starter 실패를 확인했다. 독립 리뷰는 129소스 및 부모 POM 해시·Surefire XML·메타데이터를 대조했다. Redis/Kafka는 reference/starter 컴파일만 확인했으며 실제 서비스 실행은 미검증이다. 독립 코드·교재 리뷰에는 미해결 P1/P2가 없다.
 
 최초 통합 당시에는 설치·제거 및 최종 시각 게이트가 서비스 한도로 미완료였다. 이후 실제 설치 QA와 CI 수정 결과는 아래 Windows v0.2 게이트 기록을 따른다. [개발 인계](development-handoff.md)는 최신 작업 상태를 제공한다.
 
@@ -54,25 +54,25 @@ JDK21·컴파일 대상17·Maven3.10.0에서 기본20실무프로젝트를 실�
 
 ## Windows v0.2 출시 게이트
 
-검증 소스 `6ba4b8aa124f5ce78e79240253946c9fdac3e770`, [CI38213755330](https://github.com/jbsim999/java-edu/actions/runs/38213755330) **12작업 모두 성공**. 관리자·코드페이지1252의 Windows8/11/17/21에서 각각 로컬16/16, 실제 JVM56/61/67/73검사 및 한글 컴파일 진단 PASS. 실무17/21의 기본20프로젝트·54JUnit 및 미완성 starter 실패 확인도 성공했다. 감독 모듈 탐색·CodeDom 임시 경로 문제를 수정했고 경계 제약은 [로컬 실행](local-execution.md)에 기록했다.
+검증 소스 `6ba4b8aa124f5ce78e79240253946c9fdac3e770`, [CI38213755330](https://github.com/jbsim999/java-edu/actions/runs/38213755330) **12작업 모두 성공**. 관리자·코드페이지 1252의 Windows8/11/17/21에서 각각 로컬16/16, 실제 JVM56/61/67/73검사 및 한글 컴파일 진단 PASS. 실무17/21의 기본 20프로젝트·54JUnit 및 미완성 starter 실패 확인도 성공했다. 감독 모듈 탐색·CodeDom 임시 경로 문제를 수정했고 경계 제약은 [로컬 실행](local-execution.md)에 기록했다.
 
-최종 NSIS 설치 파일 SHA256 `6d4354e0b4a5c8b471591f0ee29c106f9ec65c2561847416555c38e623fd2f74`. 실제 사용자용 설치·설치 앱8/8·제거·Windows 시각 PASS. ASAR에 포함된 검토 파일195개+생성2개 및 unpacked helper를 비교했다. package.json은 builder가 개발 명령·개발 의존성을 제거하므로 나머지 런타임 필드로 비교하고, 다른 소스는 원본 바이트로 비교했다. 설치된 ASAR/helper/exe는 빌드 산출물과 동일하다. 첫 검사 스크립트의 Maven 제공자 기대값 오류는 고친 후 전체8개를 재실행했으며 실패 기록을 보존했다. 기존 사용자 데이터 부재를 사전 확인한 뒤 테스트 데이터는 작업 폴더에 보관하고 환경을 복원했다. [설치 QA](installed-desktop-qa-report.md)를 따른다. 출시 게이트 판정은 **PASS — 프리뷰 범위**다. 실제 릴리스 게시 결과는 [배포 기록](deployment.md)에 기록한다.
+최종 NSIS 설치 파일 SHA256 `6d4354e0b4a5c8b471591f0ee29c106f9ec65c2561847416555c38e623fd2f74`. 실제 사용자용 설치·설치 앱8/8·제거·Windows 시각 PASS. ASAR에 포함된 검토 파일 195개+생성 2개 및 unpacked helper를 비교했다. package.json은 builder가 개발 명령·개발 의존성을 제거하므로 나머지 런타임 필드로 비교하고, 다른 소스는 원본 바이트로 비교했다. 설치된 ASAR/helper/exe는 빌드 산출물과 동일하다. 첫 검사 스크립트의 Maven 제공자 기대값 오류는 고친 후 전체 8개를 재실행했으며 실패 기록을 보존했다. 기존 사용자 데이터 부재를 사전 확인한 뒤 테스트 데이터는 작업 폴더에 보관하고 환경을 복원했다. [설치 QA](installed-desktop-qa-report.md)를 따른다. 출시 게이트 판정은 **PASS — 프리뷰 범위**다. 실제 릴리스 게시 결과는 [배포 기록](deployment.md)에 기록한다.
 
 프로젝트 이동 후 브라우저·개발 앱 검사의 기본 산출물 경로를 저장소 내부 work/로 정리했다. 경로 영향 검사 브라우저1/1·웹 실무4/4 PASS. 제한 환경의 최초 브라우저 시작 실패 후 허용된 실행 환경에서 재검사한 결과이며, 설치 앱8/8 검증과는 별개다.
 
 ## M8 통합 Windows 패키지 v0.3
 
-출시 소스 `0e1ff5eb38484d1594d4fd1c231d4dbe229b44e8`, [CI38223955175](https://github.com/jbsim999/java-edu/actions/runs/38223955175) 전체12작업 PASS. 같은 소스의38223948625도 전체12작업 PASS. 이전ffb 소스의38220565678 첫실무21 작업 실패는 검사기가 상세로그를 제공하지 않아 원인이 미확인이고, failed-job 재실행에서는 PASS였다. 이 이력을 최종 소스의 성공과 혼합하지 않는다.
+출시 소스 `0e1ff5eb38484d1594d4fd1c231d4dbe229b44e8`, [CI38223955175](https://github.com/jbsim999/java-edu/actions/runs/38223955175) 전체12작업 PASS. 같은 소스의 38223948625도 전체 12작업 PASS. 이전 ffb 소스의 38220565678 첫 실무21 작업 실패는 검사기가 상세 로그를 제공하지 않아 원인이 미확인이고, failed-job 재실행에서는 PASS였다. 이 이력을 최종 소스의 성공과 혼합하지 않는다.
 
-Temurin21·Maven3.10.0의 공식 ZIP 체크섬, 새해제본 전체, stage604파일355610126바이트를 검증했다. 실제 실행하지 않는 시작 자동등록과 코드 실행 동의를 분리했다. Node35 PASS/실제제공자1 SKIP, 로컬23/23 PASS, 작성자UI6/6·웹회귀4/4와 독립 코드/시각 PASS. 번들 실제 JVM21의12코어/73검사 및 새전용 Maven캐시에서 Spring/H2 준비2/2·오프라인제출2/2 PASS. 이는 설치제품 QA와 별도 검사다.
+Temurin21·Maven3.10.0의 공식 ZIP 체크섬, 새 해제본 전체, stage604파일 355610126바이트를 검증했다. 실제 실행하지 않는 시작 자동등록과 코드 실행 동의를 분리했다. Node35 PASS/실제제공자1 SKIP, 로컬23/23 PASS, 작성자UI6/6·웹회귀4/4와 독립 코드/시각 PASS. 번들 실제 JVM21의 12코어/73검사 및 새 전용 Maven 캐시에서 Spring/H2 준비2/2·오프라인 제출2/2 PASS. 이는 설치 제품 QA와 별도 검사다.
 
-최종 ZIP과 실제 NSIS 설치앱 각각10/10 PASS. 네컴파일대상8/11/17/21의 코어6/5/6/6, 실제 Maven 준비2/2와 오프라인제출2/2, 재시작저장, 최소창704×521·글자200%를 확인했다. 외부도구환경 없이 포함 resources의 java/javac·Maven만 사용하고 폴더선택은0회였다. API/Java/Maven/클립보드 응답을 모의하지 않았다. NSIS200%중간도구카드와닫기추가확인, 최종 실제합성화면 독립검수 PASS. [독립 QA](bundled-desktop-qa-report.md)를 따른다.
+최종 ZIP과 실제 NSIS 설치 앱 각각10/10 PASS. 네 컴파일 대상8/11/17/21의 코어6/5/6/6, 실제 Maven 준비2/2와 오프라인 제출2/2, 재시작 저장, 최소 창 704×521·글자 200%를 확인했다. 외부 도구 환경 없이 포함 resources의 java/javac·Maven만 사용하고 폴더 선택은 0회였다. API/Java/Maven/클립보드 응답을 모의하지 않았다. NSIS200% 중간 도구 카드와 닫기 추가 확인, 최종 실제 합성 화면 독립 검수 PASS. [독립 QA](bundled-desktop-qa-report.md)를 따른다.
 
-빌드·실제ZIP·NSIS에서 원본197개·생성2개·vendor604개를 대조했다. package.json은 builder제거개발필드를 제외한 런타임필드로 비교하고 다른소스는 바이트로 비교했다. 최종 ASAR `8ee1c5df3de2472ff18a31e45cb6054cedd17b89389db8e579aea87c8c7c51e2`, exe `d7e0bfab510476dc433b175624a10dd4753c725c4d72949f6870a2af7b09c043`, helper `a5f0ae67ef016c916a92dc0f1afb2c1ed4a9c744798694536a241a5f861a9721`가 제품별로 일치한다.
+빌드·실제 ZIP·NSIS에서 원본 197개·생성 2개·vendor604개를 대조했다. package.json은 builder가 제거한 개발 필드를 제외한 런타임 필드로 비교하고 다른 소스는 바이트로 비교했다. 최종 ASAR `8ee1c5df3de2472ff18a31e45cb6054cedd17b89389db8e579aea87c8c7c51e2`, exe `d7e0bfab510476dc433b175624a10dd4753c725c4d72949f6870a2af7b09c043`, helper `a5f0ae67ef016c916a92dc0f1afb2c1ed4a9c744798694536a241a5f861a9721`가 제품별로 일치한다.
 
-첫7z NSIS는604중602로 무결성FAIL이었다. 원본ARM64필터2파일이 압축에는 있지만19.00 NSIS해제기에서 누락됨을 독립진단·직접추출SHA로 확인했다. differentialPackage:false/useZip:true 최소수정독립리뷰 후 새빌드·한글/공백/&/%JAVA_HOME% 경로실제설치와604전체를 재검증했다. 미검증 파일을 누락허용하지 않았다. 첫ZIP10/10·환경guard중단2개·첫NSISFAIL 근거는보존했다. 수정전산출물은 출시하지 않는다.
+첫 7z NSIS는 604 중 602로 무결성 FAIL이었다. 원본 ARM64 필터 2파일이 압축에는 있지만19.00 NSIS 해제기에서 누락됨을 독립 진단·직접 추출 SHA로 확인했다. differentialPackage:false/useZip:true 최소 수정 독립 리뷰 후 새 빌드·한글/공백/&/%JAVA_HOME% 경로의 실제 설치와 604전체를 재검증했다. 미검증 파일의 누락을 허용하지 않았다. 첫ZIP10/10·환경guard중단2개·첫NSISFAIL 근거는보존했다. 수정 전 산출물은 출시하지 않는다.
 
-최종NSIS제거exit0,등록0·바로가기0·학습데이터보존PASS. 새테스트AppData를 work로보관하고 작업전두경로부재로복원했다. userData우회나기존개인설정삭제는하지않았다. Windows11 실제제품 검사이며 Windows10·SmartScreen·OS배율·실기기·스크린리더·Redis/Kafka실제연동은 미검증이다. 기본실무 최초준비는인터넷이필요하고 실제JVM21만기본포함한다. 판정 PASS — 통합프리뷰범위. 대응JDK/Temurin빌드/Maven/제3자소스와원본고지를같은릴리스에서제공한다.
+최종 NSIS 제거 exit0, 등록 0·바로가기 0·학습 데이터 보존 PASS. 새 테스트 AppData를 work로 보관하고 작업 전 두 경로가 없던 상태로 복원했다. userData 우회나 기존 개인 설정 삭제는 하지 않았다. Windows11 실제제품 검사이며 Windows10·SmartScreen·OS배율·실기기·스크린리더·Redis/Kafka실제연동은 미검증이다. 기본 실무 최초 준비에는 인터넷이 필요하고 실제 JVM21만 기본으로 포함한다. 판정 PASS — 통합 프리뷰 범위. 대응JDK/Temurin빌드/Maven/제3자 소스와 원본 고지를 같은 릴리스에서 제공한다.
 
 ## v0.3.1 교재·화면 개선 (2026-10-13)
 

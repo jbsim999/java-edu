@@ -17,10 +17,10 @@
 
 M4는 전체 교육 과정 완료를 뜻하지 않는다. 2026-10-12 사용자는 **Windows 설치형 + 웹 교재**를 선택했다. 학습자 로컬 PC에서 Java/Spring/H2를 실행하며, 호스팅 컨테이너 서버는 기본 과정에 필요하지 않다. Redis/Kafka 실제 연동은 별도 선택 환경이다. 웹의 기존 코어 실행은 Wandbox 실제 JVM21을 사용한다. 교재 버전·컴파일 대상·실제 JVM을 구분한다. 마일스톤마다 관련 파일만 stage하고 강제 푸시하지 않는다. 배포는 검증한 커밋의 동일 소스를 사용한다.
 
-M4.1 검증: 브라우저 고유49개를 전체47개와 추가/수정 영향 검사로 나눠 확인, 토큰 단위4개 PASS, 전체 Node31 PASS/실제 제공자1 SKIP. 선택 상태 최저 대비4.859/4.810/5.772:1. 생성 번들이 없는 작업 복사본에서 npm ci→build→Worker 검사→Node 검사 PASS. npm audit은 scoped global-agent 보완 후0건이며 실제 설치 파일 빌드는 M5에서 검사한다. 상세 범위·미확인은 docs/editor-qa-report.md를 따른다.
+M4.1 검증: 브라우저 고유 49개를 전체 47개와 추가/수정 영향 검사로 나눠 확인, 토큰 단위 4개 PASS, 전체 Node31 PASS/실제 제공자 1 SKIP. 선택 상태 최저 대비4.859/4.810/5.772:1. 생성 번들이 없는 작업 복사본에서 npm ci→build→Worker 검사→Node 검사 PASS. npm audit은 scoped global-agent 보완 후 0건이며 실제 설치 파일 빌드는 M5에서 검사한다. 상세 범위·미확인은 docs/editor-qa-report.md를 따른다.
 
-M5–M7 출시 게이트는 이후 완료했다. 출시 소스 6ba4b8a의 CI12작업, 실제 설치 앱8/8, 설치·제거·시각 검수 PASS. [v0.2.0 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.2.0)와34수업 웹 교재를 배포했다. 선택 Redis/Kafka 실제 연동, 실기기·스크린리더·장기 부하는 미검증이며 프리뷰 범위를 유지한다. 최신 상태는 [개발 인계](development-handoff.md)를 따른다.
+M5–M7 출시 게이트는 이후 완료했다. 출시 소스 6ba4b8a의 CI12작업, 실제 설치 앱8/8, 설치·제거·시각 검수 PASS. [v0.2.0 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.2.0)와 34수업 웹 교재를 배포했다. 선택 Redis/Kafka 실제 연동, 실기기·스크린리더·장기 부하는 미검증이며 프리뷰 범위를 유지한다. 최신 상태는 [개발 인계](development-handoff.md)를 따른다.
 
 ## M9 — 교재 가독성·본문 확장
 
-앱 소스 `6ce0428`의 CI12와 독립 정적5·읽기24·기존49·도식19검사 PASS. 34수업의 구체적 읽기 안내와 반복 정보 정리, 본문 확장을 완료했다. [v0.3.1](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1) EXE·ZIP은 전체 파일·도구 무결성 대조 후 공개했다. 새 실제 설치·기동 검사는 사용자 앱·기록 보존 때문에 미실행이다. 소유자 전용 웹 버전5 배포와 main README 첫 화면 반영도 완료했다. 실제 ID·소스·검증 경계는 [배포 기록](deployment.md)을 따른다.
+앱 소스 `6ce0428`의 CI12와 독립 정적 5·읽기 24·기존 49·도식 19검사 PASS. 34수업의 구체적 읽기 안내와 반복 정보 정리, 본문 확장을 완료했다. [v0.3.1](https://github.com/jbsim999/java-edu/releases/tag/v0.3.1) EXE·ZIP은 전체 파일·도구 무결성 대조 후 공개했다. 새 실제 설치·기동 검사는 사용자 앱·기록 보존 때문에 미실행이다. 소유자 전용 웹 버전 5 배포와 main README 첫 화면 반영도 완료했다. 실제 ID·소스·검증 경계는 [배포 기록](deployment.md)을 따른다.

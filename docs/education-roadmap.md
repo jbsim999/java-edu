@@ -23,7 +23,7 @@
 
 OOP·타입→컬렉션·실패→테스트→Spring 실행 모델→영속성→정합성의 선수 관계를 유지한다. HTTP·SQL/JDBC는 해당 Spring·영속성 실습의 공통 기반이다. MyBatis를 JPA 선수 조건으로 강제하지 않는다. SQL/JDBC 기반에서 두 방식 비교→선택 심화→트랜잭션으로 합류한다.
 
-버전 차이는 각 수업에서 설명하고15단계에서 종합한다. 8은 공통 기반·람다/Stream/time,11은 표준 HTTP와 문자열/파일 API,17은 switch 표현식/text block/record/sealed,21은 record pattern/pattern switch/virtual thread를 다룬다. 최초 도입 버전은 별도 표시한다.
+버전 차이는 각 수업에서 설명하고 15단계에서 종합한다. 8은 공통 기반·람다/Stream/time,11은 표준 HTTP와 문자열/파일 API,17은 switch 표현식/text block/record/sealed,21은 record pattern/pattern switch/virtual thread를 다룬다. 최초 도입 버전은 별도 표시한다.
 
 공통 프로젝트는 주문·재고 예약·취소다. 도메인 모델→테스트→HTTP API→영속화/트랜잭션→권한/중복/동시 요청→캐시/이벤트/관측→버전 상향을 연결한다. 모든 도구를 한 프로젝트에 무조건 끼워 넣지 않는다.
 
@@ -37,4 +37,4 @@ OOP·타입→컬렉션·실패→테스트→Spring 실행 모델→영속성�
 4. Security·CSRF → OAuth2/OIDC → JWT의 역할·검증 경계를 학습한다.
 5. Redis/Kafka 선택 실습, Micrometer 관측, Gradle/Docker/CI 비교를 거쳐 주문·재고·취소 통합 과제를 수행한다.
 
-실무22단원의 선수 관계·공식 근거·실습 파일은 [실무 과정 명세](professional-curriculum.md)와 curriculum/professional/catalog.json에 연결한다. 현대 Spring 실습은 Java17 대상으로 컴파일하고 JDK17/21 실행을 검증한다. Java8/11은 코어·레거시 이행 교재에 사용한다. 웹에서 읽고 프로젝트 ZIP을 내려받거나, Windows 앱에서 같은 코드와 고정 테스트를 직접 실행한다. 기본20개 실무 단원에는 별도 DB 서버가 필요하지 않다. Redis/Kafka 두 단원은 선택 자원을 별도로 준비한다.
+실무 22단원의 선수 관계·공식 근거·실습 파일은 [실무 과정 명세](professional-curriculum.md)와 curriculum/professional/catalog.json에 연결한다. 현대 Spring 실습은 Java17 대상으로 컴파일하고 JDK17/21 실행을 검증한다. Java8/11은 코어·레거시 이행 교재에 사용한다. 웹에서 읽고 프로젝트 ZIP을 내려받거나, Windows 앱에서 같은 코드와 고정 테스트를 직접 실행한다. 기본 20개 실무 단원에는 별도 DB 서버가 필요하지 않다. Redis/Kafka 두 단원은 선택 자원을 별도로 준비한다.

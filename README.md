@@ -116,7 +116,7 @@ npm run dev
 npm run desktop
 ```
 
-개발 실행에 번들을 준비하지 않았다면 앱에서 자신의 JDK/Maven을 등록합니다. 배포 패키지는 도구를 자동 등록하며, 학습 코드 실행에는 명시적인 동의가 필요합니다. 실무 과제는 **환경 준비 → 파일 편집 → 실행·제출** 순서로 진행합니다. [Windows 사용 안내](https://github.com/jbsim999/java-edu/blob/main/docs/installation.md)
+개발 실행용 번들을 준비하지 않았다면 앱에서 자신의 JDK/Maven을 등록합니다. 배포 패키지는 도구를 자동 등록하며, 학습 코드 실행에는 명시적인 동의가 필요합니다. 실무 과제는 **환경 준비 → 파일 편집 → 실행·제출** 순서로 진행합니다. [Windows 사용 안내](https://github.com/jbsim999/java-edu/blob/main/docs/installation.md)
 
 <details>
 <summary><strong>Windows 설치 파일 직접 빌드</strong></summary>
@@ -157,7 +157,7 @@ npm run build:desktop:mac -- --arm64
 | 코드 전송 | 작성 코드를 Wandbox로 전송하지 않음 | 코어 실행·제출 시 Wandbox로 전송 |
 | 학습 기록 | 앱 데이터에 저장 | 해당 브라우저에 저장 |
 
-웹과 앱 간 자동 동기화는 제공하지 않습니다. 실무 첫 환경 준비에는 앱 내부의 의존성 다운로드가 필요하며, 처음부터 모든 실무가 완전 오프라인인 패키지는 아닙니다. 실제 JDK 8·11·17 추가 등록은 고급 설정의 선택 기능입니다. [로컬 실행 계약](https://github.com/jbsim999/java-edu/blob/main/docs/local-execution.md)
+웹과 앱 간 자동 동기화는 제공하지 않습니다. 실무 첫 환경 준비에는 앱 내부에서 의존성을 다운로드해야 하며, 처음부터 모든 실무가 완전 오프라인인 패키지는 아닙니다. 실제 JDK 8·11·17 추가 등록은 고급 설정의 선택 기능입니다. [로컬 실행 계약](https://github.com/jbsim999/java-edu/blob/main/docs/local-execution.md)
 
 ## 개발과 검증
 
@@ -179,7 +179,7 @@ npm run build:desktop:mac -- --arm64
 
 2026-10-13, 소스 `1f93d9e`의 [Mac 패키지 CI](https://github.com/jbsim999/java-edu/actions/runs/38406992540)가 **Intel·Apple Silicon·Windows 회귀 3작업 모두 성공**했습니다. 두 Mac에서 콘텐츠40 PASS/원격 제공자1 SKIP, 로컬32 PASS/Windows 전용1 SKIP를 확인했습니다. CPU별 DMG·ZIP 총 4개의 포함 도구 무결성·서명·소스 동일성과 실제 앱의 Java8/21 대상 제출·Spring/H2 환경 준비·정답/미완성 판정·재시작 저장이 통과했습니다. 포함 JVM은 21이며 실제 JDK8 실행 검증과 구분합니다. Apple Developer ID 공증·다운로드 후 Gatekeeper·개인 Mac 사용 검증은 미실행입니다. [Mac 검증 기록과 체크섬](docs/macos-verification.md)
 
-2026-10-14 `main` 통합 커밋 `d6e3422`의 [공통 회귀 CI(12작업)](https://github.com/jbsim999/java-edu/actions/runs/38489210020)와 [Mac 패키지 CI(3작업)](https://github.com/jbsim999/java-edu/actions/runs/38489209878)가 **15작업 모두 성공**했습니다. v0.4.0 프리뷰는 같은 날 게시했으며 첨부9개의 서버 체크섬과 로그인 없는 다운로드 접근을 확인했습니다. 배포 파일은 위에서 검증한 `1f93d9e` 빌드의 동일한 네 파일이며, 태그가 가리키는 main 통합 커밋과 패키지 생성 소스는 구분합니다.
+2026-10-14 `main` 통합 커밋 `d6e3422`의 [공통 회귀 CI(12작업)](https://github.com/jbsim999/java-edu/actions/runs/38489210020)와 [Mac 패키지 CI(3작업)](https://github.com/jbsim999/java-edu/actions/runs/38489209878)가 **15작업 모두 성공**했습니다. v0.4.0 프리뷰는 같은 날 게시했으며 첨부 9개의 서버 체크섬과 로그인 없는 다운로드 접근을 확인했습니다. 배포 파일은 위에서 검증한 `1f93d9e` 빌드의 동일한 네 파일이며, 태그가 가리키는 main 통합 커밋과 패키지 생성 소스는 구분합니다.
 
 ## 문서와 로드맵
 

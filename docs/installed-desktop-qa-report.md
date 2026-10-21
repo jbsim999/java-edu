@@ -31,7 +31,7 @@ node tests/installed-desktop.mjs
 
 ## 설치·산출물 근거
 
-총괄이 실제 NSIS를 사용자 범위의 전용 경로에 설치했다. `installation.json`은 06:50:28 UTC 설치 exit 0을 기록한다. 총괄의 `package-installed.json`은 검토 커밋 `6ba4b8aa124f5ce78e79240253946c9fdac3e770`의 원본 195개와 생성 파일 2개가 설치 ASAR·helper에 일치함을 기록하며, 이 QA는 추가로 핵심 실행 파일 8개를 직접 바이트 대조했다.
+총괄이 실제 NSIS를 사용자 범위의 전용 경로에 설치했다. `installation.json`은 06:50:28 UTC 설치 exit 0을 기록한다. 총괄의 `package-installed.json`은 검토 커밋 `6ba4b8aa124f5ce78e79240253946c9fdac3e770`의 원본 195개와 생성 파일 2개가 설치 ASAR·helper와 일치함을 기록하며, 이 QA는 추가로 핵심 실행 파일 8개를 직접 바이트 대조했다.
 
 - 설치 EXE SHA-256: `6d4354e0b4a5c8b471591f0ee29c106f9ec65c2561847416555c38e623fd2f74`
 - 설치된 앱 exe SHA-256: `31e0610596ea65191bb964dd4f20426bad6da72eb6eca0cb06200900d2b9e636`
@@ -43,7 +43,7 @@ node tests/installed-desktop.mjs
 
 모든 근거는 저장소 `work/installed-desktop-qa`에 있다. 두 번째 캡처는 준비 결과 카드와 상단 미완료 성취를 동시에 보여주기 위해 실제 창 content viewport를 1424×1794로 설정했다. 전체 페이지 합성이나 DOM 이동은 하지 않았다. 요청한 설정·준비 상태를 QA가 직접 이미지로 확인했고 독립 시각 담당에게도 전달했다.
 
-총괄이 수행한 실제 제거는 07:01:27 UTC의 `uninstallation.json`에 기록되어 있다. NSIS exit 0, 전용 설치 폴더 없음, 제거 등록 0개, 설치 소유 바로가기 0개, 학습 데이터 보존을 확인했다. 최초 제거 후 확인은 무관한 바탕 화면 하위 폴더의 접근 거부로 중단되었으나 제거 자체는 완료되었고, 설치 소유 바로가기 5개 정확한 경로만 확인하는 후속 검사로 보완했다. 이 설치·제거 사실은 총괄의 실행 근거이며 QA가 제거 명령을 실행한 것으로 기록하지 않는다.
+총괄이 수행한 실제 제거는 07:01:27 UTC의 `uninstallation.json`에 기록되어 있다. NSIS exit 0, 전용 설치 폴더 없음, 제거 등록 0개, 설치 소유 바로가기 0개, 학습 데이터 보존을 확인했다. 최초 제거 후 확인은 무관한 바탕 화면 하위 폴더의 접근 거부로 중단되었으나 제거 자체는 완료되었고, 설치 소유 바로가기 5개의 정확한 경로만 확인하는 후속 검사로 보완했다. 이 설치·제거 사실은 총괄의 실행 근거이며 QA가 제거 명령을 실행한 것으로 기록하지 않는다.
 
 독립 시각 담당은 최소 창·글자 200%의 설정 닫기 버튼과 준비 완료/학생 미완료 상태가 함께 보이는 캡처를 직접 확인하여 기존 두 검증 공백이 해소되었다고 판정했다. 해당 Windows 앱 화면에 대한 시각 판정은 PASS다.
 
@@ -86,7 +86,7 @@ node tests/installed-desktop.mjs
 
 ## 첫 실행 오류와 재검증
 
-첫 실행에서 설치 ASAR/helper 8개 대조, packaged/default userData·보안 설정, 실제 도구 등록은 PASS였다. JVM 21의 Java 8 대상 제출 6/6, Java 21 대상 제출 6/6 및 Spring/H2 준비 2/2도 실제 실행했다. 준비 응답의 정상 제공자는 `Local Maven`인데 검사 코드가 `Local JDK`로만 기대하여 중단했다. 이는 검사 기대값 오류이며 제품 실패로 판정하지 않는다. 수정 전 근거 `installed-results-1791787998728.json`은 보존한다.
+첫 실행에서 설치 ASAR/helper 8개 대조, packaged/default userData·보안 설정, 실제 도구 등록은 PASS였다. JVM 21의 Java 8 대상 제출 6/6, Java 21 대상 제출 6/6 및 Spring/H2 준비 2/2도 실제 실행했다. 준비 응답의 정상 제공자는 `Local Maven`인데 검사 코드가 `Local JDK`만 기대하여 중단했다. 이는 검사 기대값 오류이며 제품 실패로 판정하지 않는다. 수정 전 근거 `installed-results-1791787998728.json`은 보존한다.
 
 앱은 정상 종료했으며 이 검사로 생성한 사용자 데이터는 `C:/Users/USER/AppData/Roaming/java-edu`다. 사전 검사에서 없던 경로임을 확인했고 QA가 삭제하거나 생산 데이터 경로를 우회하지 않았다. 총괄은 첫 검사 데이터의 원래 경로·사전 부재·프로세스 종료를 확인하고 `work/installed-desktop-qa/app-data-first-run`에 보관했다. 보호 guard를 유지한 재실행은 8/8 PASS였고 새로 생성된 같은 사용자 데이터 경로를 결과에 기록했다. 총괄이 제거 후 보존된 최종 QA 데이터도 동일한 경로·사전 부재·종료·reparse 여부를 확인하여 `work/installed-desktop-qa/app-data-final-run`에 보관했고, 원래 AppData 경로가 없던 상태로 복원했다. 두 검사 데이터 백업과 첫 실패 로그는 보존했다.
 

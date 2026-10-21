@@ -1,6 +1,6 @@
 # 실무 프로젝트 원본
 
-공통 부모 POM과 22개 독립 학습 프로젝트입니다. 설계·선수 관계·프로필·실행 범위는 [실무 교육 과정](../../docs/professional-curriculum.md)을 읽으세요.
+공통 부모 POM과 22개 독립 학습 프로젝트입니다. 설계·선수 관계·프로필·실행 범위는 [실무 교육 과정](../../docs/professional-curriculum.md)에서 확인하세요.
 
 - catalog.json: 22개 수업의 경로, profileId, exerciseId, editableFiles, files, testFiles
 - profiles.json: Java 17 대상, Java 17+ 실행 요구, 의존성과 외부 자원 요구
