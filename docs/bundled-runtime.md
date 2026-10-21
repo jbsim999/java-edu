@@ -8,7 +8,7 @@
 
 학습자 코드를 처음 실행할 때는 명시적인 동의가 필요하다. 번들 발견·자동 등록이 학습 코드 자동 실행 권한은 아니다. 앱의 프로세스·파일 편집·명령 계약은 [로컬 실행 계약](local-execution.md)을 유지한다.
 
-코어 실습은 별도 의존성 다운로드 없이 실행한다. 기본20실무프로젝트는 첫 환경 준비에서 앱이 Maven Central의 고정 의존성을 내려받고 기준 테스트를 실행한다. 별도 프로그램 설치는 필요 없지만 이 준비에는 인터넷이 필요하다. 이후 학습자 Maven 제출은 기존 오프라인 모드다. Redis/Kafka 실제 연동은 선택 환경이며 이 패키지가 외부 서버까지 포함하지는 않는다.
+코어 실습은 별도 의존성 다운로드 없이 실행한다. Redis·Kafka 선택 단원을 제외한 기본 실무 프로젝트 20개는 각 프로젝트의 첫 환경 준비에서 앱이 Maven Central의 고정 의존성을 내려받고 기준 테스트를 실행한다. 별도 프로그램 설치는 필요 없지만 이 준비에는 인터넷이 필요하다. 이후 학습자 Maven 제출은 기존 오프라인 모드다. Redis/Kafka 실제 연동은 선택 환경이며 이 패키지가 외부 서버까지 포함하지는 않는다.
 
 ## 패키징과 무결성
 
@@ -22,13 +22,13 @@ node scripts/bundle-runtime.mjs --check
 npm run build:desktop
 ```
 
-빌드는 설치 EXE와 Windows x64 ZIP을 함께 만든다. NSIS는 differentialPackage:false·useZip:true로 내부 ZIP을 사용한다. 첫 빌드의7z ARM64 필터 두 파일을 NSIS의19.00 해제기가 누락한 실제 무결성 실패를 확인해, 원본 파일을 모두 유지하는 ZIP 경로로 수정했다. [electron-builder 공식 옵션](https://www.electron.build/v26/docs/nsis/)을 따른다. 자동 업데이트는 제공하지 않으며 차등 업데이트용 패키지를 생성하지 않는다. 앱의 설치·ZIP 위치가 바뀌면 번들 항목은 현재 resources 기준으로 다시 해석한다. 외부 선택 경로를 임의로 번들 경로로 변경하지 않는다. 버전별 검사와 실제 설치·ZIP 실행 결과는 별도 QA 보고서에 기록한다.
+빌드는 설치 EXE와 Windows x64 ZIP을 함께 만든다. NSIS는 differentialPackage:false·useZip:true로 내부 ZIP을 사용한다. 첫 빌드의 7z 압축에는 ARM64 필터가 적용된 Maven 네이티브 라이브러리 2개가 있었고, NSIS로 설치한 뒤 이 두 파일이 누락됐다. 당시 설치기의 Nsis7z 플러그인은 7-Zip 19.00 기반이었다. 원본 파일을 모두 보존하도록 내부 패키지를 ZIP 형식으로 전환했다. [electron-builder 공식 옵션](https://www.electron.build/v26/docs/nsis/)을 따른다. 자동 업데이트는 제공하지 않으며 차등 업데이트용 패키지를 생성하지 않는다. 앱의 설치·ZIP 위치가 바뀌면 번들 항목은 현재 resources 기준으로 다시 해석한다. 외부 선택 경로를 임의로 번들 경로로 변경하지 않는다. 버전별 검사와 실제 설치·ZIP 실행 결과는 별도 QA 보고서에 기록한다.
 
 ## 배포 출처·라이선스·대응 소스
 
 JDK ZIP205073461바이트의 SHA256은 `f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e`다. Maven ZIP10102082바이트의 SHA256은 `1f6d9909266510f039f59aa0e13dcd2c66da85f043e56276e41f2918f8bddaff`이며 Apache의 SHA512도 대조했다. [Temurin 릴리스](https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.12.1%2B1)와 [Apache Maven 공식 다운로드](https://maven.apache.org/download.cgi)를 기준으로 원본을 확인했다.
 
-Temurin은 GPLv2와 Classpath Exception, Maven은 Apache License2.0 및 포함된 제3자 조건을 따른다. JDK NOTICE·legal243개 파일, Maven 루트LICENSE/NOTICE·lib/boot의 원본 license 파일과 JAR 내부 고지를 보존한다. [Adoptium FAQ](https://adoptium.net/docs/faq), [공급망 자료](https://adoptium.net/docs/slsa), [Apache License](https://www.apache.org/licenses/LICENSE-2.0)를 참고한다. 이 조건은 Java Edu 프로젝트 자체의 라이선스를 임의로 지정하지 않는다.
+Temurin은 GPLv2와 Classpath Exception, Maven은 Apache License2.0 및 포함된 제3자 조건을 따른다. JDK NOTICE·legal243개 파일, Maven 배포 폴더 최상위의 `LICENSE`·`NOTICE` 파일과 `lib`·`boot` 폴더의 원본 라이선스 파일과 JAR 내부 고지를 보존한다. [Adoptium FAQ](https://adoptium.net/docs/faq), [공급망 자료](https://adoptium.net/docs/slsa), [Apache License](https://www.apache.org/licenses/LICENSE-2.0)를 참고한다. 이 조건은 Java Edu 프로젝트 자체의 라이선스를 임의로 지정하지 않는다.
 
 같은 GitHub 릴리스에 다음 대응 소스를 함께 제공한다. 학습자는 실행을 위해 이를 따로 설치할 필요가 없다.
 

@@ -73,6 +73,6 @@ DMG는 실제 마운트·앱 복사·마운트 해제 후 실행했고 ZIP은 �
 
 main 통합 커밋 `d6e34226aa49c859e0cf7a9c5bb7a78c4f8838f7`의 공통 CI12작업과 Mac CI3작업이 모두 PASS한 뒤 2026-10-14 00:29:07 UTC에 [v0.4.0 프리뷰](https://github.com/jbsim999/java-edu/releases/tag/v0.4.0)를 게시했다. 릴리스 ID412217306은 `draft:false`, `prerelease:true`이며 실제 태그도 이 main 통합 커밋을 가리킨다. 기존 검증 패키지 4개·동일 버전 대응 소스 2개·체크섬/QA/출처 기록 3개로 총 9첨부를 제공한다. 9개 모두 원본 크기·SHA256이 GitHub의 `uploaded` 첨부 값과 일치하고 로그인 없는 공개 다운로드 HEAD 요청은 모두 HTTP200·정확한 크기를 반환했다. 기존 릴리스 파일을 교체하지 않았다.
 
-게시 증거는 `work/macos-release-0.4.0/main-ci-publication-gate.json`, `published-release-verification.json`, `public-download-access.json`이며 핵심 QA·출처·체크섬은 영구 릴리스에도 첨부했다. 독립 검수는 패킷 9개 해시와 문서 17개 첨부 링크의 정합성을 확인했다. 공개 후 접근 확인은 다운로드 가능성 검사이며 실제 Mac의 quarantine/Gatekeeper 승인 검사는 아니다.
+게시 증거는 `work/macos-release-0.4.0/main-ci-publication-gate.json`, `published-release-verification.json`, `public-download-access.json`이며 핵심 QA·출처·체크섬은 영구 릴리스에도 첨부했다. 당시 독립 검수 기록의 대상은 릴리스 첨부 파일 9개의 SHA256과 README·Mac 설치 안내·이 문서에 있는 v0.4.0 다운로드 링크 17개다. 공개 후 접근 확인은 다운로드 가능성 검사이며 실제 Mac의 quarantine/Gatekeeper 승인 검사는 아니다.
 
 개인 Mac의 설치·첫 실행·코어 제출·Spring 환경 준비와 제출·재시작 후 학습 기록 복원을 확인받는 단계다. 제보 경로는 [Issues](https://github.com/jbsim999/java-edu/issues)이며 필수 정보는 **macOS 버전·CPU·다운로드한 파일명·재현 순서·오류 메시지**다. Apple Developer ID·공증, 실제 다운로드 후 Gatekeeper, 개인 Mac 사용자 검증은 여전히 미검증이며 CI의 총 28 PASS와 구분한다.
